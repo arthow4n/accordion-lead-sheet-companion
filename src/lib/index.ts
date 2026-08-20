@@ -89,3 +89,17 @@ export {
   parseLeadSheet,
   parseLeadSheetText,
 } from "./parser/tokenizer.ts";
+
+// 5. Storage & Presets Engine
+export { createPresetSongs, PRESET_SONGS } from "./storage/presets.ts";
+
+export {
+  clearSongbook,
+  deleteSong,
+  exportSongbook,
+  getSong,
+  getSongs,
+  importSongbook,
+  initPresets,
+  saveSong,
+} from "./storage/songbook.ts";

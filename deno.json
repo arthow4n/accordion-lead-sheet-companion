@@ -5,7 +5,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "serve:api": "deno run --allow-net api/import.ts",
-    "test": "deno test --allow-read --allow-net",
+    "test": "deno test --allow-read --allow-net --allow-env",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check"
