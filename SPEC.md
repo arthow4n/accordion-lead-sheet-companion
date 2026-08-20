@@ -895,7 +895,19 @@ describe('Segmented Tokenizer Test Suite', () => {
 | `UX-06` | **Bluetooth Pedal** | External pedal sends `PageDown` or `Space` key event | Advances viewport 80% down | Hands-free page turning operational |
 | `UX-07` | **Offline Mode** | Airplane mode enabled | App loads from Service Worker cache; reads/writes to IndexedDB | 100% functionality with no network connection |
 
+### 9.7 End-to-End (E2E) Browser Validation Suite (Playwright / Browser Automation)
+
+| Test ID | User Flow / Feature | Test Steps | Expected Assertions |
+| :--- | :--- | :--- | :--- |
+| `E2E-01` | **Mobile Reader & Layout** | 1. Open app in mobile viewport ($375 \times 667$).<br>2. Load default song (Country Roads). | • Zero horizontal overflow (`document.body.scrollWidth === window.innerWidth`).<br>• Chord badges rendered directly above matching lyrics in flex-columns. |
+| `E2E-02` | **Live Capo Transposition** | 1. Click Capo `[+]` button 3 times (Capo 3). | • Key badge updates to `Bb Major`.<br>• First chord text changes from `G` to `Bb bb`.<br>• Slash chord changes from `D/F#` to `A_ f`. |
+| `E2E-03` | **MiniGripDrawer Interaction** | 1. Click on chord badge `A_ f`. | • `MiniGripDrawer` bottom sheet animates into view.<br>• Stradella section shows Counter-bass $A\_$ (finger 2) + $f$ major (finger 3).<br>• CBA section shows $A-C-F$ (grip 1-2-4).<br>• Page scroll position is preserved (`scrollTop` unchanged). |
+| `E2E-04` | **1-Tap Clipboard Ingestion** | 1. Open Import Modal.<br>2. Paste tab text with `Capo: 2`.<br>3. Click "Open Lead Sheet". | • Modal closes.<br>• Reader displays newly parsed song with Capo set to 2.<br>• Song appears in offline Songbook drawer. |
+| `E2E-05` | **Auto-Scroll & Touch Pause** | 1. Click "Play / Auto-Scroll".<br>2. Wait 2 seconds.<br>3. Simulate touch pointerdown on viewport.<br>4. Release and wait 4 seconds. | • Viewport `scrollY` increases during auto-scroll.<br>• Scroll halts immediately upon touch.<br>• Scroll smoothly resumes after 3.5s timer expires. |
+| `E2E-06` | **Offline PWA Persistence** | 1. Save custom lead sheet.<br>2. Set browser network to `offline`.<br>3. Reload page. | • Service Worker serves cached app bundle.<br>• Saved custom song is retrieved from IndexedDB without network errors. |
+
 ---
 
 *Specification v2.2.0 for `accordion-lead-sheet-companion`.*
+
 
