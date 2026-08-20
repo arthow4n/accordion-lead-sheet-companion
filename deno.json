@@ -6,6 +6,7 @@
     "preview": "vite preview",
     "serve:api": "deno run --allow-net api/import.ts",
     "test": "deno test --allow-read --allow-net --allow-env",
+    "test:live": "deno test --allow-read --allow-net --allow-env tests/live/",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check"
@@ -39,7 +40,7 @@
   },
   "test": {
     "include": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
-    "exclude": ["dist/", ".agents/", "node_modules/"]
+    "exclude": ["dist/", ".agents/", "node_modules/", "tests/live/"]
   },
   "lint": {
     "rules": {

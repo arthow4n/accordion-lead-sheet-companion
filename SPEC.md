@@ -1009,6 +1009,25 @@ describe("Segmented Tokenizer Test Suite", () => {
 | `E2E-05` | **Auto-Scroll & Touch Pause**  | 1. Click "Play / Auto-Scroll".<br>2. Wait 2 seconds.<br>3. Simulate touch pointerdown on viewport.<br>4. Release and wait 4 seconds. | • Viewport `scrollY` increases during auto-scroll.<br>• Scroll halts immediately upon touch.<br>• Scroll smoothly resumes after 3.5s timer expires.                                                                                                 |
 | `E2E-06` | **Offline PWA Persistence**    | 1. Save custom lead sheet.<br>2. Set browser network to `offline`.<br>3. Reload page.                                                | • Service Worker serves cached app bundle.<br>• Saved custom song is retrieved from IndexedDB without network errors.                                                                                                                               |
 
+### 9.8 Live External Web Integration Validation Suite (On-Demand Opt-In)
+
+To prevent rate-limiting, network flakiness on CI/CD, or unintended automated traffic to third-party services, live external integration tests are **isolated into a dedicated on-demand test task (`deno task test:live`) and excluded from the default test command (`deno test`) and standard CI workflows**.
+
+#### Execution Command:
+```bash
+# Run real external website integration tests on-demand
+deno task test:live
+```
+
+#### Real Website Test Matrix:
+
+| Test ID | Target Domain | Real Test Target URL | Verification & Extraction Assertions |
+| :--- | :--- | :--- | :--- |
+| `LIVE-01` | **Ultimate Guitar** | `https://www.ultimate-guitar.com/tab/oasis/wonderwall-chords-27596` | • HTTP 200 via `api/import.ts`.<br>• `source === 'ultimate-guitar'`.<br>• Title contains "Wonderwall", artist contains "Oasis".<br>• `capoFret === 2`.<br>• `rawContent` parses into valid `ChordLyricSegment` tokens with chords (`Em7`, `G`, `Dsus4`, `A7sus4`). |
+| `LIVE-02` | **Chordie** | `https://www.chordie.com/chord.php/song/Country+Roads` (or live public Chordie tab) | • HTTP 200 via `api/import.ts`.<br>• `source === 'chordie'`.<br>• Valid ChordPro markup parsed into lyrics with chords (`G`, `Em`, `D`, `C`). |
+| `LIVE-03` | **E-Chords** | `https://www.e-chords.com/chords/eagles/hotel-california` (or live public E-Chords tab) | • HTTP 200 via `api/import.ts`.<br>• `source === 'e-chords'`.<br>• Chord `<span>` tags stripped and converted into clean 2-line layout.<br>• Chords `Bm`, `F#7`, `A`, `E7`, `G`, `D`, `Em` extracted. |
+| `LIVE-04` | **Cifra Club** | `https://www.cifraclub.com.br/the-beatles/let-it-be/` (or live public Cifra Club tab) | • HTTP 200 via `api/import.ts`.<br>• `source === 'cifraclub'`.<br>• Chords `C`, `G`, `Am`, `F` extracted and aligned over Portuguese/English lyrics. |
+
 ---
 
-_Specification v2.2.0 for `accordion-lead-sheet-companion`._
+*Specification v2.3.0 for `accordion-lead-sheet-companion`.*
