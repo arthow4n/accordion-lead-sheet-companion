@@ -189,3 +189,84 @@ Deno.test("Stradella Accordion Size clamping & out-of-range flag", () => {
   assertEquals(isColumnOutOfRange(-5, "48-bass"), true);
   assertEquals(isColumnOutOfRange(0, "48-bass"), false);
 });
+
+Deno.test("STRAD-20: Flat chord roots retain negative Circle of Fifths columns", () => {
+  const flatCases: Array<{
+    chord: string;
+    expectedBass: string;
+    expectedChord: string;
+    expectedCol: number;
+  }> = [
+    { chord: "Db", expectedBass: "Db", expectedChord: "db", expectedCol: -5 },
+    { chord: "Gb", expectedBass: "Gb", expectedChord: "gb", expectedCol: -6 },
+    { chord: "Ab", expectedBass: "Ab", expectedChord: "ab", expectedCol: -4 },
+    { chord: "Eb", expectedBass: "Eb", expectedChord: "eb", expectedCol: -3 },
+    { chord: "Bb", expectedBass: "Bb", expectedChord: "bb", expectedCol: -2 },
+    { chord: "Cb", expectedBass: "Cb", expectedChord: "cb", expectedCol: -7 },
+    { chord: "Dbm", expectedBass: "Db", expectedChord: "dbm", expectedCol: -5 },
+    { chord: "Db7", expectedBass: "Db", expectedChord: "db7", expectedCol: -5 },
+    { chord: "Dbdim", expectedBass: "Db", expectedChord: "dbdim", expectedCol: -5 },
+  ];
+
+  for (const tc of flatCases) {
+    const result = solveStradellaChord(tc.chord);
+    assertEquals(
+      result.primaryBass,
+      tc.expectedBass,
+      `Failed primaryBass for ${tc.chord}`,
+    );
+    assertEquals(
+      result.chordButton?.label,
+      tc.expectedChord,
+      `Failed chordButton for ${tc.chord}`,
+    );
+    assertEquals(
+      result.columnOffset,
+      tc.expectedCol,
+      `Failed columnOffset for ${tc.chord}`,
+    );
+    assertEquals(result.isCounterBass, false);
+  }
+});
+
+Deno.test("STRAD-21: Compound flat chord voicings preserve Circle of Fifths geometry", () => {
+  // Dbmaj7 -> Db bass (col -5) + fm chord (col -1)
+  const dbmaj7 = solveStradellaChord("Dbmaj7");
+  assertEquals(dbmaj7.primaryBass, "Db");
+  assertEquals(dbmaj7.chordButton?.label, "fm");
+  assertEquals(dbmaj7.columnOffset, -5);
+
+  // Ebm7 -> Eb bass (col -3) + gb chord (col -6)
+  const ebm7 = solveStradellaChord("Ebm7");
+  assertEquals(ebm7.primaryBass, "Eb");
+  assertEquals(ebm7.chordButton?.label, "gb");
+  assertEquals(ebm7.columnOffset, -3);
+
+  // Dbsus4 -> Db bass (col -5) + gb chord (col -6)
+  const dbsus4 = solveStradellaChord("Dbsus4");
+  assertEquals(dbsus4.primaryBass, "Db");
+  assertEquals(dbsus4.chordButton?.label, "gb");
+  assertEquals(dbsus4.columnOffset, -5);
+
+  // Db9 -> Db bass (col -5) + abm chord (col -4)
+  const db9 = solveStradellaChord("Db9");
+  assertEquals(db9.primaryBass, "Db");
+  assertEquals(db9.chordButton?.label, "abm");
+  assertEquals(db9.columnOffset, -5);
+});
+
+Deno.test("STRAD-22: Slash chords with flat chord roots and counter-bass", () => {
+  // Db/F -> Counter-bass F_ in Db column (col -5)
+  const dbOverF = solveStradellaChord("Db/F");
+  assertEquals(dbOverF.primaryBass, "F_");
+  assertEquals(dbOverF.isCounterBass, true);
+  assertEquals(dbOverF.chordButton?.label, "db");
+  assertEquals(dbOverF.columnOffset, -5);
+
+  // Eb/G -> Counter-bass G_ in Eb column (col -3)
+  const ebOverG = solveStradellaChord("Eb/G");
+  assertEquals(ebOverG.primaryBass, "G_");
+  assertEquals(ebOverG.isCounterBass, true);
+  assertEquals(ebOverG.chordButton?.label, "eb");
+  assertEquals(ebOverG.columnOffset, -3);
+});

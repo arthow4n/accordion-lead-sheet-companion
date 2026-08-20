@@ -50,6 +50,12 @@ export function parseChordProLine(line: string): ChordLyricSegment[] {
         });
         currentChord = undefined;
       }
+    } else if (matchStart === lastIndex && currentChord !== undefined) {
+      segments.push({
+        chord: currentChord,
+        lyric: "",
+      });
+      currentChord = undefined;
     }
 
     currentChord = chordTag.trim();
@@ -140,9 +146,9 @@ export function parseChordProDocument(rawText: string): {
       continue;
     }
 
-    // 3. Section header in brackets: [Chorus], [Verse 1], etc.
+    // 3. Section header in brackets: [Chorus], [Verse 1], [Refrão], [Couplet 1], etc.
     const sectionHeaderMatch = trimmed.match(
-      /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab)[^\]]*\]\s*$/i,
+      /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab|Refrão|Refrain|Couplet|Strophe|Verso)[^\]]*\]\s*$/i,
     );
     if (sectionHeaderMatch) {
       lines.push({

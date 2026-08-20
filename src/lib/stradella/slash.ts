@@ -12,16 +12,15 @@ export function solveSlashChord(
 ): StradellaVoicing {
   const rootPc = normalizePitchClass(chord.rootPitchClass);
   const bassPc = normalizePitchClass(chord.bassPitchClass ?? rootPc);
-  const rootCol = getStradellaColumn(rootPc);
+  const rootCol = chord.root ? getStradellaColumn(chord.root) : getStradellaColumn(rootPc);
 
   // 1. Candidate: Fundamental Bass
-  const fundCol = getStradellaColumn(bassPc);
+  const fundCol = chord.bassNote ? getStradellaColumn(chord.bassNote) : getStradellaColumn(bassPc);
   const fundDist = Math.abs(fundCol - rootCol);
 
   // 2. Candidate: Counter-Bass
-  // Counter-bass produces bassPc if in column where fundamental = (bassPc - 4) % 12
-  const counterColFundPc = normalizePitchClass(bassPc - 4);
-  const counterCol = getStradellaColumn(counterColFundPc);
+  // Counter-bass produces bass note when placed 4 fifths flat (-4 cols from bass note fundamental column)
+  const counterCol = fundCol - 4;
   const counterDist = Math.abs(counterCol - rootCol);
 
   // Major 3rd interval check

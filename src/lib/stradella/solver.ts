@@ -18,7 +18,7 @@ export function solveStradellaChord(
 ): StradellaVoicing {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
   const rootPc = normalizePitchClass(parsed.rootPitchClass);
-  const rootCol = getStradellaColumn(rootPc);
+  const rootCol = parsed.root ? getStradellaColumn(parsed.root) : getStradellaColumn(rootPc);
 
   // 1. Slash chord check (bass note specified and different from root)
   if (

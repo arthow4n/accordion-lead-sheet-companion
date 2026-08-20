@@ -40,7 +40,7 @@ export function isTabStaffLine(line: string): boolean {
  * Check if a line is a section header (e.g. [Chorus], [Verse 1])
  */
 export function isSectionHeaderLine(line: string): boolean {
-  return /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab)[^\]]*\]\s*$/i
+  return /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab|Refrão|Refrain|Couplet|Strophe|Verso)[^\]]*\]\s*$/i
     .test(line.trim());
 }
 

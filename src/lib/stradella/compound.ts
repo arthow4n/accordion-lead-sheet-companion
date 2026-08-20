@@ -83,7 +83,7 @@ export function solveCompoundChord(
   accordionSize: AccordionSize = "120-bass",
 ): StradellaVoicing {
   const rootPc = normalizePitchClass(chord.rootPitchClass);
-  const rootCol = getStradellaColumn(rootPc);
+  const rootCol = chord.root ? getStradellaColumn(chord.root) : getStradellaColumn(rootPc);
   const bassBtn = createStradellaButton("bass", rootCol, chord.root, 4);
 
   const rule = COMPOUND_RULES[chord.quality];
@@ -92,8 +92,28 @@ export function solveCompoundChord(
   let explanation: string;
 
   if (rule) {
-    const chordPc = normalizePitchClass(rootPc + rule.chordPitchClassOffset);
-    const chordCol = getStradellaColumn(chordPc);
+    let colDelta = 0;
+    switch (rule.chordPitchClassOffset) {
+      case 7:
+        colDelta = 1;
+        break;
+      case 5:
+        colDelta = -1;
+        break;
+      case 4:
+        colDelta = 4;
+        break;
+      case 3:
+        colDelta = -3;
+        break;
+      case 9:
+        colDelta = 3;
+        break;
+      default:
+        colDelta = 0;
+        break;
+    }
+    const chordCol = rootCol + colDelta;
     chordBtn = createStradellaButton(rule.chordRow, chordCol);
     explanation = `${bassBtn.label} + ${chordBtn.label}: ${rule.explanation}`;
   } else {

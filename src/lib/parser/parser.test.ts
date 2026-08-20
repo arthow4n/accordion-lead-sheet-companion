@@ -97,3 +97,54 @@ Deno.test("Section header parsing in 2-line sheet", () => {
   assertEquals(lines[1].type, "chord_lyric");
   assertEquals(lines[1].segments?.length, 2);
 });
+
+Deno.test("PARSE-05: parses consecutive ChordPro brackets without whitespace", () => {
+  // Test consecutive chord brackets [G][Em][C][D]
+  const input = "[G][Em][C][D]Take me home";
+  const result = parseChordPro(input, 0);
+  const lines = result.lines as LeadSheetLine[];
+  assertEquals(lines.length, 1);
+  const segments = lines[0].segments!;
+  assertEquals(segments.length, 4);
+
+  const chord0 = segments[0].chord as (ChordDetail & { raw: string });
+  const chord1 = segments[1].chord as (ChordDetail & { raw: string });
+  const chord2 = segments[2].chord as (ChordDetail & { raw: string });
+  const chord3 = segments[3].chord as (ChordDetail & { raw: string });
+
+  assertEquals(chord0.raw, "G");
+  assertEquals(segments[0].lyric, "");
+
+  assertEquals(chord1.raw, "Em");
+  assertEquals(segments[1].lyric, "");
+
+  assertEquals(chord2.raw, "C");
+  assertEquals(segments[2].lyric, "");
+
+  assertEquals(chord3.raw, "D");
+  assertEquals(segments[3].lyric, "Take me home");
+});
+
+Deno.test("PARSE-06: recognizes international accordion repertoire section headers", () => {
+  const intlHeaders = [
+    "[Refrão]",
+    "[Couplet 1]",
+    "[Refrain]",
+    "[Strophe 2]",
+    "[Verso 3]",
+  ];
+
+  for (const header of intlHeaders) {
+    const twoLineDoc = `${header}\nAm        Dm\nLa la     la la`;
+    const result2Line = parseLeadSheetText(twoLineDoc, 0);
+    const lines2Line = result2Line.lines as LeadSheetLine[];
+    assertEquals(lines2Line[0].type, "section_header");
+    assertEquals(lines2Line[0].headerTitle, header.replace(/^\[|\]$/g, ""));
+
+    const chordProDoc = `${header}\n[Am]La la [Dm]la la`;
+    const resultChordPro = parseChordPro(chordProDoc, 0);
+    const linesChordPro = resultChordPro.lines as LeadSheetLine[];
+    assertEquals(linesChordPro[0].type, "section_header");
+    assertEquals(linesChordPro[0].headerTitle, header.replace(/^\[|\]$/g, ""));
+  }
+});
