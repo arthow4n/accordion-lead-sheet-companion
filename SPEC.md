@@ -652,20 +652,141 @@ App.tsx
 
 ---
 
-## 9. Testing, Quality Assurance & Edge Cases
+## 9. Testing, Quality Assurance & Concrete Validation Suite
 
-1. **Music Theory Accuracy:**
-   - Verify `D/F#` with `Capo 3` produces sounding $F/A \rightarrow$ Counter-bass `A_` + `f` major chord.
-   - Verify `C/B` produces Counter-bass `B_` in $G$ column ($2+3$) instead of jumping 5 columns.
-   - Verify `Am/F#` produces Counter-bass `F#_` in $D$ column ($2+3$).
-   - Verify `Cmaj7` produces Root `C` + `em` chord button.
-   - Verify `Am7` produces Root `A` + `c` major chord button.
-   - Verify CBA C-System grip for $Bb$ Major generates coordinates `Row 2 (Bb) + Row 3 (D) + Row 3 (F)`.
-2. **Mobile Ergonomics:**
-   - Zero horizontal scroll or syllable drift across viewports from 360px to 430px.
-   - Screen stays awake during full song playback and re-acquires lock upon app switching.
-   - 100% functionality in offline airplane mode.
+The project includes an automated test suite (Vitest + React Testing Library) with strict test matrices verifying music theory accuracy, layout stability, API security, and mobile UX.
+
+---
+
+### 9.1 Capo & Enharmonic Transposition Test Matrix
+
+| Test ID | Input Chord | Capo Fret | Expected Sounding Pitch Class | Expected Sounding Chord | Key Signature Context | Validation Criteria |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `CAPO-01` | `G` | `3` | `10` | **`Bb`** | Flat Key ($B\flat$) | Must NOT output $A\#$ |
+| `CAPO-02` | `Em` | `3` | `7` | **`Gm`** | Flat Key ($B\flat$) | Standard minor transposition |
+| `CAPO-03` | `D/F#` | `3` | Root: `5`, Bass: `9` | **`F/A`** | Flat Key ($B\flat$) | Transposes both root and slash bass |
+| `CAPO-04` | `Cadd9` | `2` | `2` | **`Dadd9`** | Sharp Key ($D$) | Extension preserved |
+| `CAPO-05` | `Amaj7` | `1` | `10` | **`Bbmaj7`** | Flat Key ($F$) | Major 7th preserved |
+| `CAPO-06` | `F#m7b5` | `4` | `10` | **`Bbm7b5`** | Flat Key ($D\flat$) | Half-diminished preserved |
+| `CAPO-07` | `C` | `0` | `0` | **`C`** | Natural ($C$) | Identity transform |
+| `CAPO-08` | `C` | `11` | `11` | **`B`** | Sharp Key ($B$) | 11 frets = 1 semitone down |
+
+---
+
+### 9.2 Stradella Solver Validation Test Matrix (Left Hand)
+
+| Test ID | Sounding Chord | Target Stradella Bass | Is Counter-Bass | Target Chord Button | Fingering | Circle of 5ths Col | Verification Logic |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `STRAD-01` | `Bb` | `Bb` | `false` | `bb` | `4 + 3` | `-2` | Fundamental major triad |
+| `STRAD-02` | `Gm` | `G` | `false` | `gm` | `4 + 3` | `+1` | Fundamental minor triad |
+| `STRAD-03` | `F7` | `F` | `false` | `f7` | `4 + 3` | `-1` | Dominant 7th (5th omitted) |
+| `STRAD-04` | `Edim` | `E` | `false` | `edim` | `4 + 3` | `+4` | Diminished button (1-b3-6) |
+| `STRAD-05` | `C/E` | `E_` | `true` | `c` | `2 + 3` | `0` | Major 3rd in bass $\rightarrow$ Row 1 of $C$ col |
+| `STRAD-06` | `G/B` | `B_` | `true` | `g` | `2 + 3` | `+1` | Major 3rd in bass $\rightarrow$ Row 1 of $G$ col |
+| `STRAD-07` | `D/F#` | `F#_` | `true` | `d` | `2 + 3` | `+2` | Major 3rd in bass $\rightarrow$ Row 1 of $D$ col |
+| `STRAD-08` | `F/A` | `A_` | `true` | `f` | `2 + 3` | `-1` | Major 3rd in bass $\rightarrow$ Row 1 of $F$ col |
+| `STRAD-09` | `C/B` | `B_` | `true` | `c` | `2 + 3` | `+1` | **Min-Distance:** Uses $G$ counter-bass (1 col jump, NOT 5) |
+| `STRAD-10` | `Am/F#` | `F#_` | `true` | `am` | `2 + 3` | `+2` | **Min-Distance:** Uses $D$ counter-bass (1 col jump, NOT 3) |
+| `STRAD-11` | `C/G` | `G` | `false` | `c` | `2 + 3` | `+1` | 5th in bass $\rightarrow$ Col $+1$ fundamental bass |
+| `STRAD-12` | `Am/G` | `G` | `false` | `am` | `4 + 3` | `+1` | Minor chord over flat 7th bass |
+| `STRAD-13` | `Cmaj7` | `C` | `false` | `em` | `4 + 3` | `0` (Chord: `+4`) | $C + (E-G-B) = 1-3-5-7$ |
+| `STRAD-14` | `Am7` | `A` | `false` | `c` | `4 + 3` | `+3` (Chord: `0`) | $A + (C-E-G) = 1-b3-5-b7$ |
+| `STRAD-15` | `Bm7b5` | `B` | `false` | `dm` | `4 + 3` | `+5` (Chord: `+2`) | $B + (D-F-A) = 1-b3-b5-b7$ |
+| `STRAD-16` | `C6` | `C` | `false` | `am` | `4 + 3` | `0` (Chord: `+3`) | $C + (A-C-E) = 1-3-5-6$ (Alt: $A\_ + c$) |
+| `STRAD-17` | `Cm6` | `C` | `false` | `cdim` | `4 + 3` | `0` | $C + (Eb-Gb-A) \approx Cm6$ |
+| `STRAD-18` | `C9` | `C` | `false` | `gm` | `4 + 3` | `0` (Chord: `+1`) | $C + (G-Bb-D) = 1-5-b7-9$ |
+| `STRAD-19` | `Csus4` | `C` | `false` | `f` | `4 + 3` | `0` (Chord: `-1`) | $F/C = C\text{sus}4(\text{add}6)$ color |
+
+---
+
+### 9.3 CBA C-System Grip Validation Test Matrix (Right Hand)
+
+| Test ID | Sounding Chord | Expected Notes | C-System Button Coordinates `(Row, Col)` | Recommended Fingering | Geometry Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `CBA-01` | `Bb Major` | `Bb - D - F` | `Bb: (Row 2, Col 3), D: (Row 3, Col 4), F: (Row 3, Col 5)` | `1 - 2 - 4` | Compact 3-row triad |
+| `CBA-02` | `G Minor` | `G - Bb - D` | `G: (Row 2, Col 2), Bb: (Row 2, Col 3), D: (Row 3, Col 4)` | `1 - 2 - 4` | Row 2 pair + Row 3 root |
+| `CBA-03` | `F Major` | `F - A - C` | `F: (Row 3, Col 5), A: (Row 1, Col 6), C: (Row 1, Col 7)` | `1 - 2 - 4` | Diagonal grip across 2 rows |
+| `CBA-04` | `C Major (Root)`| `C - E - G` | `C: (Row 1, Col 4), E: (Row 2, Col 5), G: (Row 2, Col 6)` | `1 - 2 - 4` | Standard root shape |
+| `CBA-05` | `C Major (1st Inv)`| `E - G - C` | `E: (Row 2, Col 5), G: (Row 2, Col 6), C: (Row 1, Col 7)` | `1 - 2 - 5` | 1st inversion grip |
+| `CBA-06` | `C Major (2nd Inv)`| `G - C - E` | `G: (Row 2, Col 6), C: (Row 1, Col 7), E: (Row 2, Col 8)` | `1 - 3 - 5` | 2nd inversion grip |
+
+---
+
+### 9.4 Tokenizer & Segment Parser Validation Test Matrix
+
+```typescript
+describe('Segmented Tokenizer Test Suite', () => {
+  // Test PARSE-01: 2-Line Guitar Sheet with variable whitespace
+  it('PARSE-01: preserves exact syllable anchoring for 2-line guitar tab', () => {
+    const input = [
+      'G          Em          D/F#',
+      'Country    roads,      take me home'
+    ].join('\n');
+
+    const result = parseLeadSheetText(input, 0);
+    expect(result.lines[0].segments).toHaveLength(3);
+    expect(result.lines[0].segments[0]).toMatchObject({ chord: { raw: 'G' }, lyric: 'Country    ' });
+    expect(result.lines[0].segments[1]).toMatchObject({ chord: { raw: 'Em' }, lyric: 'roads,      ' });
+    expect(result.lines[0].segments[2]).toMatchObject({ chord: { raw: 'D/F#' }, lyric: 'take me home' });
+  });
+
+  // Test PARSE-02: ChordPro bracket syntax
+  it('PARSE-02: parses ChordPro format into identical segments', () => {
+    const input = '[G]Country [Em]roads, [D/F#]take me home';
+    const result = parseChordPro(input, 0);
+    expect(result.lines[0].segments).toHaveLength(3);
+    expect(result.lines[0].segments[0].chord?.raw).toBe('G');
+    expect(result.lines[0].segments[0].lyric).toBe('Country ');
+  });
+
+  // Test PARSE-03: Tab staff isolation
+  it('PARSE-03: isolates guitar tab lines without breaking lyrics', () => {
+    const input = 'e|---0---2---3---|\nB|---1---3---0---|';
+    const result = parseLeadSheetText(input, 0);
+    expect(result.lines[0].type).toBe('tab_staff');
+    expect(result.lines[1].type).toBe('tab_staff');
+  });
+
+  // Test PARSE-04: Capo header extraction variants
+  it.each([
+    ['Capo 3', 3],
+    ['Capo: 3rd fret', 3],
+    ['Capo on 2', 2],
+    ['CAPO AT 4', 4],
+    ['{capo: 5}', 5],
+  ])('PARSE-04: correctly parses capo header "%s" -> fret %i', (header, expectedFret) => {
+    expect(extractCapoFret(header)).toBe(expectedFret);
+  });
+});
+```
+
+---
+
+### 9.5 Deno Deploy API Security & Scraper Validation Matrix
+
+| Test ID | Method | Request Origin | Target URL | Expected Status | Expected Headers / Body |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `API-01` | `OPTIONS` | `https://arthow4n.github.io` | N/A | `204 No Content` | `Access-Control-Allow-Origin: https://arthow4n.github.io` |
+| `API-02` | `OPTIONS` | `http://localhost:5173` | N/A | `204 No Content` | `Access-Control-Allow-Origin: http://localhost:5173` |
+| `API-03` | `GET` | `https://unauthorized-domain.com` | `https://...` | `403 Forbidden` | `{ success: false, error: "Origin not allowed..." }` |
+| `API-04` | `GET` | `https://arthow4n.github.io` | (empty url) | `400 Bad Request` | `{ success: false, error: "Missing url..." }` |
+| `API-05` | `GET` | `https://arthow4n.github.io` | `ultimate-guitar.com/tab/...` | `200 OK` | `{ success: true, source: "ultimate-guitar", capoFret: 3, ... }` |
+
+---
+
+### 9.6 Mobile UX & Hardware Lifecycle Validation Matrix
+
+| Test ID | Feature Under Test | Trigger / Action | Expected System Behavior | Pass Criteria |
+| :--- | :--- | :--- | :--- | :--- |
+| `UX-01` | **Screen Wake Lock** | Song opens in reader | Calls `navigator.wakeLock.request('screen')` | Screen does not sleep during 10-minute session |
+| `UX-02` | **Wake Lock Resume** | User switches to another app and returns (`visibilitychange`) | Re-acquires wake lock upon `document.visibilityState === 'visible'` | Lock active after app switch |
+| `UX-03` | **Auto-Scroll Engine** | Click Play / Auto-Scroll | Smooth scroll via `requestAnimationFrame` at configured speed | Zero stutter on 60Hz and 120Hz displays |
+| `UX-04` | **Touch Pause Conflict** | User drags screen during auto-scroll | Auto-scroll immediately pauses on `pointerdown`; auto-resumes after 3.5s | No fighting between touch gesture and scroll clock |
+| `UX-05` | **Tap Collision** | Tap on `ChordBadge` chip | Opens `MiniGripDrawer`; does NOT scroll page | `e.stopPropagation()` stops page-down trigger |
+| `UX-06` | **Bluetooth Pedal** | External pedal sends `PageDown` or `Space` key event | Advances viewport 80% down | Hands-free page turning operational |
+| `UX-07` | **Offline Mode** | Airplane mode enabled | App loads from Service Worker cache; reads/writes to IndexedDB | 100% functionality with no network connection |
 
 ---
 
 *Specification v2.2.0 for `accordion-lead-sheet-companion`.*
+
