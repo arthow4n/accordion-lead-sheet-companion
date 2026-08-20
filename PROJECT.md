@@ -82,13 +82,13 @@ via IndexedDB, hardware pedal/wake-lock integrations, and a Deno Deploy serverle
 
 ## Milestones
 
-| #  | Name                           | Scope                                                                          | Dependencies | Status  |
-| -- | ------------------------------ | ------------------------------------------------------------------------------ | ------------ | ------- |
-| M1 | Project Setup & Toolchain      | F1, F2, F3, F4 (`deno.json`, `vite.config.ts`, Tailwind 4, types, CI workflow) | none         | DONE    |
-| M2 | Pure TS Music Theory Engines   | F5, F6, F7, F8, F9, F10, F11 (`src/lib/capo`, `stradella`, `cba`, `parser`)    | M1           | PLANNED |
-| M3 | Deno Scraper Edge API          | F12, F13, F14, F15 (`api/import.ts`, site parsers, API test suites)            | M1           | DONE    |
-| M4 | React 19 UI, PWA & Hardware    | F16, F17, F18, F19, F20, F21, F22, F23, F24, F25 (`src/components/`, hooks)    | M2, M3       | PLANNED |
-| M5 | E2E Integration & Verification | F26, F27, F28, F29 (Playwright E2E suite, 100% tests, audit)                   | M4           | PLANNED |
+| #  | Name                           | Scope                                                                          | Dependencies | Status |
+| -- | ------------------------------ | ------------------------------------------------------------------------------ | ------------ | ------ |
+| M1 | Project Setup & Toolchain      | F1, F2, F3, F4 (`deno.json`, `vite.config.ts`, Tailwind 4, types, CI workflow) | none         | DONE   |
+| M2 | Pure TS Music Theory Engines   | F5, F6, F7, F8, F9, F10, F11 (`src/lib/capo`, `stradella`, `cba`, `parser`)    | M1           | DONE   |
+| M3 | Deno Scraper Edge API          | F12, F13, F14, F15 (`api/import.ts`, site parsers, API test suites)            | M1           | DONE   |
+| M4 | React 19 UI, PWA & Hardware    | F16, F17, F18, F19, F20, F21, F22, F23, F24, F25 (`src/components/`, hooks)    | M2, M3       | DONE   |
+| M5 | E2E Integration & Verification | F26, F27, F28, F29 (Playwright E2E suite, 100% tests, audit)                   | M4           | DONE   |
 
 ---
 
