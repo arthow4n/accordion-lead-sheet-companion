@@ -93,18 +93,49 @@ export interface TabImportResponse {
 }
 ```
 
+#### CORS Security Policy:
+CORS is strictly restricted to authorized client origins:
+- **Production (GitHub Pages):** `https://arthow4n.github.io`
+- **Local Development Environments:** `http://localhost:*` and `http://127.0.0.1:*` (e.g. Vite default port `5173`)
+- Requests from any other origin are denied or have CORS headers withheld.
+
 #### Deno Deploy Implementation (`api/import.ts`):
 ```typescript
-// Deno Deploy edge handler with robust CORS and multi-engine scraping
-export default async function handleRequest(req: Request): Promise<Response> {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+// Deno Deploy edge handler with strict origin-restricted CORS and multi-engine scraping
+function getCorsHeaders(req: Request): HeadersInit | null {
+  const origin = req.headers.get("origin") || "";
+  
+  const isAllowed = 
+    origin === "https://arthow4n.github.io" ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+  if (!isAllowed) {
+    return null;
+  }
+
+  return {
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
   };
+}
+
+export default async function handleRequest(req: Request): Promise<Response> {
+  const corsHeaders = getCorsHeaders(req);
+
+  // Reject unauthorized origins
+  if (!corsHeaders && req.headers.has("origin")) {
+    return new Response(JSON.stringify({ success: false, error: "Origin not allowed by CORS policy" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const baseHeaders = { ...(corsHeaders || {}), "Content-Type": "application/json" };
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders || {} });
   }
 
   const url = new URL(req.url);
@@ -113,7 +144,7 @@ export default async function handleRequest(req: Request): Promise<Response> {
   if (!targetUrl) {
     return new Response(JSON.stringify({ success: false, error: "Missing url parameter" }), {
       status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: baseHeaders,
     });
   }
 
@@ -148,7 +179,7 @@ export default async function handleRequest(req: Request): Promise<Response> {
           capoFret: wikiTab?.applicature?.capo || 0,
           rawContent: wikiTab?.content || "",
         }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: baseHeaders,
         });
       }
     }
@@ -164,7 +195,7 @@ export default async function handleRequest(req: Request): Promise<Response> {
           capoFret: 0,
           rawContent: preMatch[1].replace(/<[^>]+>/g, ""),
         }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: baseHeaders,
         });
       }
     }
@@ -178,12 +209,12 @@ export default async function handleRequest(req: Request): Promise<Response> {
       capoFret: 0,
       rawContent,
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: baseHeaders,
     });
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: baseHeaders,
     });
   }
 }
