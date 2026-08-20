@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-oled: #09090b;
+    --bg-surface: #18181b;
+    --bg-surface-elevated: #27272a;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-stradella: #3b82f6;
+    --accent-cba: #ef4444;
+    --accent-counterbass: #f59e0b;
+    --accent-active: #10b981;
+  }
+
+  html,
+  body {
+    background-color: var(--bg-oled);
+    color: var(--text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+}
+
+/* Custom segmented token styling to prevent font drift */
+.chord-lyric-segment {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  vertical-align: bottom;
+}
+
+.chord-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  user-select: none;
+}
