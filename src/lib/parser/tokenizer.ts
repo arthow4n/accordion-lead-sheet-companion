@@ -71,9 +71,14 @@ export function enrichLeadSheetLines(
         return { lyric: seg.lyric };
       }
 
-      if (typeof seg.chord === "string") {
+      const rawChord = typeof seg.chord === "string"
+        ? seg.chord
+        : (seg.chord as ChordDetail).originalChord?.raw || (seg.chord as { raw?: string }).raw ||
+          "";
+
+      if (rawChord) {
         return {
-          chord: enrichChord(seg.chord, capoFret, keyContext),
+          chord: enrichChord(rawChord, capoFret, keyContext),
           lyric: seg.lyric,
         };
       }
@@ -118,15 +123,24 @@ export function parseLeadSheetText(
 
   let title = "Untitled Lead Sheet";
   let artist: string | undefined;
+
+  // Extract Title / Artist from standard header patterns
+  const titleMatch = rawText.match(/^(?:\{title:\s*([^}]+)\}|title:\s*(.+)$)/im);
+  if (titleMatch) {
+    title = (titleMatch[1] || titleMatch[2]).trim();
+  }
+
+  const artistMatch = rawText.match(/^(?:\{artist:\s*([^}]+)\}|artist:\s*(.+)$)/im);
+  if (artistMatch) {
+    artist = (artistMatch[1] || artistMatch[2]).trim();
+  }
+
   let lines: LeadSheetLine[];
 
   if (detectChordPro(rawText)) {
     const doc = parseChordProDocument(rawText);
-    if (doc.title) title = doc.title;
-    if (doc.artist) artist = doc.artist;
-    if (doc.capoFret !== undefined) {
-      // Use ChordPro explicit capo if present
-    }
+    if (doc.title && title === "Untitled Lead Sheet") title = doc.title;
+    if (doc.artist && !artist) artist = doc.artist;
     lines = doc.lines;
   } else {
     lines = parseTwoLineDocument(rawText);

@@ -15,6 +15,7 @@
     "react/jsx-runtime": "npm:react@^19.0.0/jsx-runtime",
     "react-dom": "npm:react-dom@^19.0.0",
     "react-dom/client": "npm:react-dom@^19.0.0/client",
+    "react-dom/server": "npm:react-dom@^19.0.0/server",
     "vite": "npm:vite@^6.0.0",
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.0",
     "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.0",
@@ -35,6 +36,10 @@
     "jsxImportSource": "react",
     "strict": true,
     "noImplicitAny": true
+  },
+  "test": {
+    "include": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    "exclude": ["dist/", ".agents/", "node_modules/"]
   },
   "lint": {
     "rules": {

@@ -141,6 +141,14 @@ export function parseTwoLineDocument(rawText: string): LeadSheetLine[] {
       continue;
     }
 
+    // 1.5. Metadata header lines (Capo:, Title:, Artist:)
+    if (
+      /^(?:\{?(?:title|artist|capo|key):\s*[^}]*\}?|capo\s*(?:at|on|fret|:)?\s*\d+)/i.test(trimmed)
+    ) {
+      i++;
+      continue;
+    }
+
     // 2. Tab staff line (e|---, B|---)
     if (isTabStaffLine(currentLine)) {
       lines.push({

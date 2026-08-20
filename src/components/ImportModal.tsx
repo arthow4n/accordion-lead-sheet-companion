@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Clipboard, Globe, Loader2, Sparkles, Type, X } from "lucide-react";
-import type { LeadSheetSong, TabImportResponse } from "../types/index.ts";
+import type { LeadSheetLine, LeadSheetSong, TabImportResponse } from "../types/index.ts";
 import { parseLeadSheetText } from "../lib/parser/tokenizer.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 
