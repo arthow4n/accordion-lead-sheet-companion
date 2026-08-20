@@ -507,65 +507,72 @@ accordion-lead-sheet-companion/
 │   └── manifest.json           # PWA Web Manifest
 ├── src/
 │   ├── components/
-│   │   ├── LeadSheetReader.tsx # Segmented lead sheet renderer
-│   │   ├── ChordBadge.tsx      # Clickable LH / RH chord chip
-│   │   ├── MiniGripDrawer.tsx  # Bottom sheet with 3x3 Stradella & CBA diagrams
-│   │   ├── CapoBar.tsx         # Quick Capo stepper and view switcher
-│   │   ├── AutoScrollFooter.tsx# Hands-free auto-scroll bar
-│   │   ├── ImportModal.tsx     # 1-tap clipboard paste & URL fetcher
-│   │   └── SongbookDrawer.tsx  # Offline saved songs manager
-│   ├── lib/
-│   │   ├── parser/             # Segmented tokenizer & ChordPro parser
-│   │   ├── capo/               # Capo interval & enharmonic pitch math
-│   │   ├── stradella/          # Stradella solver & min-distance slash chord logic
-│   │   ├── cba/                # CBA C-System grid coordinates & grip shapes
-│   │   └── storage/            # IndexedDB local song persistence
-│   ├── types/
-│   │   └── music.ts            # TypeScript music interfaces
+│   │   ├── LeadSheetReader.tsx
+│   │   ├── ChordBadge.tsx
+│   │   ├── MiniGripDrawer.tsx
+│   │   ├── CapoBar.tsx
+│   │   ├── AutoScrollFooter.tsx
+│   │   ├── ImportModal.tsx
+│   │   └── SongbookDrawer.tsx
 │   ├── App.tsx
+│   ├── index.html
 │   └── main.tsx
+├── deno.json                   # Single unified Deno config (deps, tasks, lint, fmt, compiler)
+├── vite.config.ts              # Vite configuration
+└── SPEC.md
 ```
 
-### 5.4 Project Dependencies & Scripts Specification
+### 5.4 Single Unified `deno.json` Specification
 
-#### `package.json` Dependencies:
+In pure Deno 2, a single `deno.json` replaces `package.json`, `tsconfig.json`, `.eslintrc`, and `.prettierrc`:
+
 ```json
 {
   "name": "accordion-lead-sheet-companion",
-  "private": true,
   "version": "1.0.0",
-  "type": "module",
-  "scripts": {
+  "tasks": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "oxlint",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "serve:api": "deno serve --allow-net api/import.ts",
+    "test": "deno test --allow-read --allow-net",
+    "lint": "deno lint",
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check"
   },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "idb-keyval": "^6.2.1",
-    "lucide-react": "^1.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.0.0"
+  "imports": {
+    "react": "npm:react@^19.0.0",
+    "react-dom": "npm:react-dom@^19.0.0",
+    "react-dom/client": "npm:react-dom@^19.0.0/client",
+    "clsx": "npm:clsx@^2.1.1",
+    "tailwind-merge": "npm:tailwind-merge@^3.0.0",
+    "lucide-react": "npm:lucide-react@^1.0.0",
+    "idb-keyval": "npm:idb-keyval@^6.2.1",
+    "@types/react": "npm:@types/react@^19.0.0",
+    "@types/react-dom": "npm:@types/react-dom@^19.0.0",
+    "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.4",
+    "vite": "npm:vite@^6.0.0",
+    "vite-plugin-pwa": "npm:vite-plugin-pwa@^0.21.0",
+    "tailwindcss": "npm:tailwindcss@^4.0.0",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.0"
   },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "oxlint": "^0.15.0",
-    "postcss": "^8.4.49",
-    "prettier": "^3.4.2",
-    "tailwindcss": "^4.0.0",
-    "typescript": "^7.0.0",
-    "vite": "^6.0.0",
-    "vite-plugin-pwa": "^0.21.0",
-    "vitest": "^3.0.0"
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "strict": true,
+    "noImplicitAny": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false
   }
 }
 ```
@@ -599,25 +606,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          node-version: 22
-          cache: 'npm'
+          deno-version: v2.x
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint (Oxlint) & Format Check (Prettier)
+      - name: Lint & Format Check
         run: |
-          npm run lint
-          npm run format:check
+          deno lint
+          deno fmt --check
 
-      - name: Run Tests (Vitest)
-        run: npm test
+      - name: Run Tests
+        run: deno task test
 
-      - name: Build static site
-        run: npm run build
+      - name: Build static site for GitHub Pages
+        run: deno task build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
