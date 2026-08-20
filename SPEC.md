@@ -450,10 +450,14 @@ $$\text{Candidate} = \arg\min_{k \in \{\text{fund}, \text{counter}\}} |C_k - C_{
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Framework** | **React 18/19 + TypeScript** | Core UI & strongly typed music theory models. |
-| **Bundler** | **Vite** | Fast builds & static file output for GitHub Pages. |
+| **Language** | **TypeScript 7.x** | Static type safety for chord interval math, CBA grids, and state schemas. |
+| **Framework** | **React 19.x** | Reactive mobile UI components, bottom-sheet drawers, and reader views. |
+| **Bundler** | **Vite 6.x** | Ultra-fast HMR and static production asset generation. |
+| **Linter** | **Oxlint** | High-performance Rust-based linter for zero-overhead static code analysis. |
+| **Formatter** | **Prettier 3.x** | Consistent code formatting and style enforcement. |
+| **Test Runner** | **Vitest 3.x** | Unit and integration test suite executing validation matrices. |
 | **PWA Engine** | **`vite-plugin-pwa`** | Offline Service Worker, Web App Manifest, Install to Home Screen. |
-| **Styling** | **Tailwind CSS** | Mobile-responsive layouts, OLED dark mode. |
+| **Styling** | **Tailwind CSS 4.x** | Mobile-responsive utility styling, OLED pure dark mode. |
 | **Icons** | **Lucide React** | Lightweight icons for transport and music controls. |
 | **Offline Storage** | **`idb-keyval` (IndexedDB)** | Local persistence of songbook and preferences. |
 | **Hosting (Frontend)** | **GitHub Pages** | 100% free static hosting via GitHub Actions. |
@@ -536,27 +540,32 @@ accordion-lead-sheet-companion/
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "oxlint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "idb-keyval": "^6.2.1",
-    "lucide-react": "^0.435.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.5.2"
+    "lucide-react": "^1.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.41",
-    "tailwindcss": "^3.4.10",
-    "typescript": "^5.5.3",
-    "vite": "^5.4.1",
-    "vite-plugin-pwa": "^0.20.1",
-    "vitest": "^2.0.5"
+    "oxlint": "^0.15.0",
+    "postcss": "^8.4.49",
+    "prettier": "^3.4.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^7.0.0",
+    "vite": "^6.0.0",
+    "vite-plugin-pwa": "^0.21.0",
+    "vitest": "^3.0.0"
   }
 }
 ```
@@ -593,13 +602,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Tests
+      - name: Lint (Oxlint) & Format Check (Prettier)
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: Run Tests (Vitest)
         run: npm test
 
       - name: Build static site
