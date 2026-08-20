@@ -1,10 +1,10 @@
 # Technical & Product Specification: Accordion Lead Sheet Companion
 
 **Repository:** `accordion-lead-sheet-companion`  
-**Document Version:** 2.0.0  
-**Target Platform:** Mobile-First Web App / PWA (Phone on music stand, Tablet/iPad, Desktop)  
+**Document Version:** 2.1.0  
+**Target Platform:** Mobile-First Web App / PWA (Smartphone on music stand, iPad/tablet, Laptop/Desktop)  
 **Target Instrument:** **C-System Chromatic Button Accordion (CBA)** Right Hand + **Stradella Bass** Left Hand  
-**Deployment:** 100% Free Hosting via **GitHub Pages** (Frontend PWA) + **Deno Deploy** (Optional URL Tab Import Proxy)  
+**Deployment Architecture:** 100% Free Hosting via **GitHub Pages** (Frontend PWA) + **Deno Deploy** (Serverless CORS-Free Tab Scraper API)  
 **Primary Goal:** Transform standard guitar/piano lead sheets, chord charts, and ChordPro files (with or without Capo) into clean, mobile-optimized accordion lead sheets with normalized Stradella left-hand bass/chord buttons and CBA C-System right-hand chord grips.
 
 ---
@@ -12,86 +12,230 @@
 ## Table of Contents
 
 1. [Executive Summary & Product Vision](#1-executive-summary--product-vision)
-2. [Instrument & Music Theory Foundations](#2-instrument--music-theory-foundations)
-   - 2.1 [Left Hand: Stradella Bass System](#21-left-hand-stradella-bass-system)
-   - 2.2 [Right Hand: CBA C-System Treble Mechanics](#22-right-hand-cba-c-system-treble-mechanics)
-   - 2.3 [Compound Voicings & "Hard Chord" Resolutions](#23-compound-voicings--hard-chord-resolutions)
-   - 2.4 [Capo & Transposition Math](#24-capo--transposition-math)
-3. [Mobile-First UX & Design Principles](#3-mobile-first-ux--design-principles)
-   - 3.1 [The Playing Reality (Hands Trapped in Straps)](#31-the-playing-reality-hands-trapped-in-straps)
-   - 3.2 [Core Screen Layouts (ASCII Drafts)](#32-core-screen-layouts-ascii-drafts)
-   - 3.3 [Display View Modes](#33-display-view-modes)
-   - 3.4 [Mobile Hardware & Browser API Integrations](#34-mobile-hardware--browser-api-integrations)
-4. [Tech Stack & Free Deployment Architecture](#4-tech-stack--free-deployment-architecture)
-   - 4.1 [Tech Stack Matrix](#41-tech-stack-matrix)
-   - 4.2 [Deployment Topology (GitHub Pages + Deno Deploy)](#42-deployment-topology-github-pages--deno-deploy)
-   - 4.3 [Directory Structure](#43-directory-structure)
-5. [Data Models & TypeScript Interfaces](#5-data-models--typescript-interfaces)
-6. [Core Algorithms & Music Logic](#6-core-algorithms--music-logic)
-   - 6.1 [Guitar Tab & ChordPro Tokenizer](#61-guitar-tab--chordpro-tokenizer)
-   - 6.2 [Stradella Solver (Counter-Bass & Compound Voicings)](#62-stradella-solver-counter-bass--compound-voicings)
-   - 6.3 [CBA C-System Grip Generator & Voice Leading](#63-cba-c-system-grip-generator--voice-leading)
-7. [Implementation Roadmap & Milestones](#7-implementation-roadmap--milestones)
-8. [Testing & Quality Assurance](#8-testing--quality-assurance)
+2. [Input Sources & Import Engine](#2-input-sources--import-engine)
+   - 2.1 [Supported Tab & Lead Sheet Sources](#21-supported-tab--lead-sheet-sources)
+   - 2.2 [Deno Deploy Serverless Scraper API (`api/import.ts`)](#22-deno-deploy-serverless-scraper-api-apiimportts)
+   - 2.3 [Input Formats & Tokenization Strategies](#23-input-formats--tokenization-strategies)
+3. [Instrument & Music Theory Foundations](#3-instrument--music-theory-foundations)
+   - 3.1 [Left Hand: Stradella Bass Mechanics](#31-left-hand-stradella-bass-mechanics)
+   - 3.2 [Right Hand: CBA C-System Treble Mechanics](#32-right-hand-cba-c-system-treble-mechanics)
+   - 3.3 [Capo Transposition Mathematics](#33-capo-transposition-mathematics)
+   - 3.4 [Complete Accordion Normalization & Compound Voicing Table](#34-complete-accordion-normalization--compound-voicing-table)
+   - 3.5 [Slash Chord & Inversion Resolution Algorithm](#35-slash-chord--inversion-resolution-algorithm)
+4. [Mobile-First UX & Design Principles](#4-mobile-first-ux--design-principles)
+   - 4.1 [The Playing Reality (Hands Trapped in Straps)](#41-the-playing-reality-hands-trapped-in-straps)
+   - 4.2 [Core Screen Layouts (ASCII Drafts)](#42-core-screen-layouts-ascii-drafts)
+   - 4.3 [Display View Modes](#43-display-view-modes)
+   - 4.4 [Mobile Hardware & Browser API Integrations](#44-mobile-hardware--browser-api-integrations)
+5. [Tech Stack & Free Deployment Architecture](#5-tech-stack--free-deployment-architecture)
+   - 5.1 [Tech Stack Matrix](#51-tech-stack-matrix)
+   - 5.2 [Deployment Topology (GitHub Pages + Deno Deploy)](#52-deployment-topology-github-pages--deno-deploy)
+   - 5.3 [Complete Directory Structure](#53-complete-directory-structure)
+6. [Data Models & TypeScript Interfaces](#6-data-models--typescript-interfaces)
+   - 6.1 [Music & Chord Types](#61-music--chord-types)
+   - 6.2 [Lead Sheet & Songbook Types](#62-lead-sheet--songbook-types)
+   - 6.3 [API & Storage Schemas](#63-api--storage-schemas)
+7. [Component Hierarchy & State Management](#7-component-hierarchy--state-management)
+8. [Implementation Roadmap & Milestones](#8-implementation-roadmap--milestones)
+9. [Testing, Quality Assurance & Edge Cases](#9-testing-quality-assurance--edge-cases)
 
 ---
 
 ## 1. Executive Summary & Product Vision
 
 ### 1.1 The Problem
-Popular lead sheets and guitar tabs (from Ultimate Guitar, Chordie, ChordPro files, or PDFs) are built for guitarists and pianists:
-- **Guitar-Centric Notation & Capo:** Chords like `G` with `Capo 3` actually sound as `Bb`, creating mental friction for accordionists.
+Lead sheets and guitar tabs (from Ultimate Guitar, Chordie, ChordPro files, or PDFs) are built for guitarists:
+- **Guitar-Centric Notation & Capo:** Chords like `G` with `Capo 3` actually sound as `Bb`, creating constant mental calculation friction for accordionists.
 - **Slash Chords & Inversions:** Chords like `C/E`, `G/B`, `D/F#`, and `Am/G` are written for guitar bass strings rather than Stradella counter-bass buttons.
-- **Extended & Jazz Chords:** `Cmaj7`, `Am7`, `Dm7b5`, and `Cadd9` cannot be played with a single button and require specific combinations (compound voicings) or right-hand additions.
-- **Physical Constraints While Playing:** When playing an accordion, both hands are strapped into the instrument (LH in the bass strap, RH on the treble keyboard). The musician cannot easily pinch-zoom, type, or scroll on a phone screen resting 2 feet away on a music stand.
+- **Extended & Jazz Chords:** `Cmaj7`, `Am7`, `Dm7b5`, and `Cadd9` cannot be played with a single button and require compound voicings (e.g. Bass + alternate chord button) or right-hand additions.
+- **Physical Constraints While Playing:** When playing an accordion, both hands are trapped in straps (LH in the bass strap, RH on the treble keyboard). The musician cannot pinch-zoom, type, or scroll on a phone screen resting 2 feet away on a music stand.
 
 ### 1.2 The Solution
 A **mobile-first, 100% free, offline Progressive Web App (PWA)** that:
-1. Ingests any lead sheet (1-tap clipboard paste or URL import).
+1. Ingests lead sheets via 1-tap clipboard paste or direct URL import from popular tab sites.
 2. Auto-detects Capo and transposes all chords to actual sounding pitches.
 3. Automatically translates chords to:
    - **Left Hand (LH):** Stradella fundamental bass, counter-bass, and chord button pairs with standard fingerings (`4`, `3`, `2`).
    - **Right Hand (RH):** Chromatic Button Accordion (C-System) treble button grips with ergonomic fingerings (`1-2-4 / 2-3-5`).
 4. Renders a clutter-free, high-contrast lead sheet optimized for phone screens on a music stand, featuring **Hands-Free Auto-Scroll**, **Screen Wake-Lock** (prevents phone sleeping), and **Bluetooth Page-Turner Pedal** support.
-5. Deploys for free on **GitHub Pages** (frontend) and **Deno Deploy** (edge proxy for URL imports).
+5. Deploys for free on **GitHub Pages** (frontend PWA) and **Deno Deploy** (serverless tab scraper API).
 
 ---
 
-## 2. Instrument & Music Theory Foundations
+## 2. Input Sources & Import Engine
 
-### 2.1 Left Hand: Stradella Bass System
+### 2.1 Supported Tab & Lead Sheet Sources
+
+The application provides seamless ingestion across the top guitar and lead sheet repositories:
+
+| Source Site | URL Pattern | Data Format | Ingestion Strategy |
+| :--- | :--- | :--- | :--- |
+| **Ultimate Guitar** | `ultimate-guitar.com/tab/*` | HTML with embedded JSON store (`window.UGAPP.store`) | **Deno API Scraper:** Extracts `wiki_tab.content` and `applicature.capo`. |
+| **Chordie** | `chordie.com/chord.php/*` | Native ChordPro markup (`[C]Lyrics`) | **Deno API Scraper or Direct Paste:** Extracts `<pre class="chordpro">` or raw text. |
+| **E-Chords** | `e-chords.com/chords/*` | HTML `<pre>` with chord `<span>` tags | **Deno API Scraper:** Converts chord `<span>` tags to 2-line chords over lyrics. |
+| **Cifra Club** | `cifraclub.com.br/*` | HTML with `<pre><b>` chord spans | **Deno API Scraper:** Extracts text + capo header `Capo: X`. |
+| **Songsterr / PraiseCharts / PDFs** | Clipboard text / manual copy | 2-Line text or ChordPro | **1-Tap Clipboard Ingestion:** `navigator.clipboard.readText()`. |
+
+### 2.2 Deno Deploy Serverless Scraper API (`api/import.ts`)
+
+Because browser security policies (CORS) block direct client-side fetching from external domains, a lightweight serverless TypeScript endpoint deployed on **Deno Deploy** acts as a free edge proxy.
+
+#### Endpoint Contract:
+- **Route:** `GET /api/import?url=<encoded_target_url>`
+- **Response Format (`application/json`):**
+
+```typescript
+export interface TabImportResponse {
+  success: boolean;
+  source: 'ultimate-guitar' | 'chordie' | 'e-chords' | 'cifraclub' | 'generic';
+  title?: string;
+  artist?: string;
+  capoFret: number;          // 0 if no capo
+  originalKey?: string;
+  rawContent: string;        // Cleaned text ready for client-side tokenizer
+  error?: string;
+}
+```
+
+#### Deno Deploy Implementation Logic (`api/import.ts`):
+```typescript
+// Deno Deploy edge handler
+export default async function handleRequest(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const targetUrl = url.searchParams.get("url");
+
+  if (!targetUrl) {
+    return new Response(JSON.stringify({ success: false, error: "Missing url parameter" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  try {
+    const html = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    }).then((res) => res.text());
+
+    // 1. Ultimate-Guitar JSON Extraction
+    if (targetUrl.includes("ultimate-guitar.com")) {
+      const match = html.match(/window\.UGAPP\.store\.page\s*=\s*({.+?});<\/script>/s);
+      if (match) {
+        const store = JSON.parse(match[1]);
+        const tabView = store?.data?.tab_view;
+        const wikiTab = tabView?.wiki_tab;
+        return new Response(JSON.stringify({
+          success: true,
+          source: "ultimate-guitar",
+          title: tabView?.tab?.song_name || "Unknown Title",
+          artist: tabView?.tab?.artist_name || "Unknown Artist",
+          capoFret: wikiTab?.applicature?.capo || 0,
+          rawContent: wikiTab?.content || "",
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+    }
+
+    // 2. Chordie ChordPro Extraction
+    if (targetUrl.includes("chordie.com")) {
+      const preMatch = html.match(/<pre[^>]*class="[^"]*chordpro[^"]*"[^>]*>([\s\S]*?)<\/pre>/i) 
+                    || html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+      if (preMatch) {
+        return new Response(JSON.stringify({
+          success: true,
+          source: "chordie",
+          capoFret: 0,
+          rawContent: preMatch[1].replace(/<[^>]+>/g, ""),
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+    }
+
+    // 3. Generic Fallback Parser
+    const bodyMatch = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+    const rawContent = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, "") : "";
+    return new Response(JSON.stringify({
+      success: !!rawContent,
+      source: "generic",
+      capoFret: 0,
+      rawContent,
+    }), {
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+}
+```
+
+### 2.3 Input Formats & Tokenization Strategies
+
+The client-side tokenizer handles three primary input variations:
+
+1. **2-Line Chords Over Lyrics (Standard Guitar Tab format):**
+   ```text
+   Capo 3
+   G               Em
+   Almost heaven,  West Virginia
+   D               C        G
+   Blue Ridge Mtns Shenandoah River
+   ```
+   *Detection Logic:* Compares line $i$ and line $i+1$. If line $i$ consists predominantly of chord tokens and whitespace, it pairs line $i$ chords with line $i+1$ lyric characters based on exact column offsets.
+
+2. **ChordPro Format:**
+   ```text
+   {title: Country Roads}
+   {capo: 3}
+   [G]Almost heaven, [Em]West Virginia
+   [D]Blue Ridge Mtns, [C]Shenandoah [G]River
+   ```
+   *Detection Logic:* Regex matches bracketed tokens `\[([A-G][b#]?[^\]]*)\]`.
+
+3. **Plain Chord Progressions (No lyrics):**
+   ```text
+   | G | Em | D | C G |
+   ```
+
+---
+
+## 3. Instrument & Music Theory Foundations
+
+### 3.1 Left Hand: Stradella Bass Mechanics
 
 Standard Stradella bass is organized vertically by harmonic function and horizontally by the **Circle of Fifths**:
 
 ```
        <-- Flats (Subdominant) | Sharps (Dominant) -->
-Col:   ...  Eb   Bb   F    C    G    D    A    E    B   F#  ...
+Col:   ...  -3   -2   -1    0    +1   +2   +3   +4   +5   +6  ...
+Note:  ...  Eb   Bb   F    C    G    D    A    E    B   F#  ...
 Row 1: ...  G    D    A    E    B    F#   C#   G#   D#  A#  ... (Counter-Bass: Major 3rd above fundamental)
 Row 2: ...  Eb   Bb   F    C    G    D    A    E    B   F#  ... (Fundamental Bass: Root)
 Row 3: ...  Eb   Bb   F    C    G    D    A    E    B   F#  ... (Major Triad [1-3-5])
 Row 4: ...  Ebm  Bbm  Fm   Cm   Gm   Dm   Am   Em   Bm  F#m ... (Minor Triad [1-b3-5])
-Row 5: ...  Eb7  Bb7  F7   C7   G7   D7   A7   E7   B7  F#7 ... (Dominant 7th [1-3-b7])
-Row 6: ...  Eb°  Bb°  F°   C°   G°   D°   A°   E°   B°  F#° ... (Diminished 7th [1-b3-bb7])
+Row 5: ...  Eb7  Bb7  F7   C7   G7   D7   A7   E7   B7  F#7 ... (Dominant 7th [1-3-b7, 5 omitted])
+Row 6: ...  Eb°  Bb°  F°   C°   G°   D°   A°   E°   B°  F#° ... (Diminished 7th [1-b3-bb7, 5 omitted])
 ```
 
-#### Notation Conventions:
-- **Fundamental Bass:** Capital letter (e.g. `C`, `G`, `Bb`).
-- **Counter-Bass:** Capital letter with underline or suffix (e.g. `E_`, `B_`, `A_`).
-- **Chord Buttons:** Lowercase with quality suffix (e.g. `c` = major, `cm` = minor, `c7` = dominant 7th, `cdim` = diminished).
-- **Fingering:** `4` = Fundamental Bass, `3` = Chord Button, `2` = Counter-Bass or Alternating 5th Bass.
+#### Left-Hand Fingering Standard:
+- **4:** Fundamental Bass (Root)
+- **3:** Chord Button (Major, Minor, 7th, Dim)
+- **2:** Counter-Bass or Alternating 5th Bass
 
 ---
 
-### 2.2 Right Hand: CBA C-System Treble Mechanics
+### 3.2 Right Hand: CBA C-System Treble Mechanics
 
 The **Chromatic Button Accordion (C-System)** arranges treble buttons in diagonal minor-third intervals:
-- **Row 1 (Outer / closest to edge):** `C, Eb, F#, A, C, Eb, F#, A...`
-- **Row 2 (Middle):** `C#, E, G, Bb, C#, E, G, Bb...`
-- **Row 3 (Inner / closest to bellows):** `D, F, Ab, B, D, F, Ab, B...`
-- **Auxiliary Rows 4 & 5:** Exact duplicates of Rows 1 & 2 for easier fingering and voice leading.
-
-#### Isomorphic Advantage:
-Because the keyboard is isomorphic, **chord shapes are physically identical in every key**. Transposing in RH simply means sliding the hand diagonally or vertically.
+- **Row 1 (Outer / closest to edge):** `C, Eb, F#, A, C, Eb, F#, A...` (Pitch classes `0, 3, 6, 9`)
+- **Row 2 (Middle):** `C#, E, G, Bb, C#, E, G, Bb...` (Pitch classes `1, 4, 7, 10`)
+- **Row 3 (Inner / closest to bellows):** `D, F, Ab, B, D, F, Ab, B...` (Pitch classes `2, 5, 8, 11`)
+- **Auxiliary Rows 4 & 5:** Exact duplicates of Rows 1 & 2.
 
 ```
 CBA C-System Visual Grid (3-Row Core):
@@ -104,26 +248,7 @@ Row 1:  ( A )  ( C )  ( Eb)  ( F#)  ( A )  ( C )  ( Eb)  ( F#)
 
 ---
 
-### 2.3 Compound Voicings & "Hard Chord" Resolutions
-
-The engine resolves complex chords into idiomatic accordion mechanics:
-
-| Chord Type | Guitar Input | Accordion LH Stradella Action | Accordion RH CBA C-System Grip |
-| :--- | :--- | :--- | :--- |
-| **Slash (Major 3rd Bass)** | `C/E` | **`E_` (Counter) + `c` (Major)** *(Fingers: 2+3)* | `E - G - C` (1st Inversion) |
-| **Slash (Major 3rd Bass)** | `G/B` | **`B_` (Counter) + `g` (Major)** *(Fingers: 2+3)* | `B - D - G` (1st Inversion) |
-| **Slash (Major 3rd Bass)** | `D/F#` | **`F#_` (Counter) + `d` (Major)** *(Fingers: 2+3)* | `F# - A - D` (1st Inversion) |
-| **Slash (5th in Bass)** | `C/G` | **`G` (Fund. Bass) + `c` (Major)** *(Fingers: 4+3)* | `G - C - E` (2nd Inversion) |
-| **Major 7th** | `Cmaj7` | **`C` Bass + `em` Chord** *(Root + Minor 3rd)* | `C - E - G - B` or `E - G - B` |
-| **Minor 7th** | `Am7` | **`A` Bass + `c` Chord** *(Root + Rel. Major)* | `A - C - E - G` or `C - E - G` |
-| **Half-Diminished** | `Bm7b5` | **`B` Bass + `dm` Chord** *(Root + Minor b3rd)* | `B - D - F - A` |
-| **6th Triad** | `C6` | **`C` Bass + `am` Chord** *(Root + Rel. Minor)* | `A - C - E` |
-| **Dominant 9th** | `C9` | **`C` Bass + `gm` Chord** *(Root + Minor 5th)* | `Bb - D - E - G` |
-| **Suspended 4th** | `Csus4` | **`C` Bass + `f` Chord** *(Root + Major 4th)* | `C - F - G` |
-
----
-
-### 2.4 Capo & Transposition Math
+### 3.3 Capo Transposition Mathematics
 
 $$\text{Sounding Pitch Class} = (\text{Written Pitch Class} + \text{Capo Fret}) \pmod{12}$$
 
@@ -132,14 +257,66 @@ All LH buttons and RH CBA grips are generated from the calculated **Sounding Pit
 
 ---
 
-## 3. Mobile-First UX & Design Principles
+### 3.4 Complete Accordion Normalization & Compound Voicing Table
 
-### 3.1 The Playing Reality (Hands Trapped in Straps)
-- **Zero Pinch-to-Zoom:** Text must be large, high-contrast, and formatted to fit standard 360px–414px mobile viewports without horizontal scrolling.
+| Chord Category | Input Chord (Sounding) | Stradella LH Bass | Stradella LH Chord | LH Fingering | CBA C-System RH Notes | RH CBA Fingering |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Major** | `C` | `C` (Fund) | `c` (Major) | `4 + 3` | `C - E - G` | `1 - 2 - 4` |
+| **Minor** | `Cm` | `C` (Fund) | `cm` (Minor) | `4 + 3` | `C - Eb - G` | `1 - 2 - 4` |
+| **Dominant 7th** | `C7` | `C` (Fund) | `c7` (7th) | `4 + 3` | `C - E - Bb` | `1 - 2 - 4` |
+| **Diminished** | `Cdim` / `C°` | `C` (Fund) | `cdim` (Dim) | `4 + 3` | `C - Eb - F# - A` | `1 - 2 - 3 - 4` |
+| **Major 7th** | `Cmaj7` | `C` (Fund) | `em` (Minor on 3rd) | `4 + 3` | `E - G - B - C` | `1 - 2 - 4 - 5` |
+| **Minor 7th** | `Cm7` | `C` (Fund) | `eb` (Major on b3) | `4 + 3` | `Eb - G - Bb - C`| `1 - 2 - 4 - 5` |
+| **Half-Diminished**| `Cm7b5` / `Cø` | `C` (Fund) | `ebm` (Minor on b3)| `4 + 3` | `Eb - Gb - Bb - C`| `1 - 2 - 4 - 5` |
+| **6th** | `C6` | `C` (Fund) | `am` (Minor on 6th)| `4 + 3` | `A - C - E - G` | `1 - 2 - 3 - 5` |
+| **Minor 6th** | `Cm6` | `C` (Fund) | `cdim` (Dim) | `4 + 3` | `C - Eb - G - A` | `1 - 2 - 4 - 5` |
+| **Dominant 9th** | `C9` | `C` (Fund) | `gm` (Minor on 5th)| `4 + 3` | `E - G - Bb - D` | `1 - 2 - 3 - 5` |
+| **Major 9th** | `Cmaj9` | `C` (Fund) | `g` (Major on 5th) | `4 + 3` | `E - G - B - D`  | `1 - 2 - 3 - 5` |
+| **Suspended 4th** | `Csus4` | `C` (Fund) | `f` (Major on 4th) | `4 + 3` | `C - F - G` | `1 - 3 - 4` |
+| **Suspended 2nd** | `Csus2` | `C` (Fund) | `g` (Major on 5th) | `4 + 3` | `C - D - G` | `1 - 2 - 5` |
+| **Add 9** | `Cadd9` | `C` (Fund) | `c` (Major) | `4 + 3` | `C - D - E - G` | `1 - 2 - 3 - 5` |
+| **Augmented** | `Caug` / `C+` | `C` (Fund) | `e` (Major on 3rd) | `4 + 3` | `C - E - G#` | `1 - 2 - 4` |
+
+---
+
+### 3.5 Slash Chord & Inversion Resolution Algorithm
+
+Slash chords $Chord/Bass$ are resolved with physical ergonomics:
+
+```
+Algorithm: ResolveSlashChord(Root, Quality, BassNote)
+
+1. DeltaInterval = (PitchClass(BassNote) - PitchClass(Root) + 12) % 12
+
+2. If DeltaInterval == 4 (Major 3rd in Bass, e.g. C/E, G/B, D/F#, F/A):
+   -> Assign Counter-Bass of Root column (Row 1).
+   -> Assign Major/Minor chord button of Root.
+   -> Fingering: Finger 2 on Counter-Bass, Finger 3 on Chord Button (Zero horizontal hand shift!).
+
+3. Else if DeltaInterval == 7 (5th in Bass, e.g. C/G, G/D, D/A):
+   -> Assign Fundamental Bass of column (+1 Circle of Fifths).
+   -> Assign chord button of Root.
+   -> Fingering: Finger 2 on 5th Bass, Finger 3 on Chord Button.
+
+4. Else if DeltaInterval == 10 (Flat 7th in Bass, e.g. C7/Bb, G7/F):
+   -> Assign Fundamental Bass of BassNote column (-2 Circle of Fifths).
+   -> Assign 7th chord button of Root.
+
+5. Else (Arbitrary Bass / Walking Bass):
+   -> Assign Fundamental Bass of BassNote.
+   -> Assign original root chord button.
+```
+
+---
+
+## 4. Mobile-First UX & Design Principles
+
+### 4.1 The Playing Reality (Hands Trapped in Straps)
+- **Zero Pinch-to-Zoom:** Text must be large (18px–22px), high-contrast, and formatted to fit standard 360px–414px mobile viewports without horizontal scrolling.
 - **Glanceable Tokens:** Only 1 primary annotation line above lyrics in default view to maximize visible verses.
 - **Knuckle-Friendly Touch Targets:** Large 48px+ tap zones for auto-scroll and page navigation.
 
-### 3.2 Core Screen Layouts (ASCII Drafts)
+### 4.2 Core Screen Layouts (ASCII Drafts)
 
 #### Screen A: Main Mobile Lead Sheet Reader
 ```text
@@ -221,12 +398,12 @@ All LH buttons and RH CBA grips are generated from the calculated **Sounding Pit
 +-----------------------------------+
 ```
 
-### 3.3 Display View Modes
+### 4.3 Display View Modes
 1. **`🪗 LH Stradella Mode` (Default):** Displays fundamental/counter-bass + chord button tokens (e.g. `Bb bb`, `G_ gm`, `A_ f`).
 2. **`🔘 RH CBA Mode`:** Displays CBA C-System chord notes and fingerings (e.g. `Bb [1-2-4]`, `Gm [1-2-4]`).
 3. **`🎸 Both / Dual Mode`:** Displays original guitar chord with compact accordion badge underneath (e.g. `G [Bb bb]`, `D/F# [A_ f]`).
 
-### 3.4 Mobile Hardware & Browser API Integrations
+### 4.4 Mobile Hardware & Browser API Integrations
 - **Screen Wake Lock API (`navigator.wakeLock`):** Keeps phone screen active while playing.
 - **Touch-to-Page Navigation:** Tapping the right 40% of the screen advances one screenful down; tapping the left 40% scrolls up.
 - **Bluetooth Foot-Pedal Support:** Listens to `keydown` events (`PageDown`, `PageUp`, `ArrowDown`, `ArrowUp`, `Space`) from external foot pedals.
@@ -234,9 +411,9 @@ All LH buttons and RH CBA grips are generated from the calculated **Sounding Pit
 
 ---
 
-## 4. Tech Stack & Free Deployment Architecture
+## 5. Tech Stack & Free Deployment Architecture
 
-### 4.1 Tech Stack Matrix
+### 5.1 Tech Stack Matrix
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
@@ -249,7 +426,7 @@ All LH buttons and RH CBA grips are generated from the calculated **Sounding Pit
 | **Hosting (Frontend)** | **GitHub Pages** | 100% free static hosting via GitHub Actions. |
 | **Hosting (API Proxy)** | **Deno Deploy** | 100% free serverless edge worker for URL scraping (`api/import.ts`). |
 
-### 4.2 Deployment Topology (GitHub Pages + Deno Deploy)
+### 5.2 Deployment Topology (GitHub Pages + Deno Deploy)
 
 ```
 +───────────────────────────────────────────────────────────────────────────────────+
@@ -279,7 +456,7 @@ All LH buttons and RH CBA grips are generated from the calculated **Sounding Pit
              └─────────────────────────────┘
 ```
 
-### 4.3 Directory Structure
+### 5.3 Complete Directory Structure
 
 ```
 accordion-lead-sheet-companion/
@@ -298,7 +475,8 @@ accordion-lead-sheet-companion/
 │   │   ├── MiniGripDrawer.tsx  # Bottom sheet with 3x3 Stradella & CBA diagrams
 │   │   ├── CapoBar.tsx         # Quick Capo stepper and view switcher
 │   │   ├── AutoScrollFooter.tsx# Hands-free auto-scroll bar
-│   │   └── ImportModal.tsx     # 1-tap clipboard paste & URL fetcher
+│   │   ├── ImportModal.tsx     # 1-tap clipboard paste & URL fetcher
+│   │   └── SongbookDrawer.tsx  # Offline saved songs manager
 │   ├── lib/
 │   │   ├── parser/             # 2-line guitar tab & ChordPro tokenizer
 │   │   ├── capo/               # Capo interval & sounding pitch math
@@ -317,7 +495,9 @@ accordion-lead-sheet-companion/
 
 ---
 
-## 5. Data Models & TypeScript Interfaces
+## 6. Data Models & TypeScript Interfaces
+
+### 6.1 Music & Chord Types
 
 ```typescript
 export type ChordQuality = 
@@ -343,7 +523,7 @@ export interface StradellaVoicing {
   chordButton: string;       // e.g. "f" (F Major) or "gm" (G Minor)
   fingering: string;         // "2 + 3" or "4 + 3"
   explanation: string;       // "Counter-bass A_ + F major chord"
-  columnOffset: number;      // Circle of Fifths column
+  columnOffset: number;      // Circle of Fifths column (-5 to +6)
 }
 
 export interface CbaGrip {
@@ -357,7 +537,11 @@ export interface CbaGrip {
   }>;
   fingeringPattern: string;  // "1-2-4" or "2-3-5"
 }
+```
 
+### 6.2 Lead Sheet & Songbook Types
+
+```typescript
 export interface LeadSheetLine {
   type: 'chord_lyric' | 'section_header' | 'comment' | 'empty';
   lyrics?: string;
@@ -385,38 +569,49 @@ export interface LeadSheetSong {
 }
 ```
 
----
+### 6.3 API & Storage Schemas
 
-## 6. Core Algorithms & Music Logic
+```typescript
+export interface TabImportResponse {
+  success: boolean;
+  source: 'ultimate-guitar' | 'chordie' | 'e-chords' | 'cifraclub' | 'generic';
+  title?: string;
+  artist?: string;
+  capoFret: number;
+  key?: string;
+  rawContent: string;
+  error?: string;
+}
 
-### 6.1 Guitar Tab & ChordPro Tokenizer
-1. Regex matches chords formatted either inside brackets `[D/F#]` or on a line above lyrics.
-2. Auto-detects headers like `Capo: 3rd fret` or `Capo 2` and sets default capo state.
-3. Preserves exact horizontal character indices so chords align over corresponding words.
-
-### 6.2 Stradella Solver (Counter-Bass & Compound Voicings)
-1. **Slash Chords:**
-   - If `bassPitchClass == (rootPitchClass + 4) % 12` (Major 3rd in bass):
-     $\rightarrow$ Assign **Counter-Bass** of root column (`isCounterBass = true`, finger `2`) + Root Major Chord button (finger `3`).
-   - If `bassPitchClass == (rootPitchClass + 7) % 12` (5th in bass):
-     $\rightarrow$ Assign Fundamental Bass of column $+1$ + Root Chord button.
-2. **Compound Voicings:**
-   - `maj7` $\rightarrow$ Fundamental Root Bass + Minor chord on 3rd degree (`C` + `em`).
-   - `m7` $\rightarrow$ Fundamental Root Bass + Major chord on b3rd degree (`A` + `c`).
-   - `m7b5` $\rightarrow$ Fundamental Root Bass + Minor chord on b3rd degree (`B` + `dm`).
-   - `6` $\rightarrow$ Fundamental Root Bass + Minor chord on 6th degree (`C` + `am`).
-   - `sus4` $\rightarrow$ Fundamental Root Bass + Major chord on 4th degree (`C` + `f`).
-
-### 6.3 CBA C-System Grip Generator & Voice Leading
-1. Maps sounding notes onto the C-System 3-row grid:
-   - Row 1: Pitch classes `[0, 3, 6, 9]` ($C, Eb, F\#, A$)
-   - Row 2: Pitch classes `[1, 4, 7, 10]` ($C\#, E, G, Bb$)
-   - Row 3: Pitch classes `[2, 5, 8, 11]` ($D, F, Ab, B$)
-2. Generates standard 3-note close triadic grips and calculates the minimal vertical hand movement across consecutive chord transitions.
+export interface UserPreferences {
+  activeViewMode: 'lh_stradella' | 'rh_cba' | 'both_dual';
+  accordionSize: '48-bass' | '72-bass' | '96-bass' | '120-bass';
+  autoScrollSpeed: number; // 0.5x to 3.0x
+  wakeLockEnabled: boolean;
+  theme: 'dark_oled' | 'light';
+}
+```
 
 ---
 
-## 7. Implementation Roadmap & Milestones
+## 7. Component Hierarchy & State Management
+
+```
+App.tsx
+├── HeaderBar.tsx (Title, Songbook Drawer Toggle, Import Modal Toggle, Theme)
+├── CapoBar.tsx (Capo [-/+] stepper, Sounding Key badge, View Mode Switcher)
+├── LeadSheetReader.tsx (Main high-contrast lyric & chord renderer)
+│   └── LineRenderer.tsx (Renders paired lyrics and chord badges)
+│       └── ChordBadge.tsx (Clickable badge triggering MiniGripDrawer)
+├── MiniGripDrawer.tsx (Slide-up bottom sheet with 3x3 Stradella & CBA diagrams)
+├── AutoScrollFooter.tsx (Play/Pause scroll, speed adjuster, quick zoom)
+├── ImportModal.tsx (1-tap clipboard paste & URL fetcher dialog)
+└── SongbookDrawer.tsx (Offline list of saved lead sheets)
+```
+
+---
+
+## 8. Implementation Roadmap & Milestones
 
 - [ ] **Phase 1: Core Engine & Unit Tests**
   - Implement pitch classes, capo math, and chord tokenizer.
@@ -443,7 +638,7 @@ export interface LeadSheetSong {
 
 ---
 
-## 8. Testing & Quality Assurance
+## 9. Testing, Quality Assurance & Edge Cases
 
 1. **Music Theory Accuracy:**
    - Verify `D/F#` with `Capo 3` produces sounding $F/A \rightarrow$ Counter-bass `A_` + `f` major chord.
@@ -457,4 +652,4 @@ export interface LeadSheetSong {
 
 ---
 
-*Specification v2.0.0 for `accordion-lead-sheet-companion`.*
+*Specification v2.1.0 for `accordion-lead-sheet-companion`.*
