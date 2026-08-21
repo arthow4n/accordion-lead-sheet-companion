@@ -10,6 +10,7 @@ import type {
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
+import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
 import { optimizeVoiceLeading } from "../lib/cba/voiceLeading.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
@@ -41,6 +42,37 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   const [lastNonZeroCapo, setLastNonZeroCapo] = useState<number>(
     defaultCapo > 0 ? defaultCapo : (capo > 0 ? capo : 2),
   );
+
+  // User preference for CBA grip mode (default: "root" for 100% muscle-memory consistency)
+  const [cbaGripMode, setCbaGripMode] = useState<"root" | "voice_led">(() => {
+    try {
+      if (typeof globalThis.localStorage !== "undefined") {
+        return (globalThis.localStorage.getItem("cbaGripMode") as "root" | "voice_led") || "root";
+      }
+    } catch {
+      // ignore
+    }
+    return "root";
+  });
+
+  // Listen for preference changes from MiniGripDrawer
+  React.useEffect(() => {
+    const handler = () => {
+      try {
+        if (typeof globalThis.localStorage !== "undefined") {
+          const mode = (globalThis.localStorage.getItem("cbaGripMode") as "root" | "voice_led") ||
+            "root";
+          setCbaGripMode(mode);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    if (typeof globalThis.addEventListener === "function") {
+      globalThis.addEventListener("cbaGripModeChanged", handler);
+      return () => globalThis.removeEventListener("cbaGripModeChanged", handler);
+    }
+  }, []);
 
   // Calculate sounding key from written key and current capo
   const soundingKey = song.originalKey ? getSoundingKey(song.originalKey, capo) : "";
@@ -79,20 +111,22 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             }
           }
         }
-        // Voice-lead the section's unique chords in progression order
+        // Generate section unique chords according to cbaGripMode (Root vs Smooth Voice-Led)
         let prevGrip: CbaGrip | undefined = undefined;
-        const voiceLedUniqueChords = uniqueChords.map((chord) => {
+        const resolvedUniqueChords = uniqueChords.map((chord) => {
           if (typeof chord === "string") return chord;
           const sounding = chord.soundingChord || chord.originalChord;
           if (!sounding) return chord;
-          const optimizedGrip = optimizeVoiceLeading(sounding, prevGrip);
-          prevGrip = optimizedGrip;
+          const grip = cbaGripMode === "root"
+            ? generateCanonicalRootGrip(sounding)
+            : optimizeVoiceLeading(sounding, prevGrip);
+          prevGrip = grip;
           return {
             ...chord,
-            cba: optimizedGrip,
+            cba: grip,
           };
         });
-        map.set(i, voiceLedUniqueChords);
+        map.set(i, resolvedUniqueChords);
       }
 
       if (line.segments) {
@@ -109,8 +143,20 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
         }
       }
     }
-    return { sectionChordsMap: map, allSongChords: allChords };
-  }, [renderedLines]);
+
+    const resolvedAllChords = allChords.map((chord) => {
+      if (typeof chord === "string") return chord;
+      const sounding = chord.soundingChord || chord.originalChord;
+      if (!sounding) return chord;
+      const grip = cbaGripMode === "root" ? generateCanonicalRootGrip(sounding) : chord.cba;
+      return {
+        ...chord,
+        cba: grip,
+      };
+    });
+
+    return { sectionChordsMap: map, allSongChords: resolvedAllChords };
+  }, [renderedLines, cbaGripMode]);
 
   const handleToggleCapo = () => {
     if (!onChangeCapo) return;

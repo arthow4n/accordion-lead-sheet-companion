@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { generateCbaGrip } from "./grips.ts";
+import { generateCanonicalRootGrip, generateCbaGrip } from "./grips.ts";
 import { optimizeVoiceLeading } from "./voiceLeading.ts";
 
 Deno.test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
@@ -155,5 +155,64 @@ Deno.test("CBA-14: Multi-note same-row chord cluster compactness (C7b9, G7b9, Cd
     // Verify all button coordinates are unique (no collision)
     const set = new Set(grip.buttonCoords!.map((b) => `r${b.row}c${b.column}`));
     assertEquals(set.size, 4, `Chord ${chord} has button collision`);
+  }
+});
+
+Deno.test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscle-memory retention)", () => {
+  const testChords = [
+    "C",
+    "G",
+    "D",
+    "A",
+    "E",
+    "B",
+    "F#",
+    "Db",
+    "Ab",
+    "Eb",
+    "Bb",
+    "F",
+    "Am",
+    "Em",
+    "Bm",
+    "F#m",
+    "C#m",
+    "G#m",
+    "Dm",
+    "Gm",
+    "Cm",
+    "Fm",
+    "Bbm",
+    "Ebm",
+  ];
+  for (const chord of testChords) {
+    const rootGrip = generateCanonicalRootGrip(chord, 5);
+    assertEquals(rootGrip.isRootGrip, true);
+    assertEquals(rootGrip.inversion, 0);
+    assertEquals(rootGrip.buttonCoords?.length, 3);
+    assertEquals(rootGrip.fingeringPattern, "1-2-4");
+    assertEquals(rootGrip.rootButtonCoord?.finger, 1);
+    assertEquals(rootGrip.rootButtonCoord?.note, rootGrip.notes[0]);
+
+    // Hand span bounds: column delta <= 2 (compact 3-column span)
+    const cols = rootGrip.buttonCoords!.map((b) => b.column);
+    const colSpan = Math.max(...cols) - Math.min(...cols);
+    assertEquals(colSpan <= 2, true, `Chord ${chord} column span ${colSpan} exceeds 2`);
+
+    // Row span bounds: row delta <= 2 (contiguous 3-row tier)
+    const rows = rootGrip.buttonCoords!.map((b) => b.row);
+    const rowSpan = Math.max(...rows) - Math.min(...rows);
+    assertEquals(rowSpan <= 2, true, `Chord ${chord} row span ${rowSpan} exceeds 2`);
+  }
+});
+
+Deno.test("CBA-16: Pearl-White Root Beacon tagging on 7th and extended chords", () => {
+  const extendedChords = ["G7", "Am7", "Cmaj7", "Bm7b5", "F#7"];
+  for (const chord of extendedChords) {
+    const grip = generateCanonicalRootGrip(chord, 5);
+    assertEquals(grip.isRootGrip, true);
+    assertEquals(grip.rootButtonCoord?.finger, 1);
+    assertEquals(grip.buttonCoords?.length, 4);
+    assertEquals(grip.fingeringPattern, "1-2-4-5");
   }
 });

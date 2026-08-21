@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { X } from "lucide-react";
 import type { AccordionSize, ChordDetail, ViewMode } from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
+import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
 import { StradellaGrid } from "./StradellaGrid.tsx";
 import { CbaGrid } from "./CbaGrid.tsx";
 
@@ -22,7 +23,30 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
   viewMode = "stradella",
   accordionSize = "120-bass",
 }) => {
+  const [cbaGripMode, setCbaGripMode] = useState<"root" | "voice_led">(() => {
+    try {
+      if (typeof globalThis.localStorage !== "undefined") {
+        return (globalThis.localStorage.getItem("cbaGripMode") as "root" | "voice_led") || "root";
+      }
+    } catch {
+      // ignore
+    }
+    return "root";
+  });
+
   if (!isOpen || !chord) return null;
+
+  const handleToggleGripMode = (mode: "root" | "voice_led") => {
+    setCbaGripMode(mode);
+    try {
+      if (typeof globalThis.localStorage !== "undefined") {
+        globalThis.localStorage.setItem("cbaGripMode", mode);
+        globalThis.dispatchEvent(new Event("cbaGripModeChanged"));
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // If chord is a plain string, enrich it with current capo
   const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, capo) : chord;
@@ -106,12 +130,46 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
           {/* CBA Right Hand Grid */}
           {(viewMode === "cba" || viewMode === "dual") && (
             <div>
-              <div className="text-[11px] sm:text-xs font-bold text-zinc-400 mb-1 flex items-center gap-1.5">
-                <span>🔘</span>
-                <span>Right Hand CBA C-System Treble</span>
+              <div className="text-[11px] sm:text-xs font-bold text-zinc-400 mb-1.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span>🔘</span>
+                  <span>Right Hand CBA C-System Treble</span>
+                </div>
+                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleGripMode("root");
+                    }}
+                    className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      cbaGripMode === "root"
+                        ? "bg-emerald-600 text-white font-bold shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    Root Shapes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleGripMode("voice_led");
+                    }}
+                    className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      cbaGripMode === "voice_led"
+                        ? "bg-emerald-600 text-white font-bold shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    Smooth Inversions
+                  </button>
+                </div>
               </div>
               <CbaGrid
-                cba={chordDetail.cba}
+                cba={cbaGripMode === "root" && chordDetail.soundingChord
+                  ? generateCanonicalRootGrip(chordDetail.soundingChord)
+                  : chordDetail.cba}
                 soundingChord={chordDetail.soundingChord}
               />
             </div>

@@ -100,6 +100,13 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                 return bEff === curEff && b.column === col;
               });
 
+              // High-Contrast Root Note Beacon (Finger 1)
+              const isRoot = isDirectActive && (
+                (grip.rootButtonCoord && grip.rootButtonCoord.row === rowNum &&
+                  grip.rootButtonCoord.column === col) ||
+                activeButtons.find((b) => b.row === rowNum && b.column === col)?.finger === 1
+              );
+
               const isLit = isDirectActive || isAuxDuplicate;
               const isPrimary = isDirectActive;
               const x = xOffset + 5 + colIdx * 9.5;
@@ -111,22 +118,34 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r={4.8}
+                      r={isRoot ? 5.2 : 4.8}
                       fill="none"
-                      stroke="#34d399"
-                      strokeWidth={1.2}
-                      opacity={0.85}
+                      stroke={isRoot ? "#ffffff" : "#34d399"}
+                      strokeWidth={isRoot ? 1.5 : 1.2}
+                      opacity={0.9}
                     />
                   )}
 
-                  {/* Button circle */}
+                  {/* Button circle: Pearl-White for Root, Emerald for Chord Tones */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isPrimary ? 4.2 : isAuxDuplicate ? 3.6 : 2.0}
-                    fill={isPrimary ? "#10b981" : isAuxDuplicate ? "#065f46" : "#27272a"}
-                    stroke={isPrimary ? "#6ee7b7" : isAuxDuplicate ? "#10b981" : "#3f3f46"}
-                    strokeWidth={isLit ? 0.75 : 0.4}
+                    r={isRoot ? 4.4 : isPrimary ? 4.2 : isAuxDuplicate ? 3.6 : 2.0}
+                    fill={isRoot
+                      ? "#ffffff"
+                      : isPrimary
+                      ? "#10b981"
+                      : isAuxDuplicate
+                      ? "#065f46"
+                      : "#27272a"}
+                    stroke={isRoot
+                      ? "#34d399"
+                      : isPrimary
+                      ? "#6ee7b7"
+                      : isAuxDuplicate
+                      ? "#10b981"
+                      : "#3f3f46"}
+                    strokeWidth={isLit ? (isRoot ? 1.0 : 0.75) : 0.4}
                   />
 
                   {/* Direct In-Button Note Initials on lit buttons */}
@@ -137,10 +156,10 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       fontSize={isPrimary
                         ? (noteName.length > 2 ? "2.6" : "3.2")
                         : (noteName.length > 2 ? "2.3" : "2.7")}
-                      fontWeight="bold"
+                      fontWeight={isRoot ? "900" : "bold"}
                       fontFamily="monospace"
                       textAnchor="middle"
-                      fill={isPrimary ? "#042f2e" : "#a7f3d0"}
+                      fill={isRoot ? "#022c22" : isPrimary ? "#042f2e" : "#a7f3d0"}
                       className="select-none pointer-events-none"
                     >
                       {noteName}

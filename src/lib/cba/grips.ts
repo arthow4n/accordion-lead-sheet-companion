@@ -1,7 +1,7 @@
 import type { CbaButtonCoord, CbaGrip, ChordQuality, ParsedChord } from "../../types/index.ts";
 import { getPitchClass, normalizePitchClass, parseChord } from "../capo/transposition.ts";
 import { getNoteName } from "../capo/enharmonics.ts";
-import { createCbaButtonCoord, getCbaPositionsForNote } from "./grid.ts";
+import { createCbaButtonCoord, getCbaPositionsForNote, getCbaRowForPitchClass } from "./grid.ts";
 
 /**
  * Get note pitch classes for a given chord root and quality
@@ -301,5 +301,79 @@ export function generateCbaGrip(
     buttonCoords: coords,
     fingeringPattern,
     centroidColumn: centroid,
+    isRootGrip: inversion === 0,
+    rootButtonCoord: inversion === 0 ? coords[0] : undefined,
+    inversion,
+  };
+}
+
+/**
+ * Generates the canonical, 100% predictable isomorphic root-position chord grip
+ * on the 5-row CBA C-System, ensuring invariant muscle memory across all 12 keys.
+ */
+export function generateCanonicalRootGrip(
+  chordInput: string | ParsedChord,
+  targetColumnCenter = 5,
+): CbaGrip {
+  const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
+  const rootPc = parsed.rootPitchClass;
+  const baseRow = getCbaRowForPitchClass(rootPc);
+
+  // Find root position nearest targetColumnCenter
+  const rootPositions = getCbaPositionsForNote(rootPc).filter((p) => p.row === baseRow);
+  const rootPos = rootPositions.reduce(
+    (prev, curr) =>
+      Math.abs(curr.column - targetColumnCenter) < Math.abs(prev.column - targetColumnCenter)
+        ? curr
+        : prev,
+    rootPositions[0] || { row: baseRow, column: targetColumnCenter },
+  );
+
+  const chordNotes = getChordNotes(parsed);
+  const coords: CbaButtonCoord[] = [
+    createCbaButtonCoord(rootPos.row, rootPos.column, chordNotes[0], 1),
+  ];
+
+  for (let i = 1; i < chordNotes.length; i++) {
+    const note = chordNotes[i];
+    const pc = getPitchClass(note);
+    const candidatePositions = getCbaPositionsForNote(pc);
+
+    let bestPos = candidatePositions[0];
+    let bestDist = Infinity;
+
+    for (const pos of candidatePositions) {
+      if (pos.row < baseRow || pos.row > baseRow + 2) continue;
+      if (pos.column < rootPos.column - 2 || pos.column > rootPos.column + 2) continue;
+
+      const currentCols = [...coords.map((c) => c.column), pos.column];
+      const colSpan = Math.max(...currentCols) - Math.min(...currentCols);
+      const dist = colSpan * 100 + Math.abs(pos.column - rootPos.column) * 10 +
+        (pos.row - rootPos.row) * 5;
+
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestPos = pos;
+      }
+    }
+
+    const finger = chordNotes.length >= 4 ? (i === 1 ? 2 : i === 2 ? 4 : 5) : (i === 1 ? 2 : 4);
+    coords.push(createCbaButtonCoord(bestPos.row, bestPos.column, note, finger));
+  }
+
+  const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
+  const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : "1-2-4";
+
+  return {
+    chord: parsed.raw || parsed.root,
+    chordName: parsed.raw || parsed.root,
+    notes: chordNotes,
+    buttons: coords,
+    buttonCoords: coords,
+    fingeringPattern,
+    centroidColumn: centroid,
+    isRootGrip: true,
+    rootButtonCoord: coords[0],
+    inversion: 0,
   };
 }

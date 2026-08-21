@@ -79,6 +79,8 @@ export interface CbaButtonCoord {
   finger: number; // 1-5
 }
 
+export type CbaGripMode = "root" | "voice_led";
+
 export interface CbaGrip {
   chord?: string;
   chordName?: string; // e.g. "Bb"
@@ -87,6 +89,9 @@ export interface CbaGrip {
   buttonCoords?: CbaButtonCoord[];
   fingeringPattern: "1-2-4" | "2-3-5" | "1-2-5" | "1-3-5" | string;
   centroidColumn?: number;
+  isRootGrip?: boolean;
+  rootButtonCoord?: CbaButtonCoord;
+  inversion?: number;
 }
 
 export interface ChordDetail {

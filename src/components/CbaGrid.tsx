@@ -88,17 +88,28 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                   return bEffectiveRow === currentEffectiveRow && b.column === col;
                 });
 
+                const isRoot = isPrimary && (
+                  (grip?.rootButtonCoord && grip.rootButtonCoord.row === rowInfo.rowNumber &&
+                    grip.rootButtonCoord.column === col) ||
+                  activeButtons.find((b) => b.row === rowInfo.rowNumber && b.column === col)
+                      ?.finger === 1
+                );
+
                 return (
                   <div
                     key={`cba-btn-${rowInfo.rowNumber}-${col}`}
                     className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-mono transition-all select-none ${
-                      isPrimary
+                      isRoot
+                        ? "bg-white border-2 border-emerald-300 text-zinc-950 font-black shadow-[0_0_12px_rgba(255,255,255,0.9)] ring-2 ring-emerald-400/80 scale-110"
+                        : isPrimary
                         ? "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105"
                         : isAuxDuplicate
                         ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-300 font-bold shadow-sm"
                         : "bg-zinc-900/90 border border-zinc-800 text-zinc-500 hover:border-zinc-700"
                     }`}
-                    title={`Row ${rowInfo.rowNumber}, Col ${col}: ${noteName}`}
+                    title={`Row ${rowInfo.rowNumber}, Col ${col}: ${noteName}${
+                      isRoot ? " (Root)" : ""
+                    }`}
                   >
                     {noteName}
                   </div>
