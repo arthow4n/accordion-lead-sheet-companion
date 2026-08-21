@@ -61,6 +61,39 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   const chordButton = chord.stradella?.chordButton?.label || "";
   const cbaFingering = chord.cba?.fingeringPattern || "";
 
+  // Classification for clean Stradella view
+  const isSlash = Boolean(
+    chord.soundingChord?.bassNote ||
+      chord.originalChord?.bassNote ||
+      soundingChordName.includes("/"),
+  );
+
+  const compoundQualities = [
+    "major7",
+    "minor7",
+    "halfDiminished7",
+    "six",
+    "minorSix",
+    "dominant9",
+    "major9",
+    "minor9",
+    "dominant13",
+    "sevenSharpEleven",
+    "sevenFlatNine",
+    "sixNine",
+    "altered",
+    "sus4",
+    "sus2",
+    "add9",
+    "augmented",
+  ];
+  const isCompound = Boolean(
+    chord.soundingChord?.quality &&
+      compoundQualities.includes(chord.soundingChord.quality) &&
+      chord.stradella?.chordButton &&
+      !isSlash,
+  );
+
   // Styling based on mode and counter-bass vs fundamental
   let badgeStyle = "";
   if (viewMode === "cba") {
@@ -77,6 +110,9 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-100";
   }
 
+  // Base root for slash chords (e.g. "C" from "C/B")
+  const slashBaseChord = isSlash ? soundingChordName.split("/")[0] : soundingChordName;
+
   return (
     <button
       type="button"
@@ -86,15 +122,30 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     >
       {viewMode === "stradella" && (
         <span className="flex items-center gap-1">
-          <span className={isCounterBass ? "text-amber-300 font-bold" : "text-sky-400 font-bold"}>
-            {primaryBass}
-          </span>
-          {chordButton && <span className="text-zinc-300 text-[10px]">{chordButton}</span>}
-          {chord.stradella?.fingering && (
-            <span className="text-[9px] text-zinc-400 opacity-80">
-              ({chord.stradella.fingering})
-            </span>
-          )}
+          {isSlash
+            ? (
+              <span className="flex items-center font-bold">
+                <span className="text-zinc-100">{slashBaseChord}</span>
+                <span className="text-zinc-400 mx-0.5">/</span>
+                <span
+                  className={isCounterBass
+                    ? "text-amber-300 underline decoration-amber-400/80 font-bold"
+                    : "text-sky-400 font-bold"}
+                >
+                  {primaryBass}
+                </span>
+              </span>
+            )
+            : isCompound
+            ? (
+              <span className="flex items-baseline gap-1">
+                <span className="font-bold text-sky-400">{soundingChordName}</span>
+                <span className="text-[9px] text-zinc-400 font-normal opacity-90">
+                  ({primaryBass}+{chordButton})
+                </span>
+              </span>
+            )
+            : <span className="font-bold text-sky-400">{soundingChordName}</span>}
         </span>
       )}
 
@@ -109,8 +160,15 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
         <span className="flex flex-col items-start leading-none py-0.5">
           <span className="text-[11px] font-bold text-zinc-100">{rawChordName}</span>
           <span className="flex items-center gap-0.5 text-[9px] text-zinc-400">
-            <span className={isCounterBass ? "text-amber-400" : "text-sky-400"}>{primaryBass}</span>
-            {chordButton && <span>{chordButton}</span>}
+            {isSlash
+              ? (
+                <span className={isCounterBass ? "text-amber-400 font-bold" : "text-sky-400"}>
+                  /{primaryBass}
+                </span>
+              )
+              : isCompound
+              ? <span>{primaryBass}+{chordButton}</span>
+              : <span className="text-sky-400 font-semibold">{soundingChordName}</span>}
           </span>
         </span>
       )}

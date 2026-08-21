@@ -915,10 +915,10 @@ Tu mi [E7]devi seppel[Am]lir`;
         })()`);
 
         flow.assertions.push({
-          description: "LH Stradella mode displays bass button and fingering indicator '(4 + 3)'",
-          passed: lhBadges.some((b) => b.includes("(") && b.includes(")")),
+          description: "LH Stradella mode displays clean sounding chord badge (Am, E7, Dm)",
+          passed: lhBadges.some((b) => b.includes("Am") || b.includes("E7") || b.includes("Dm")),
           actual: lhBadges,
-          expected: "Stradella bass and fingering",
+          expected: "Clean Stradella chord badges (Am, E7, Dm)",
         });
 
         // 2. Test CBA RH mode

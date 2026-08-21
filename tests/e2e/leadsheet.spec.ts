@@ -184,7 +184,11 @@ Deno.test("E2E-02: Real-time Capo Transposition (Capo 0 -> 2 -> 3 with enharmoni
     }),
   );
   assertEquals(capo3Html.includes("Bb"), true, "Must render transposed Bb badge");
-  assertEquals(capo3Html.includes("bb"), true, "Must render Stradella bb chord button");
+  assertEquals(
+    firstChord3.stradella.chordButton?.label,
+    "bb",
+    "Must have Stradella bb chord button in model",
+  );
 
   // Bridge Slash Chord Verification: D/F# -> F/A with Capo 3
   const bridgeLine = linesCapo3.find((l) =>
