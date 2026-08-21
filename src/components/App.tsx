@@ -58,8 +58,54 @@ function updateSongUrl(song: LeadSheetSong) {
   }
 }
 
+const LAST_SONG_STORAGE_KEY = "accordion_companion_last_song_id";
+
+function getLastPersistedSongId(): string | null {
+  if (typeof globalThis.localStorage === "undefined") return null;
+  try {
+    return globalThis.localStorage.getItem(LAST_SONG_STORAGE_KEY);
+  } catch (_err) {
+    return null;
+  }
+}
+
+function persistLastSongId(songId: string) {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_SONG_STORAGE_KEY, songId);
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
+
+function getInitialSong(availableSongs: LeadSheetSong[]): LeadSheetSong {
+  // 1. Highest Priority: Explicit URL query param (?song=... or #song=...)
+  const fromUrl = getSongFromUrl(availableSongs);
+  if (fromUrl) {
+    persistLastSongId(fromUrl.id);
+    return fromUrl;
+  }
+
+  // 2. Second Priority: Last active song in PWA / LocalStorage
+  const lastId = getLastPersistedSongId();
+  if (lastId) {
+    const fromStorage = availableSongs.find(
+      (s) =>
+        s.id === lastId ||
+        s.id.toLowerCase() === lastId.toLowerCase() ||
+        s.title.toLowerCase() === lastId.toLowerCase(),
+    );
+    if (fromStorage) {
+      return fromStorage;
+    }
+  }
+
+  // 3. Fallback: First song in available list
+  return availableSongs[0];
+}
+
 export default function App(): React.JSX.Element {
-  const initialSong = getSongFromUrl(PRESET_SONGS) || PRESET_SONGS[0];
+  const initialSong = getInitialSong(PRESET_SONGS);
   const [songs, setSongs] = useState<LeadSheetSong[]>(PRESET_SONGS);
   const [currentSong, setCurrentSong] = useState<LeadSheetSong>(initialSong);
   const [capo, setCapo] = useState<number>(initialSong?.capoFret ?? initialSong?.capo ?? 0);
@@ -86,23 +132,18 @@ export default function App(): React.JSX.Element {
     enabled: true,
   });
 
-  // Initialize Songbook from IndexedDB on startup while preserving active/URL song
+  // Initialize Songbook from IndexedDB on startup while preserving active/URL/persisted song
   useEffect(() => {
     async function loadSongbook() {
       try {
         const loaded = await initPresets();
         if (loaded && loaded.length > 0) {
           setSongs(loaded);
-          const urlMatch = getSongFromUrl(loaded);
-          if (urlMatch) {
-            setCurrentSong(urlMatch);
-            setCapo(urlMatch.capoFret ?? urlMatch.capo ?? 0);
-            if (urlMatch.viewMode) setViewMode(urlMatch.viewMode);
-          } else {
-            const currentMatch = loaded.find((s) => s.id === currentSong.id);
-            if (currentMatch) {
-              setCurrentSong(currentMatch);
-            }
+          const resolved = getInitialSong(loaded);
+          if (resolved) {
+            setCurrentSong(resolved);
+            setCapo(resolved.capoFret ?? resolved.capo ?? 0);
+            if (resolved.viewMode) setViewMode(resolved.viewMode);
           }
         }
       } catch (err) {
@@ -112,10 +153,11 @@ export default function App(): React.JSX.Element {
     loadSongbook();
   }, []);
 
-  // Synchronize URL with active song
+  // Synchronize URL and persistence with active song
   useEffect(() => {
     if (currentSong?.id) {
       updateSongUrl(currentSong);
+      persistLastSongId(currentSong.id);
     }
   }, [currentSong?.id]);
 
@@ -127,6 +169,7 @@ export default function App(): React.JSX.Element {
         setCurrentSong(target);
         setCapo(target.capoFret ?? target.capo ?? 0);
         if (target.viewMode) setViewMode(target.viewMode);
+        persistLastSongId(target.id);
       }
     };
     if (typeof globalThis.addEventListener !== "undefined") {
@@ -142,6 +185,7 @@ export default function App(): React.JSX.Element {
       setViewMode(song.viewMode);
     }
     updateSongUrl(song);
+    persistLastSongId(song.id);
     autoScroll.stop();
     autoScroll.scrollToTop();
   };

@@ -702,3 +702,21 @@ Deno.test("UX-09: URL query param song synchronization resolution", () => {
   assertExists(matchByTitle);
   assertEquals(matchByTitle.id, "preset_autumn_leaves");
 });
+
+Deno.test("UX-10: PWA restart persistence resolution", () => {
+  const presets = createPresetSongs();
+  const testKey = "accordion_companion_last_song_id";
+
+  // Simulate persisting last song
+  const chosenSong = presets[2]; // Country Roads
+  globalThis.localStorage.setItem(testKey, chosenSong.id);
+
+  const retrievedId = globalThis.localStorage.getItem(testKey);
+  assertEquals(retrievedId, chosenSong.id);
+
+  const found = presets.find((s) => s.id === retrievedId);
+  assertExists(found);
+  assertEquals(found.id, chosenSong.id);
+
+  globalThis.localStorage.removeItem(testKey);
+});
