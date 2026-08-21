@@ -7,6 +7,7 @@ import type {
   ViewMode,
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
+import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 
 export interface LeadSheetReaderProps {
@@ -70,6 +71,21 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
           />
         ))}
       </div>
+
+      {/* Footer with Commit Hash */}
+      <footer className="mt-12 pt-4 pb-4 border-t border-zinc-900 flex items-center justify-center gap-1.5 text-[11px] text-zinc-600 font-mono">
+        <span>Accordion Companion</span>
+        <span>•</span>
+        <a
+          href={COMMIT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-zinc-500 hover:text-blue-400 hover:underline transition-colors"
+          title={`View commit ${COMMIT_HASH} on GitHub`}
+        >
+          {COMMIT_HASH}
+        </a>
+      </footer>
     </div>
   );
 };

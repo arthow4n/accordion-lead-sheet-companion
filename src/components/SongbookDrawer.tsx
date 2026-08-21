@@ -1,6 +1,17 @@
 import React, { useMemo, useState } from "react";
-import { Download, FilePlus, Music, RotateCcw, Search, Trash2, Upload, X } from "lucide-react";
+import {
+  Download,
+  FilePlus,
+  GitCommit,
+  Music,
+  RotateCcw,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import type { LeadSheetSong } from "../types/index.ts";
+import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 
 export interface SongbookDrawerProps {
   isOpen: boolean;
@@ -261,6 +272,20 @@ export const SongbookDrawer: React.FC<SongbookDrawerProps> = ({
                 );
               })
             )}
+        </div>
+        {/* Drawer Footer with Commit Version */}
+        <div className="p-3 border-t border-zinc-800/80 bg-zinc-950/80 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+          <span className="text-zinc-500">Build</span>
+          <a
+            href={COMMIT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+            title={`View commit ${COMMIT_HASH} on GitHub`}
+          >
+            <GitCommit className="w-3.5 h-3.5" />
+            <span>{COMMIT_HASH}</span>
+          </a>
         </div>
       </div>
     </div>

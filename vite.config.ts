@@ -3,8 +3,22 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+let commitHash = "dev";
+try {
+  const cmd = new Deno.Command("git", {
+    args: ["rev-parse", "--short", "HEAD"],
+  });
+  const output = cmd.outputSync();
+  commitHash = new TextDecoder().decode(output.stdout).trim() || "dev";
+} catch {
+  // fallback in non-git environments
+}
+
 export default defineConfig({
   base: "./",
+  define: {
+    __COMMIT_HASH__: JSON.stringify(commitHash),
+  },
   plugins: [
     react(),
     tailwindcss(),
