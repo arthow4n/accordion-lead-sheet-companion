@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ExternalLink, RotateCcw, Zap } from "lucide-react";
 import type {
   AccordionSize,
+  CbaGrip,
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
@@ -9,6 +10,7 @@ import type {
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
+import { optimizeVoiceLeading } from "../lib/cba/voiceLeading.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
@@ -77,7 +79,20 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             }
           }
         }
-        map.set(i, uniqueChords);
+        // Voice-lead the section's unique chords in progression order
+        let prevGrip: CbaGrip | undefined = undefined;
+        const voiceLedUniqueChords = uniqueChords.map((chord) => {
+          if (typeof chord === "string") return chord;
+          const sounding = chord.soundingChord || chord.originalChord;
+          if (!sounding) return chord;
+          const optimizedGrip = optimizeVoiceLeading(sounding, prevGrip);
+          prevGrip = optimizedGrip;
+          return {
+            ...chord,
+            cba: optimizedGrip,
+          };
+        });
+        map.set(i, voiceLedUniqueChords);
       }
 
       if (line.segments) {

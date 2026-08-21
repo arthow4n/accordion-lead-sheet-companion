@@ -4,26 +4,13 @@ import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
-import { PITCH_CLASS_POSITIONS } from "../lib/cba/grid.ts";
+import { getPitchClassAt } from "../lib/cba/grid.ts";
 
 export interface CbaMiniCardProps {
   chord: ChordDetail | string;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   className?: string;
-}
-
-/**
- * Lookup pitch class at (row, col) from the CBA C-System grid definition
- */
-function getPitchClassAt(row: number, col: number): number | null {
-  const coreRow = row === 4 ? 1 : row === 5 ? 2 : row;
-  for (const [pcStr, positions] of Object.entries(PITCH_CLASS_POSITIONS)) {
-    if (positions.some((p) => p.row === coreRow && p.column === col)) {
-      return parseInt(pcStr, 10);
-    }
-  }
-  return null;
 }
 
 export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
@@ -99,17 +86,19 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
           {rows.map(({ rowNum, y, xOffset }) => {
             return displayCols.map((col, colIdx) => {
               const pc = getPitchClassAt(rowNum, col);
-              const noteName = pc !== null ? getNoteName(pc, preferFlats) : "";
+              const noteName = getNoteName(pc, preferFlats);
 
               // Direct active button in primary grip
               const isDirectActive = activeButtons.some(
                 (b) => b.row === rowNum && b.column === col,
               );
 
-              // Auxiliary duplicate on Row 4 (mirrors Row 1) or Row 5 (mirrors Row 2)
-              const coreRow = rowNum === 4 ? 1 : rowNum === 5 ? 2 : 0;
-              const isAuxDuplicate = coreRow > 0 &&
-                activeButtons.some((b) => b.row === coreRow && b.column === col);
+              // Two-way auxiliary duplicate highlighting
+              const isAuxDuplicate = !isDirectActive && activeButtons.some((b) => {
+                const bEff = ((b.row - 1) % 3) + 1;
+                const curEff = ((rowNum - 1) % 3) + 1;
+                return bEff === curEff && b.column === col;
+              });
 
               const isLit = isDirectActive || isAuxDuplicate;
               const isPrimary = isDirectActive;

@@ -239,7 +239,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                       "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105";
                   } else {
                     btnClass =
-                      "bg-blue-500 border-2 border-blue-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(59,130,246,0.9)] ring-2 ring-blue-400/60 scale-105";
+                      "bg-blue-500 border-2 border-blue-200 text-white font-black shadow-[0_0_10px_rgba(59,130,246,0.9)] ring-2 ring-blue-400/60 scale-105";
                   }
                 }
 

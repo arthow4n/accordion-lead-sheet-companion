@@ -56,9 +56,9 @@ Deno.test("STRESS-CBA-01: All 12 roots for extended chords generate valid, colli
         );
         coordKeys.add(key);
 
-        // Verify row is within standard 1..3
+        // Verify row is within 5-row CBA layout 1..5
         assertEquals(
-          btn.row >= 1 && btn.row <= 3,
+          btn.row >= 1 && btn.row <= 5,
           true,
           `Row ${btn.row} out of bounds for ${chordName}`,
         );

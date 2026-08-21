@@ -2,25 +2,12 @@ import React from "react";
 import type { CbaButtonCoord, CbaGrip, ParsedChord } from "../types/index.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
-import { PITCH_CLASS_POSITIONS } from "../lib/cba/grid.ts";
+import { getPitchClassAt } from "../lib/cba/grid.ts";
 
 export interface CbaGridProps {
   cba?: CbaGrip;
   soundingChord?: ParsedChord;
   className?: string;
-}
-
-/**
- * Lookup pitch class at (row, col) from the CBA C-System grid definition
- */
-function getPitchClassAt(row: number, col: number): number | null {
-  const coreRow = row === 4 ? 1 : row === 5 ? 2 : row;
-  for (const [pcStr, positions] of Object.entries(PITCH_CLASS_POSITIONS)) {
-    if (positions.some((p) => p.row === coreRow && p.column === col)) {
-      return parseInt(pcStr, 10);
-    }
-  }
-  return null;
 }
 
 export const CbaGrid: React.FC<CbaGridProps> = ({
@@ -65,7 +52,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
     <div
       className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}
     >
-      {/* 3: Chord and Pitches in its own dedicated line (No wrapping / no clutter) */}
+      {/* Chord and Pitches in its own dedicated line */}
       <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-800/80 font-mono">
         <span className="text-sm sm:text-base font-bold text-emerald-400">
           {chordName}
@@ -77,7 +64,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
         )}
       </div>
 
-      {/* 1 & 2: Staggered Button Keyboard without noisy row names or badges */}
+      {/* Staggered Button Keyboard */}
       <div className="overflow-x-auto pb-1 flex justify-center">
         <div className="py-1 space-y-1.5">
           {rows.map((rowInfo) => (
@@ -88,15 +75,18 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
             >
               {displayCols.map((col) => {
                 const pc = getPitchClassAt(rowInfo.rowNumber, col);
-                const noteName = pc !== null ? getNoteName(pc, preferFlats) : "·";
+                const noteName = getNoteName(pc, preferFlats);
 
                 const isPrimary = activeButtons.some(
                   (b) => b.row === rowInfo.rowNumber && b.column === col,
                 );
 
-                const coreRow = rowInfo.rowNumber === 4 ? 1 : rowInfo.rowNumber === 5 ? 2 : 0;
-                const isAuxDuplicate = coreRow > 0 &&
-                  activeButtons.some((b) => b.row === coreRow && b.column === col);
+                // Two-way shadow duplicate highlighting
+                const isAuxDuplicate = !isPrimary && activeButtons.some((b) => {
+                  const bEffectiveRow = ((b.row - 1) % 3) + 1;
+                  const currentEffectiveRow = ((rowInfo.rowNumber - 1) % 3) + 1;
+                  return bEffectiveRow === currentEffectiveRow && b.column === col;
+                });
 
                 return (
                   <div

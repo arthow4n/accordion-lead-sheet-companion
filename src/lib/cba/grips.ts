@@ -100,19 +100,45 @@ export function invertNotes<T>(items: T[], inversion: number): T[] {
 }
 
 /**
- * Find the most compact button coordinate set for a sequence of chord notes
+ * Biomechanical check: verifies if a set of button coordinates is physically playable
+ * by a human right hand on a CBA keyboard.
+ */
+export function isBiochemicallyFeasible(
+  buttons: Array<{ row: number; column: number }>,
+): boolean {
+  if (buttons.length <= 1) return true;
+
+  const cols = buttons.map((b) => b.column);
+  const rows = buttons.map((b) => b.row);
+  const minCol = Math.min(...cols);
+  const maxCol = Math.max(...cols);
+  const minRow = Math.min(...rows);
+  const maxRow = Math.max(...rows);
+
+  // 1. Column Span: Human hand span on CBA is max 3 columns (4 for 4-note extended chords)
+  const maxAllowedSpan = buttons.length >= 4 ? 3 : 2;
+  if (maxCol - minCol > maxAllowedSpan) return false;
+
+  // 2. Row Tier: Hand arches across a contiguous 3-row band (maxRow - minRow <= 2)
+  if (maxRow - minRow > 2) return false;
+
+  return true;
+}
+
+/**
+ * Find the most compact, physically ergonomic button coordinate set for a sequence of chord notes.
  */
 export function findBestCoordinateCluster(
   notes: string[],
   targetColumnCenter = 5,
+  maxRow = 5,
 ): CbaButtonCoord[] {
   const notePositions = notes.map((note) => {
     const pc = getPitchClass(note);
-    const positions = getCbaPositionsForNote(pc);
+    const positions = getCbaPositionsForNote(pc, maxRow);
     return { note, pc, positions };
   });
 
-  const isTriad = notes.length === 3;
   const combinations: Array<Array<{ row: number; column: number; note: string }>> = [];
 
   function search(
@@ -120,24 +146,18 @@ export function findBestCoordinateCluster(
     current: Array<{ row: number; column: number; note: string }>,
   ) {
     if (index === notePositions.length) {
-      combinations.push([...current]);
+      if (isBiochemicallyFeasible(current)) {
+        combinations.push([...current]);
+      }
       return;
     }
 
     const { note, positions } = notePositions[index];
 
     for (const pos of positions) {
-      // Must not collide on the exact same (row, column) button with previous notes
+      // Must not collide on the exact same (row, column) button
       const hasCollision = current.some((c) => c.row === pos.row && c.column === pos.column);
       if (hasCollision) continue;
-
-      // For 3-note triads in standard inversion order, preserve same-row column order
-      if (isTriad) {
-        const sameRowPrev = current.find((c) => c.row === pos.row);
-        if (sameRowPrev && pos.column <= sameRowPrev.column) {
-          continue;
-        }
-      }
 
       current.push({ ...pos, note });
       search(index + 1, current);
@@ -147,86 +167,102 @@ export function findBestCoordinateCluster(
 
   search(0, []);
 
-  // Filter candidate combinations
-  let candidates = combinations;
-  if (isTriad) {
-    // For 3-note triads in pitch order, columns must not jump backwards by >= 2 columns
-    const validTriads = combinations.filter(
-      (combo) =>
-        combo[0].column <= combo[1].column + 1 &&
-        combo[1].column <= combo[2].column + 1,
-    );
-    if (validTriads.length > 0) {
-      candidates = validTriads;
-    }
-  }
-
-  if (candidates.length === 0) {
-    // Fallback: take closest position for each note to targetColumnCenter
-    return notePositions.map(({ note, positions }, i) => {
-      let closest = positions[0];
-      let minDist = 999;
-      for (const p of positions) {
-        const dist = Math.abs(p.column - (targetColumnCenter + i));
-        if (dist < minDist) {
-          minDist = dist;
-          closest = p;
-        }
+  // Fallback if no strict feasible combination found: relax constraints
+  if (combinations.length === 0) {
+    const fallbackCombinations: Array<Array<{ row: number; column: number; note: string }>> = [];
+    const searchFallback = (
+      index: number,
+      current: Array<{ row: number; column: number; note: string }>,
+    ) => {
+      if (index === notePositions.length) {
+        fallbackCombinations.push([...current]);
+        return;
       }
-      return createCbaButtonCoord(closest.row, closest.column, note, i + 1);
-    });
+      const { note, positions } = notePositions[index];
+      for (const pos of positions) {
+        const hasCollision = current.some((c) => c.row === pos.row && c.column === pos.column);
+        if (hasCollision) continue;
+        current.push({ ...pos, note });
+        searchFallback(index + 1, current);
+        current.pop();
+      }
+    };
+    searchFallback(0, []);
+    combinations.push(...fallbackCombinations);
   }
 
-  // Score combinations by compactness (maxCol - minCol) and proximity to targetColumnCenter
-  let best = candidates[0];
+  // Score candidate combinations by compactness, sweet-spot center, and row tier cohesion
+  let best = combinations[0];
   let bestScore = Infinity;
 
-  for (const combo of candidates) {
+  for (const combo of combinations) {
     const cols = combo.map((c) => c.column);
+    const rows = combo.map((c) => c.row);
     const minCol = Math.min(...cols);
     const maxCol = Math.max(...cols);
-    const spread = maxCol - minCol;
+    const minRow = Math.min(...rows);
+    const maxRowVal = Math.max(...rows);
+
+    const colSpread = maxCol - minCol;
+    const rowSpread = maxRowVal - minRow;
     const avgCol = cols.reduce((a, b) => a + b, 0) / cols.length;
     const centerDist = Math.abs(avgCol - targetColumnCenter);
 
-    // Score: center distance + spread + penalty for column out of bounds 2..9
+    // Keep hand near the comfortable playing center (columns 3-8)
     let outOfBoundsPenalty = 0;
-    if (minCol < 2) outOfBoundsPenalty += (2 - minCol) * 20;
-    if (maxCol > 9) outOfBoundsPenalty += (maxCol - 9) * 20;
+    if (minCol < 2) outOfBoundsPenalty += (2 - minCol) * 25;
+    if (maxCol > 9) outOfBoundsPenalty += (maxCol - 9) * 25;
 
-    let spreadPenalty = spread * 10;
-    if (spread > 4) {
-      spreadPenalty += (spread - 4) * 30;
-    }
+    // Compactness & tier score
+    const spreadScore = colSpread * 15 + rowSpread * 20;
+    const centerScore = centerDist * 8;
 
-    const score = centerDist * 8 + spreadPenalty + outOfBoundsPenalty;
+    const totalScore = spreadScore + centerScore + outOfBoundsPenalty;
 
-    if (score < bestScore) {
-      bestScore = score;
+    if (totalScore < bestScore) {
+      bestScore = totalScore;
       best = combo;
     }
   }
 
+  if (!best) {
+    return notePositions.map(({ note, positions }, i) => {
+      const closest = positions[0];
+      return createCbaButtonCoord(closest?.row ?? 1, closest?.column ?? 4, note, i + 1);
+    });
+  }
+
+  // Assign standard isomorphic fingerings
+  const numNotes = best.length;
+  let fingers = [1, 2, 4];
+  if (numNotes === 3) {
+    fingers = [1, 2, 4];
+  } else if (numNotes === 4) {
+    fingers = [1, 2, 4, 5];
+  } else {
+    fingers = best.map((_, i) => Math.min(5, i + 1));
+  }
+
   return best.map((b, idx) => {
-    return createCbaButtonCoord(b.row, b.column, b.note, idx + 1);
+    return createCbaButtonCoord(b.row, b.column, b.note, fingers[idx] || idx + 1);
   });
 }
 
 /**
- * Generate CBA C-System Grip with standard fingerings
+ * Generate CBA C-System Grip with standard fingerings and 5-row auxiliary optimization
  */
 export function generateCbaGrip(
   chordInput: string | ParsedChord,
   inversion = 0,
   targetColumnCenter = 5,
+  maxRow = 5,
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
   const baseNotes = getChordNotes(parsed);
   const invertedNotes = invertNotes(baseNotes, inversion);
 
-  const coords = findBestCoordinateCluster(invertedNotes, targetColumnCenter);
+  const coords = findBestCoordinateCluster(invertedNotes, targetColumnCenter, maxRow);
 
-  // Assign standard fingerings based on chord type and inversion
   let fingeringPattern = "1-2-4";
   const numNotes = invertedNotes.length;
 
@@ -258,8 +294,8 @@ export function generateCbaGrip(
   const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
 
   return {
-    chord: parsed.raw,
-    chordName: parsed.raw,
+    chord: parsed.raw || parsed.root,
+    chordName: parsed.raw || parsed.root,
     notes: invertedNotes,
     buttons: coords,
     buttonCoords: coords,
