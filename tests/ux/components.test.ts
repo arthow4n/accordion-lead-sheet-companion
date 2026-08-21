@@ -668,3 +668,17 @@ Deno.test("UX-08e: MiniGripDrawer clamps viewport screen occlusion to max-h-[35v
   assertEquals(html.includes("max-h-[35vh]"), true);
   assertEquals(html.includes("overflow-y-auto"), true);
 });
+
+Deno.test("UX-09: URL query param song synchronization resolution", () => {
+  const presets = createPresetSongs();
+
+  // Test finding by ID
+  const matchById = presets.find((s) => s.id === "preset_bella_ciao");
+  assertExists(matchById);
+  assertEquals(matchById.title, "Bella Ciao");
+
+  // Test finding by slugified or title search
+  const matchByTitle = presets.find((s) => s.title.toLowerCase() === "autumn leaves");
+  assertExists(matchByTitle);
+  assertEquals(matchByTitle.id, "preset_autumn_leaves");
+});

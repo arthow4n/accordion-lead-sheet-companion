@@ -19,11 +19,51 @@ import { SongbookDrawer } from "./SongbookDrawer.tsx";
 import { AutoScrollFooter } from "./AutoScrollFooter.tsx";
 import { ImportModal } from "./ImportModal.tsx";
 
+function getSongFromUrl(availableSongs: LeadSheetSong[]): LeadSheetSong | undefined {
+  if (typeof globalThis.location === "undefined") return undefined;
+  try {
+    const params = new URLSearchParams(globalThis.location.search);
+    const songParam = params.get("song") ||
+      (globalThis.location.hash.startsWith("#song=")
+        ? decodeURIComponent(globalThis.location.hash.slice(6))
+        : null);
+    if (!songParam) return undefined;
+
+    const normalized = songParam.trim().toLowerCase();
+    return availableSongs.find(
+      (s) =>
+        s.id === songParam ||
+        s.id.toLowerCase() === normalized ||
+        s.title.toLowerCase() === normalized,
+    );
+  } catch (_err) {
+    return undefined;
+  }
+}
+
+function updateSongUrl(song: LeadSheetSong) {
+  if (typeof globalThis.location === "undefined" || typeof globalThis.history === "undefined") {
+    return;
+  }
+  try {
+    const url = new URL(globalThis.location.href);
+    if (song.id) {
+      url.searchParams.set("song", song.id);
+    } else {
+      url.searchParams.delete("song");
+    }
+    globalThis.history.replaceState(null, "", url.toString());
+  } catch (err) {
+    console.warn("Failed to update URL search params:", err);
+  }
+}
+
 export default function App(): React.JSX.Element {
+  const initialSong = getSongFromUrl(PRESET_SONGS) || PRESET_SONGS[0];
   const [songs, setSongs] = useState<LeadSheetSong[]>(PRESET_SONGS);
-  const [currentSong, setCurrentSong] = useState<LeadSheetSong>(PRESET_SONGS[0]);
-  const [capo, setCapo] = useState<number>(PRESET_SONGS[0]?.capoFret ?? 0);
-  const [viewMode, setViewMode] = useState<ViewMode>("stradella");
+  const [currentSong, setCurrentSong] = useState<LeadSheetSong>(initialSong);
+  const [capo, setCapo] = useState<number>(initialSong?.capoFret ?? initialSong?.capo ?? 0);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialSong?.viewMode ?? "stradella");
   const [fontSizeClass, setFontSizeClass] = useState<string>("text-base");
   const [accordionSize] = useState<AccordionSize>("120-bass");
   const [activeChord, setActiveChord] = useState<ChordDetail | string | null>(null);
@@ -46,15 +86,24 @@ export default function App(): React.JSX.Element {
     enabled: true,
   });
 
-  // Initialize Songbook from IndexedDB on startup
+  // Initialize Songbook from IndexedDB on startup while preserving active/URL song
   useEffect(() => {
     async function loadSongbook() {
       try {
         const loaded = await initPresets();
         if (loaded && loaded.length > 0) {
           setSongs(loaded);
-          setCurrentSong(loaded[0]);
-          setCapo(loaded[0].capoFret ?? loaded[0].capo ?? 0);
+          const urlMatch = getSongFromUrl(loaded);
+          if (urlMatch) {
+            setCurrentSong(urlMatch);
+            setCapo(urlMatch.capoFret ?? urlMatch.capo ?? 0);
+            if (urlMatch.viewMode) setViewMode(urlMatch.viewMode);
+          } else {
+            const currentMatch = loaded.find((s) => s.id === currentSong.id);
+            if (currentMatch) {
+              setCurrentSong(currentMatch);
+            }
+          }
         }
       } catch (err) {
         console.warn("Failed to load IndexedDB songbook:", err);
@@ -63,12 +112,36 @@ export default function App(): React.JSX.Element {
     loadSongbook();
   }, []);
 
+  // Synchronize URL with active song
+  useEffect(() => {
+    if (currentSong?.id) {
+      updateSongUrl(currentSong);
+    }
+  }, [currentSong?.id]);
+
+  // Handle browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const target = getSongFromUrl(songs);
+      if (target && target.id !== currentSong.id) {
+        setCurrentSong(target);
+        setCapo(target.capoFret ?? target.capo ?? 0);
+        if (target.viewMode) setViewMode(target.viewMode);
+      }
+    };
+    if (typeof globalThis.addEventListener !== "undefined") {
+      globalThis.addEventListener("popstate", handlePopState);
+      return () => globalThis.removeEventListener("popstate", handlePopState);
+    }
+  }, [songs, currentSong.id]);
+
   const handleSelectSong = (song: LeadSheetSong) => {
     setCurrentSong(song);
     setCapo(song.capoFret ?? song.capo ?? 0);
     if (song.viewMode) {
       setViewMode(song.viewMode);
     }
+    updateSongUrl(song);
     autoScroll.stop();
     autoScroll.scrollToTop();
   };
