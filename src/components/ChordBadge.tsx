@@ -113,6 +113,22 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   // Base root for slash chords (e.g. "C" from "C/B")
   const slashBaseChord = isSlash ? soundingChordName.split("/")[0] : soundingChordName;
 
+  // Format chord button label with proper capitalization for compound recipe
+  let formattedChordBtn = chord.stradella?.chordButton?.note || chordButton;
+  if (chord.stradella?.chordButton) {
+    const btn = chord.stradella.chordButton;
+    const btnNote = btn.note || btn.label;
+    if (btn.row === "minor") {
+      formattedChordBtn = `${btnNote}m`;
+    } else if (btn.row === "seventh") {
+      formattedChordBtn = `${btnNote}7`;
+    } else if (btn.row === "diminished") {
+      formattedChordBtn = `${btnNote}dim`;
+    } else {
+      formattedChordBtn = btnNote; // Major row
+    }
+  }
+
   return (
     <button
       type="button"
@@ -141,7 +157,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               <span className="flex items-baseline gap-1">
                 <span className="font-bold text-sky-400">{soundingChordName}</span>
                 <span className="text-[9px] text-zinc-400 font-normal opacity-90">
-                  ({primaryBass}+{chordButton})
+                  ({primaryBass}+{formattedChordBtn})
                 </span>
               </span>
             )
@@ -167,7 +183,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
                 </span>
               )
               : isCompound
-              ? <span>{primaryBass}+{chordButton}</span>
+              ? <span>{primaryBass}+{formattedChordBtn}</span>
               : <span className="text-sky-400 font-semibold">{soundingChordName}</span>}
           </span>
         </span>

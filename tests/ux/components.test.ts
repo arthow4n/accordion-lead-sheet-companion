@@ -217,6 +217,26 @@ Deno.test("UX-05d: ChordBadge formats Dual Mode with guitar chord and accordion 
   assertEquals(badge.type, "button");
 });
 
+Deno.test("UX-05e: ChordBadge renders capitalized compound recipe (C+Em, Eb+Gb)", () => {
+  const cmaj7 = enrichChord("Cmaj7", 0);
+  const cmaj7Html = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: cmaj7,
+      viewMode: "stradella",
+    }),
+  );
+  assertEquals(cmaj7Html.includes("(C+Em)"), true, "Must format Cmaj7 as (C+Em)");
+
+  const ebm7 = enrichChord("Ebm7", 0);
+  const ebm7Html = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: ebm7,
+      viewMode: "stradella",
+    }),
+  );
+  assertEquals(ebm7Html.includes("(Eb+Gb)"), true, "Must format Ebm7 as (Eb+Gb)");
+});
+
 // ============================================================================
 // UX-01 & UX-02: Screen Wake-Lock Lifecycle Tests
 // ============================================================================
