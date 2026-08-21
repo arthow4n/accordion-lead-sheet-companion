@@ -80,6 +80,18 @@ and intellectual property exposure.
 | **FLOW-05** | **3x3 Mini-Grip Drawer Touch Ergonomics** | • ChordBadge tap trigger<br>• Modal backdrop tap dismiss<br>• Header close button dismiss<br>• Stradella & CBA interactive grid diagrams                                                                                                                      | • ChordBadge touch target hitbox >= 44x44px<br>• Badge tap emits `e.stopPropagation()`<br>• Drawer sheet height <= 35% of `window.innerHeight`<br>• Document `window.scrollY` unchanged before and after opening drawer                                              |
 | **FLOW-06** | **Auto-Scroll & Pedal Navigation**        | • rAF delta-time smooth auto-scroll<br>• Speed multiplier stepper (0.5x to 3.0x)<br>• Touch-pause gesture with 3.5s auto-resume timer<br>• Bluetooth pedal keybindings (PageDown, Space, ArrowDown)                                                           | • Auto-scroll advances `window.scrollY` continuously when active<br>• Screen touch triggers Amber pause state and pauses motion<br>• 3.5s timer auto-resumes scrolling<br>• Pedal key triggers smooth jump of 80% viewport height (`0.8 * window.innerHeight`)       |
 
+### 3.1 Live Benchmark Website Targets & Verified URLs
+
+Each website input is verified against active, live public tab URLs:
+
+| Source Domain         | Benchmark Song                 | Verified Live URL                                                                                  | Input Format Architecture                                | Target Placement Verification                                                                                       |
+| :-------------------- | :----------------------------- | :------------------------------------------------------------------------------------------------- | :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| **Ultimate Guitar**   | _Wonderwall_ (Oasis)           | `https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-27596`                               | Monospace 2-line character offset layout                 | `Em7`, `G`, `Dsus4`, `A7sus4` anchored over matching verse syllables without spatial drift.                         |
+| **Chordie**           | _All My Loving_ (The Beatles)  | `https://www.chordie.com/chord.pere/www.guitartabs.cc/tabs/b/beatles/all_my_loving_crd_ver_2.html` | Inline bracket tags `[G]` and ChordPro directives        | Chords rendered as clickable badges above syllables; bracket markup stripped from lyrics.                           |
+| **E-Chords / Cifras** | _Hotel California_ (Eagles)    | `https://www.cifras.com.br/cifra/eagles/hotel-california`                                          | HTML `<span>` elements & monospace tabs                  | Chords `Bm`, `F#7`, `A`, `E7`, `G`, `D`, `Em` aligned over verse syllables; intro whitespace bars rendered cleanly. |
+| **Cifra Club**        | _Let It Be_ (The Beatles)      | `https://www.cifraclub.com.br/the-beatles/let-it-be/`                                              | International tab blocks with Portuguese section headers | Accented headers (`[Refrão]`) rendered as clean section dividers; chords `C`, `G`, `Am`, `F` pinned over lyrics.    |
+| **Standard Presets**  | _Autumn Leaves_ / _Bella Ciao_ | Local Preset Catalog (IndexedDB / memory)                                                          | Jazz slash chords & compound voicings                    | Slash chords (`C/B`, `Am/F#`) and compounds (`Cm6`, `Bm7b5`) visually anchored without badge overlapping.           |
+
 ---
 
 ## 4. Quantitative Evaluation Rubric & Thresholds
@@ -89,7 +101,7 @@ and intellectual property exposure.
 | **RUBRIC-01** | **Horizontal Overflow**           | `scrollWidth - innerWidth <= 0px`                                                                  | `scrollWidth > innerWidth`                               | `document.documentElement.scrollWidth` vs `window.innerWidth`       |
 | **RUBRIC-02** | **Touch Target Area**             | Min 44px width & min 44px height                                                                   | Hit area < 44px on either axis                           | Computed bounding box + padding / pseudo-element hitbox             |
 | **RUBRIC-03** | **Drawer Screen Occlusion**       | Drawer height <= 35% of viewport height (`<= 0.35 * window.innerHeight`)                           | Drawer height > 35% of viewport height                   | `drawerElement.getBoundingClientRect().height / window.innerHeight` |
-| **RUBRIC-04** | **Scroll Position Stability**     | `                                                                                                  | scrollY_after - scrollY_before                           | === 0px`                                                            |
+| **RUBRIC-04** | **Scroll Position Stability**     | `scrollY_after - scrollY_before === 0px`                                                           | Scroll position shifts on drawer toggle                  | `window.scrollY` delta check before and after modal trigger         |
 | **RUBRIC-05** | **Enharmonic Spelling Accuracy**  | 100% compliant with standard music theory (Flats in flat keys, sharps in sharp keys)               | Any spelling violation (e.g. `A#` for `Bb` in F/Bb keys) | String comparison against transposition engine reference table      |
 | **RUBRIC-06** | **Color Contrast & Theme Tokens** | WCAG AA contrast >= 4.5:1; Counter-bass = Amber (`#d97706` / `text-amber-300`), CBA = Emerald/Rose | Low contrast or improper theme token                     | Computed CSS styles and DOM class inspection                        |
 
@@ -100,8 +112,8 @@ and intellectual property exposure.
 ### 5.1 Architecture & Engine
 
 The programmatic audit runner is implemented in pure Deno 2 TypeScript
-(`tests/ui-audit/audit_runner.ts`) and orchestrated using `agent-browser` CLI with
-`AGENT_BROWSER_ENGINE=lightpanda`.
+(`tests/ui-audit/audit_runner.ts`) and orchestrated using `agent-browser` CLI with default
+**Chromium (Chrome for Testing)**.
 
 ```
       deno task audit:ui
