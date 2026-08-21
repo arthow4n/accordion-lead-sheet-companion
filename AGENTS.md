@@ -133,3 +133,12 @@ comparisons, or capturing screenshots:
 3. **Genuine Visual Rendering:**
    - Ensure the default Chromium browser is used for visual audits and screenshot capture to
      guarantee full 2D graphical rasterization and accurate pixel layout verification.
+4. **Trigger Policy for UI Audits (`deno task audit:ui`):**
+   - Whenever introducing major UI or layout modifications (e.g., changes to `LeadSheetReader.tsx`,
+     `LineRenderer.tsx`, `ChordBadge.tsx`, `MiniGripDrawer.tsx`, font scaling, or responsive flexbox
+     wrapping):
+     - Always consider and run the UI audit suite (`deno task audit:ui`) or conduct exploratory
+       visual checks with `agent-browser`.
+     - Verify that mobile viewports (360px–430px) exhibit zero horizontal document overflow, chord
+       badges maintain `>= 44x44px` touch targets, drawer screen occlusion stays `<= 35%`, and
+       chords remain strictly pinned over their matching lyric syllables.
