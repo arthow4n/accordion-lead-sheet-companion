@@ -68,20 +68,20 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   const activeChordLabel = stradella?.chordButton?.label?.toLowerCase() || "";
   const isCounterBassActive = Boolean(stradella?.isCounterBass || activeBassLabel.endsWith("_"));
 
-  // 6 Stradella rows in top-to-bottom order with authentic physical diagonal stagger
-  // Row 0: Counter-Bass (offset +25px)
-  // Row 1: Fundamental Bass (offset +20px)
-  // Row 2: Major Triad (offset +15px)
-  // Row 3: Minor Triad (offset +10px)
-  // Row 4: 7th (offset +5px)
-  // Row 5: Diminished (offset 0px)
+  // 6 Stradella rows in authentic physical diagonal stagger (top-left to bottom-right)
+  // Row 0: Counter-Bass (offset 0px)
+  // Row 1: Fundamental Bass (offset +6px)
+  // Row 2: Major Triad (offset +12px)
+  // Row 3: Minor Triad (offset +18px)
+  // Row 4: 7th (offset +24px)
+  // Row 5: Diminished (offset +30px)
   const rows = [
-    { key: "counter", rowIndex: 0, xOffset: 25 },
-    { key: "bass", rowIndex: 1, xOffset: 20 },
-    { key: "major", rowIndex: 2, xOffset: 15 },
-    { key: "minor", rowIndex: 3, xOffset: 10 },
-    { key: "seventh", rowIndex: 4, xOffset: 5 },
-    { key: "dim", rowIndex: 5, xOffset: 0 },
+    { key: "counter", rowIndex: 0, xOffset: 0 },
+    { key: "bass", rowIndex: 1, xOffset: 6 },
+    { key: "major", rowIndex: 2, xOffset: 12 },
+    { key: "minor", rowIndex: 3, xOffset: 18 },
+    { key: "seventh", rowIndex: 4, xOffset: 24 },
+    { key: "dim", rowIndex: 5, xOffset: 30 },
   ];
 
   // Instant layout jump to centered position before browser paint (no animated glide)
