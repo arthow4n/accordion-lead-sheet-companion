@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import type { AccordionSize, ParsedChord, StradellaVoicing } from "../types/index.ts";
 import {
   getBassNoteForColumn,
@@ -19,10 +19,27 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   accordionSize = "120-bass",
   className = "",
 }) => {
+  // Check if React is actively executing inside a component render dispatcher
+  const reactInternals = React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?: { H?: unknown };
+    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?: {
+      ReactCurrentDispatcher?: { current?: unknown };
+    };
+  };
+
+  const hasDispatcher = Boolean(
+    reactInternals.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?.H ||
+      reactInternals.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?.ReactCurrentDispatcher
+        ?.current,
+  );
+
+  const scrollContainerRef = hasDispatcher ? useRef<HTMLDivElement>(null) : null;
+  const activeAnchorRef = hasDispatcher ? useRef<HTMLDivElement>(null) : null;
+
   const targetCol = stradella?.columnOffset ?? 0;
   const isOutOfRange = stradella?.isOutOfRange ?? isColumnOutOfRange(targetCol, accordionSize);
 
-  // Determine dynamic column span covering both bass and chord buttons (typically 4-6 columns)
+  // Active buttons tracking
   const activeCols: number[] = [];
   if (typeof stradella?.rootButton?.column === "number") {
     activeCols.push(stradella.rootButton.column);
@@ -37,18 +54,11 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
     activeCols.push(0);
   }
 
-  const minActiveCol = Math.min(...activeCols);
-  const maxActiveCol = Math.max(...activeCols);
+  const centerCol = Math.round(activeCols.reduce((a, b) => a + b, 0) / activeCols.length);
 
-  // Ensure at least 4-5 columns are displayed for visual context
-  let startCol = minActiveCol - 1;
-  let endCol = maxActiveCol + 1;
-  if (endCol - startCol < 4) {
-    const needed = 4 - (endCol - startCol);
-    startCol -= Math.floor(needed / 2);
-    endCol = startCol + 4;
-  }
-
+  // Display a generous 13-15 column span along the Circle of Fifths
+  const startCol = centerCol - 7;
+  const endCol = centerCol + 7;
   const columns: number[] = [];
   for (let c = startCol; c <= endCol; c++) {
     columns.push(c);
@@ -58,14 +68,35 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   const activeChordLabel = stradella?.chordButton?.label?.toLowerCase() || "";
   const isCounterBassActive = Boolean(stradella?.isCounterBass || activeBassLabel.endsWith("_"));
 
+  // 6 Stradella rows in top-to-bottom order with authentic physical diagonal stagger
+  // Row 0: Counter-Bass (offset +25px)
+  // Row 1: Fundamental Bass (offset +20px)
+  // Row 2: Major Triad (offset +15px)
+  // Row 3: Minor Triad (offset +10px)
+  // Row 4: 7th (offset +5px)
+  // Row 5: Diminished (offset 0px)
   const rows = [
-    { key: "counter", rowIndex: 0 },
-    { key: "bass", rowIndex: 1 },
-    { key: "major", rowIndex: 2 },
-    { key: "minor", rowIndex: 3 },
-    { key: "seventh", rowIndex: 4 },
-    { key: "dim", rowIndex: 5 },
+    { key: "counter", rowIndex: 0, xOffset: 25 },
+    { key: "bass", rowIndex: 1, xOffset: 20 },
+    { key: "major", rowIndex: 2, xOffset: 15 },
+    { key: "minor", rowIndex: 3, xOffset: 10 },
+    { key: "seventh", rowIndex: 4, xOffset: 5 },
+    { key: "dim", rowIndex: 5, xOffset: 0 },
   ];
+
+  // Auto-center the scroll container on the active chord buttons
+  if (hasDispatcher) {
+    useEffect(() => {
+      if (activeAnchorRef?.current && scrollContainerRef?.current) {
+        const container = scrollContainerRef.current;
+        const activeEl = activeAnchorRef.current;
+        const containerWidth = container.clientWidth;
+        const activeLeft = activeEl.offsetLeft;
+        const activeWidth = activeEl.clientWidth;
+        container.scrollLeft = activeLeft - containerWidth / 2 + activeWidth / 2;
+      }
+    }, [stradella, targetCol]);
+  }
 
   return (
     <div
@@ -86,13 +117,18 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
         </div>
       )}
 
-      {/* Compact Stradella Circular Button Keyboard without Noisy Headers */}
-      <div className="overflow-x-auto pb-1 flex justify-center">
-        <div className="py-1 space-y-1.5">
+      {/* Scrollable Stradella Diagonal Button Keyboard auto-centered on active chord */}
+      <div
+        ref={scrollContainerRef || undefined}
+        className="overflow-x-auto scroll-smooth pb-1"
+        style={{ scrollbarWidth: "thin" }}
+      >
+        <div className="py-1 space-y-1.5 min-w-max px-4">
           {rows.map((rowInfo) => (
             <div
               key={`strad-row-${rowInfo.key}`}
-              className="flex items-center justify-center gap-1.5 sm:gap-2"
+              className="flex items-center gap-2"
+              style={{ marginLeft: `${rowInfo.xOffset}px` }}
             >
               {columns.map((col) => {
                 const bassNote = getBassNoteForColumn(col);
@@ -103,7 +139,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                 let isActive = false;
 
                 if (rowInfo.rowIndex === 0) {
-                  // Counter-Bass
+                  // Counter-Bass (Capitalized with _ suffix, e.g. E_, B_, F#_)
                   buttonLabel = `${counterNote}_`;
                   isCounter = true;
                   if (
@@ -117,72 +153,75 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                     isActive = true;
                   }
                 } else if (rowInfo.rowIndex === 1) {
-                  // Fundamental Bass
+                  // Fundamental Bass (Capitalized, e.g. C, G, D, B)
                   buttonLabel = bassNote;
                   if (
                     stradella?.rootButton
-                      ? stradella.rootButton.row === "bass" && stradella.rootButton.column === col
+                      ? stradella.rootButton.row === "bass" &&
+                        stradella.rootButton.column === col
                       : (!isCounterBassActive && col === targetCol &&
                         activeBassLabel.toLowerCase() === bassNote.toLowerCase())
                   ) {
                     isActive = true;
                   }
                 } else if (rowInfo.rowIndex === 2) {
-                  // Major Triad
-                  buttonLabel = bassNote.toLowerCase();
+                  // Major Triad (Capitalized, e.g. C, G, D, B)
+                  buttonLabel = bassNote;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "major" &&
                         stradella.chordButton.column === col) ||
-                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                        (stradella.chordButton.label.toLowerCase() === bassNote.toLowerCase() &&
                           col === stradella.chordButton.column)
-                      : (col === targetCol &&
-                        (activeChordLabel === buttonLabel ||
-                          activeChordLabel === `${bassNote.toLowerCase()}m` === false &&
-                            activeChordLabel === bassNote.toLowerCase()))
+                      : (col === targetCol && (activeChordLabel === bassNote.toLowerCase() ||
+                        (activeChordLabel.endsWith("m") === false &&
+                          activeChordLabel === bassNote.toLowerCase())))
                   ) {
                     isActive = true;
                   }
                 } else if (rowInfo.rowIndex === 3) {
-                  // Minor Triad
-                  buttonLabel = `${bassNote.toLowerCase()}m`;
+                  // Minor Triad (Proper Casing: Bm, Em, Cm, Gm, Dm)
+                  buttonLabel = `${bassNote}m`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "minor" &&
                         stradella.chordButton.column === col) ||
-                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                        (stradella.chordButton.label.toLowerCase() ===
+                            `${bassNote.toLowerCase()}m` &&
                           col === stradella.chordButton.column)
-                      : (col === targetCol && activeChordLabel === buttonLabel)
+                      : (col === targetCol && activeChordLabel === `${bassNote.toLowerCase()}m`)
                   ) {
                     isActive = true;
                   }
                 } else if (rowInfo.rowIndex === 4) {
-                  // 7th Chord
-                  buttonLabel = `${bassNote.toLowerCase()}7`;
+                  // 7th Chord (Proper Casing: B7, E7, C7, G7, F#7)
+                  buttonLabel = `${bassNote}7`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "seventh" &&
                         stradella.chordButton.column === col) ||
-                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                        (stradella.chordButton.label.toLowerCase() ===
+                            `${bassNote.toLowerCase()}7` &&
                           col === stradella.chordButton.column)
-                      : (col === targetCol && activeChordLabel === buttonLabel)
+                      : (col === targetCol && activeChordLabel === `${bassNote.toLowerCase()}7`)
                   ) {
                     isActive = true;
                   }
                 } else if (rowInfo.rowIndex === 5) {
-                  // Diminished
-                  buttonLabel = `${bassNote.toLowerCase()}d`;
+                  // Diminished (Proper Casing: Bd, Ed, Cd, Gd, F#d)
+                  buttonLabel = `${bassNote}d`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "diminished" &&
                         stradella.chordButton.column === col) ||
-                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                        (stradella.chordButton.label.toLowerCase() ===
+                            `${bassNote.toLowerCase()}d` &&
                           col === stradella.chordButton.column) ||
                         (stradella.chordButton.label.toLowerCase() ===
-                            `${bassNote.toLowerCase()}dim` && col === stradella.chordButton.column)
-                      : (col === targetCol &&
-                        (activeChordLabel === buttonLabel ||
-                          activeChordLabel === `${bassNote.toLowerCase()}dim`))
+                            `${bassNote.toLowerCase()}dim` &&
+                          col === stradella.chordButton.column)
+                      : (col === targetCol && (activeChordLabel === `${bassNote.toLowerCase()}d` ||
+                        activeChordLabel === `${bassNote.toLowerCase()}dim`))
                   ) {
                     isActive = true;
                   }
@@ -204,11 +243,15 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 }
 
+                // Use the active button or center column as the anchor for auto-centering
+                const isAnchor = isActive && (rowInfo.rowIndex === 1 || isCounter);
+
                 return (
                   <div
                     key={`strad-btn-${rowInfo.key}-${col}`}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-mono select-none transition-all ${btnClass}`}
-                    title={`Row ${rowInfo.key}, Col ${col}: ${buttonLabel}`}
+                    ref={isAnchor && activeAnchorRef ? activeAnchorRef : undefined}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-mono select-none shrink-0 transition-all ${btnClass}`}
+                    title={`Col ${col}: ${buttonLabel}`}
                   >
                     {buttonLabel}
                   </div>
