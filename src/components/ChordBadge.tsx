@@ -30,13 +30,20 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
 
   // If chord is a plain string
   if (typeof chord === "string") {
-    const stringBadgeStyle = viewMode === "cba"
-      ? (active
+    let stringBadgeStyle = "";
+    if (viewMode === "cba") {
+      stringBadgeStyle = active
         ? "bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400"
-        : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/70 hover:border-emerald-500 text-emerald-400")
-      : (active
+        : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/70 hover:border-emerald-500 text-emerald-400";
+    } else if (viewMode === "guitar") {
+      stringBadgeStyle = active
+        ? "bg-amber-600 text-black border-amber-400 shadow-md ring-2 ring-amber-400"
+        : "bg-amber-950/80 hover:bg-amber-900 border-amber-600/70 hover:border-amber-500 text-amber-300";
+    } else {
+      stringBadgeStyle = active
         ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-400"
-        : "bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700");
+        : "bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700";
+    }
 
     return (
       <button
@@ -100,6 +107,10 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     badgeStyle = active
       ? "bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400 font-bold"
       : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/70 hover:border-emerald-500 text-emerald-400 font-semibold";
+  } else if (viewMode === "guitar") {
+    badgeStyle = active
+      ? "bg-amber-600 text-black border-amber-400 shadow-md ring-2 ring-amber-400 font-bold"
+      : "bg-amber-950/80 hover:bg-amber-900 border-amber-600/70 text-amber-300 font-semibold";
   } else if (isCounterBass) {
     badgeStyle = active
       ? "bg-amber-600 text-black border-amber-400 shadow-md ring-2 ring-amber-400 font-bold"
@@ -162,6 +173,12 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               </span>
             )
             : <span className="font-bold text-sky-400">{soundingChordName}</span>}
+        </span>
+      )}
+
+      {viewMode === "guitar" && (
+        <span className="text-amber-300 font-bold tracking-tight">
+          {rawChordName}
         </span>
       )}
 

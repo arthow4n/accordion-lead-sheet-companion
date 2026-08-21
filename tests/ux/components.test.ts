@@ -720,3 +720,30 @@ Deno.test("UX-10: PWA restart persistence resolution", () => {
 
   globalThis.localStorage.removeItem(testKey);
 });
+
+Deno.test("UX-11: Guitar View Mode renders original guitar chords & LeadSheetReader displays sourceUrl link", () => {
+  // 1. Test Guitar View Mode in ChordBadge
+  const slashChord = enrichChord("D/F#", 0);
+  const guitarBadgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: slashChord,
+      viewMode: "guitar",
+    }),
+  );
+  assertEquals(guitarBadgeHtml.includes("D/F#"), true);
+  // In guitar mode, no accordion counter-bass Amber underlines or compound formulas
+  assertEquals(guitarBadgeHtml.includes("(D+"), false);
+
+  // 2. Test sourceUrl in LeadSheetReader header
+  const sampleSong = createPresetSongs()[0];
+  sampleSong.sourceUrl = "https://tabs.ultimate-guitar.com/tab/sample";
+  const readerHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: sampleSong,
+      capo: 0,
+      viewMode: "guitar",
+    }),
+  );
+  assertEquals(readerHtml.includes("https://tabs.ultimate-guitar.com/tab/sample"), true);
+  assertEquals(readerHtml.includes("Source"), true);
+});

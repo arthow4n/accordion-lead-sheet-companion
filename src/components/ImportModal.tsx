@@ -86,6 +86,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       const parsed = parseLeadSheetText(data.rawContent, data.capoFret);
       if (data.title) parsed.title = data.title;
       if (data.artist) parsed.artist = data.artist;
+      parsed.sourceUrl = urlInput.trim();
+      parsed.source = data.source;
       setPreviewSong(parsed);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to fetch from URL");

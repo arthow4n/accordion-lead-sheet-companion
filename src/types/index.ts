@@ -3,7 +3,7 @@
  * Accordion Lead Sheet Companion
  */
 
-export type ViewMode = "stradella" | "cba" | "dual";
+export type ViewMode = "stradella" | "cba" | "guitar" | "dual";
 
 export type ChordQuality =
   | "major"
@@ -129,6 +129,8 @@ export interface LeadSheetSong {
   originalKey?: string;
   soundingKey?: string;
   viewMode?: ViewMode;
+  sourceUrl?: string;
+  source?: TabSource | string;
   rawText: string;
   lines: LeadSheetLine[] | ChordLyricSegment[][];
   createdAt?: number;
@@ -145,6 +147,7 @@ export type TabSource =
 export interface TabImportResponse {
   success: boolean;
   source: TabSource;
+  sourceUrl?: string;
   title?: string;
   artist?: string;
   capoFret: number; // 0 if no capo

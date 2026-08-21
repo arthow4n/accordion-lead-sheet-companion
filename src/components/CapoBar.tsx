@@ -83,7 +83,7 @@ export const CapoBar: React.FC<CapoBarProps> = ({
             onClick={() => onChangeViewMode("stradella")}
             className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
               viewMode === "stradella"
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "bg-blue-600 text-white shadow-sm font-bold"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
             title="Left Hand Stradella Bass Mode"
@@ -95,7 +95,7 @@ export const CapoBar: React.FC<CapoBarProps> = ({
             onClick={() => onChangeViewMode("cba")}
             className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
               viewMode === "cba"
-                ? "bg-emerald-600 text-white shadow-sm"
+                ? "bg-emerald-600 text-white shadow-sm font-bold"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
             title="Right Hand CBA C-System Treble Mode"
@@ -104,15 +104,27 @@ export const CapoBar: React.FC<CapoBarProps> = ({
           </button>
           <button
             type="button"
+            onClick={() => onChangeViewMode("guitar")}
+            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              viewMode === "guitar"
+                ? "bg-amber-600 text-black shadow-sm font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+            title="Clean Guitar Mode (Original Chords As Written)"
+          >
+            🎸 Guitar
+          </button>
+          <button
+            type="button"
             onClick={() => onChangeViewMode("dual")}
             className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
               viewMode === "dual"
-                ? "bg-indigo-600 text-white shadow-sm"
+                ? "bg-indigo-600 text-white shadow-sm font-bold"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
-            title="Dual Mode (Guitar Chords + Stradella)"
+            title="Dual Mode (Guitar Chords + Stradella Recipe)"
           >
-            🎸 Dual
+            🪗🎸 Dual
           </button>
         </div>
 

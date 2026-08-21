@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { ExternalLink } from "lucide-react";
 import type {
   AccordionSize,
   ChordDetail,
@@ -53,6 +54,21 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             <>
               <span>•</span>
               <span>Key: {song.originalKey}</span>
+            </>
+          )}
+          {song.sourceUrl && (
+            <>
+              <span>•</span>
+              <a
+                href={song.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                title={`Open original source: ${song.sourceUrl}`}
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Source</span>
+              </a>
             </>
           )}
         </div>

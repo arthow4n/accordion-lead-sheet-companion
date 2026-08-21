@@ -75,6 +75,7 @@ export function parseTabHtml(targetUrl: string, html: string): TabImportResponse
 
   // If site-specific parser succeeded, return its response
   if (result && result.success && result.rawContent.trim().length > 0) {
+    result.sourceUrl = targetUrl;
     return result;
   }
 
@@ -85,12 +86,14 @@ export function parseTabHtml(targetUrl: string, html: string): TabImportResponse
     if (source !== "generic") {
       genericResult.source = source;
     }
+    genericResult.sourceUrl = targetUrl;
     return genericResult;
   }
 
   return {
     success: false,
     source,
+    sourceUrl: targetUrl,
     capoFret: 0,
     rawContent: "",
     error: "Unable to extract chord content from target URL",
