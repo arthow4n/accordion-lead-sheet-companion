@@ -2,7 +2,7 @@
 
 **Target Application**: Accordion Lead Sheet Companion (`accordion-lead-sheet-companion`)\
 **Document Path**: `tests/ui-audit/UI_AUDIT_PLAN.md`\
-**Execution Engine**: `agent-browser` (with `AGENT_BROWSER_ENGINE=lightpanda`)\
+**Execution Engine**: `agent-browser` (Native Chromium / Chrome for Testing)\
 **Runner Script**: `tests/ui-audit/audit_runner.ts`\
 **Deno Task**: `deno task audit:ui`
 
@@ -20,17 +20,20 @@ navigation).
 The objective of the UI Audit Framework is to provide an automated, programmatic, and deterministic
 visual & ergonomic verification pipeline that evaluates:
 
-1. **Vertical Spatial Pinning**: Syllable-to-chord alignment integrity across multiple chord sheet
-   sources.
-2. **Mobile Viewport Ergonomics**: Responsive flex wrapping without horizontal viewport overflow
+1. **Side-by-Side Visual Review**: Verifying that the rendered lead sheet visually resembles the
+   input website layout, ensuring that each chord badge is pinned precisely at the exact lyric
+   syllable corresponding to the original tab without spatial distortion or misalignment.
+2. **Vertical Spatial Pinning**: Syllable-to-chord alignment integrity across multiple chord sheet
+   sources (Ultimate Guitar, Chordie, E-Chords, Cifra Club, ChordPro, and 2-line tabs).
+3. **Mobile Viewport Ergonomics**: Responsive flex wrapping without horizontal viewport overflow
    across real mobile screen widths (360px, 375px, 390px, 430px, 768px, 1024px).
-3. **Harmonic & Enharmonic Accuracy**: Live capo transpositions conforming to musical key signature
+4. **Harmonic & Enharmonic Accuracy**: Live capo transpositions conforming to musical key signature
    rules (Circle of Fifths).
-4. **Accordion View Switching**: Instant visual updates between Stradella Left-Hand (LH), CBA
+5. **Accordion View Switching**: Instant visual updates between Stradella Left-Hand (LH), CBA
    Right-Hand (RH), and Dual modes.
-5. **Mini-Grip Drawer Ergonomics**: Touch target compliance (>= 44x44px) and screen occlusion
+6. **Mini-Grip Drawer Ergonomics**: Touch target compliance (>= 44x44px) and screen occlusion
    control (<= 35% viewport height).
-6. **Performance Interaction**: Delta-time auto-scrolling, touch-pause interaction, and hardware
+7. **Performance Interaction**: Delta-time auto-scrolling, touch-pause interaction, and hardware
    pedal navigation.
 
 ---

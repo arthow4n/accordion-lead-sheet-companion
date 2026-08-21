@@ -48,8 +48,12 @@ const DENO_BIN = "/home/hevar/.deno/bin";
 const NVM_BIN = "/home/hevar/.nvm/versions/node/v26.3.0/bin";
 const CURRENT_PATH = Deno.env.get("PATH") || "";
 const AUGMENTED_PATH = `${DENO_BIN}:${NVM_BIN}:${CURRENT_PATH}`;
+const LD_PATH =
+  "/home/hevar/.local/libs/usr/lib/x86_64-linux-gnu:/home/hevar/.local/libs/lib/x86_64-linux-gnu:" +
+  (Deno.env.get("LD_LIBRARY_PATH") || "");
+
 Deno.env.set("PATH", AUGMENTED_PATH);
-Deno.env.set("AGENT_BROWSER_ENGINE", "lightpanda");
+Deno.env.set("LD_LIBRARY_PATH", LD_PATH);
 
 const APP_URL = Deno.env.get("AUDIT_APP_URL") || "http://127.0.0.1:5173";
 const SCREENSHOT_DIR = join(Deno.cwd(), "tests/ui-audit/screenshots");
@@ -110,7 +114,7 @@ async function runBrowserCmd(
     args: ["--session", SESSION_ID, ...args],
     env: {
       PATH: AUGMENTED_PATH,
-      AGENT_BROWSER_ENGINE: "lightpanda",
+      LD_LIBRARY_PATH: LD_PATH,
     },
     stdout: "piped",
     stderr: "piped",
