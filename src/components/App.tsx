@@ -261,6 +261,7 @@ export default function App(): React.JSX.Element {
               song={currentSong}
               capo={capo}
               viewMode={viewMode}
+              onChangeCapo={setCapo}
               fontSizeClass={fontSizeClass}
               accordionSize={accordionSize}
               onSelectChord={(chord) => {

@@ -3,10 +3,10 @@ import { FolderOpen, Plus, Sun, SunMedium } from "lucide-react";
 import type { ViewMode } from "../types/index.ts";
 
 export interface CapoBarProps {
-  capo: number;
-  onChangeCapo: (capo: number) => void;
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
+  capo?: number;
+  onChangeCapo?: (capo: number) => void;
   originalKey?: string;
   soundingKey?: string;
   onOpenSongbook?: () => void;
@@ -17,134 +17,99 @@ export interface CapoBarProps {
 }
 
 export const CapoBar: React.FC<CapoBarProps> = ({
-  capo,
-  onChangeCapo,
   viewMode,
   onChangeViewMode,
-  originalKey,
-  soundingKey,
   onOpenSongbook,
   onOpenImport,
   wakeLockActive = false,
   onToggleWakeLock,
   className = "",
 }) => {
-  const handleDecrement = () => {
-    onChangeCapo(Math.max(0, capo - 1));
-  };
-
-  const handleIncrement = () => {
-    onChangeCapo(Math.min(11, capo + 1));
-  };
-
   return (
-    <div
-      className={`sticky top-0 z-30 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm ${className}`}
+    <header
+      className={`sticky top-0 z-30 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 px-2 sm:px-4 py-1.5 sm:py-2.5 shadow-sm ${className}`}
     >
-      <div className="max-w-2xl mx-auto flex items-center justify-between gap-1 sm:gap-2">
-        {/* Left Side: Capo Stepper & Key Badge */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="flex items-center bg-zinc-900 rounded-lg p-0.5 border border-zinc-800">
-            <button
-              type="button"
-              onClick={handleDecrement}
-              disabled={capo <= 0}
-              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm font-bold text-zinc-300 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 rounded active:bg-zinc-800 transition-colors cursor-pointer"
-              aria-label="Decrease Capo"
-            >
-              -
-            </button>
-            <span className="px-1 sm:px-1.5 text-xs font-mono font-bold text-blue-400 min-w-[3.25rem] sm:min-w-[3.75rem] text-center select-none">
-              Capo {capo}
-            </span>
-            <button
-              type="button"
-              onClick={handleIncrement}
-              disabled={capo >= 11}
-              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm font-bold text-zinc-300 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 rounded active:bg-zinc-800 transition-colors cursor-pointer"
-              aria-label="Increase Capo"
-            >
-              +
-            </button>
-          </div>
-
-          {soundingKey && (
-            <span className="hidden sm:inline-flex px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-mono">
-              Key: {originalKey ? `${originalKey} ➔ ` : ""}
-              {soundingKey}
-            </span>
-          )}
-        </div>
-
-        {/* Center: 1-Tap View Switcher */}
-        <div className="flex bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 gap-0.5">
+      <div className="max-w-2xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+        {/* Left Side: 1-Tap View Switcher with Large Touch Targets */}
+        <div className="flex bg-zinc-900 p-0.5 sm:p-1 rounded-xl border border-zinc-800 gap-0.5 sm:gap-1 shrink-0">
           <button
             type="button"
             onClick={() => onChangeViewMode("stradella")}
-            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            className={`min-h-[38px] sm:min-h-[42px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shrink-0 ${
               viewMode === "stradella"
-                ? "bg-blue-600 text-white shadow-sm font-bold"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-blue-600 text-white shadow-md"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
             }`}
             title="Left Hand Stradella Bass Mode"
+            aria-pressed={viewMode === "stradella"}
           >
-            🪗 LH
+            <span>🪗</span>
+            <span>LH</span>
           </button>
           <button
             type="button"
             onClick={() => onChangeViewMode("cba")}
-            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            className={`min-h-[38px] sm:min-h-[42px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shrink-0 ${
               viewMode === "cba"
-                ? "bg-emerald-600 text-white shadow-sm font-bold"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-emerald-600 text-white shadow-md"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
             }`}
             title="Right Hand CBA C-System Treble Mode"
+            aria-pressed={viewMode === "cba"}
           >
-            🔘 RH
+            <span>🔘</span>
+            <span>RH</span>
           </button>
           <button
             type="button"
             onClick={() => onChangeViewMode("guitar")}
-            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            className={`min-h-[38px] sm:min-h-[42px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shrink-0 ${
               viewMode === "guitar"
-                ? "bg-amber-600 text-black shadow-sm font-bold"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-amber-500 text-zinc-950 shadow-md"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
             }`}
             title="Clean Guitar Mode (Original Chords As Written)"
+            aria-pressed={viewMode === "guitar"}
           >
-            🎸 Guitar
+            <span>🎸</span>
+            <span className="hidden sm:inline">Guitar</span>
+            <span className="sm:hidden">Gtr</span>
           </button>
           <button
             type="button"
             onClick={() => onChangeViewMode("dual")}
-            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            className={`min-h-[38px] sm:min-h-[42px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shrink-0 ${
               viewMode === "dual"
-                ? "bg-indigo-600 text-white shadow-sm font-bold"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
             }`}
             title="Dual Mode (Guitar Chords + Stradella Recipe)"
+            aria-pressed={viewMode === "dual"}
           >
-            🪗🎸 Dual
+            <span>🪗🎸</span>
+            <span>Dual</span>
           </button>
         </div>
 
-        {/* Right Side: Quick Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        {/* Right Side: Quick Action Buttons (Large Touch Targets >= 38px) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {onToggleWakeLock && (
             <button
               type="button"
               onClick={onToggleWakeLock}
-              className={`p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
                 wakeLockActive
-                  ? "bg-amber-950/80 border-amber-600/70 text-amber-300"
-                  : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                  ? "bg-amber-950/90 border-amber-600/80 text-amber-300 shadow-md ring-1 ring-amber-500/50"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
               }`}
-              title={wakeLockActive ? "Screen Wake Lock Active" : "Wake Lock Disabled"}
+              title={wakeLockActive
+                ? "Screen Wake Lock Active (Display Stays Awake)"
+                : "Enable Screen Wake Lock"}
               aria-label="Toggle Wake Lock"
             >
               {wakeLockActive
-                ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                : <SunMedium className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                ? <Sun className="w-4.5 h-4.5 sm:w-5 sm:h-5 fill-current" />
+                : <SunMedium className="w-4.5 h-4.5 sm:w-5 sm:h-5" />}
             </button>
           )}
 
@@ -152,11 +117,11 @@ export const CapoBar: React.FC<CapoBarProps> = ({
             <button
               type="button"
               onClick={onOpenSongbook}
-              className="p-1 sm:p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer active:scale-95"
-              title="Open Songbook"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
+              title="Open Songbook Drawer"
               aria-label="Open Songbook"
             >
-              <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <FolderOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </button>
           )}
 
@@ -164,15 +129,15 @@ export const CapoBar: React.FC<CapoBarProps> = ({
             <button
               type="button"
               onClick={onOpenImport}
-              className="p-1 sm:p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all cursor-pointer active:scale-95 shadow-sm"
-              title="Import New Lead Sheet"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md shadow-blue-900/30"
+              title="Import New Lead Sheet (URL or Text)"
               aria-label="Import New Lead Sheet"
             >
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Plus className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
             </button>
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
 };

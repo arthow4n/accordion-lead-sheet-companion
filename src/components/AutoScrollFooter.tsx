@@ -67,7 +67,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
           <button
             type="button"
             onClick={onTogglePlay}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg font-bold text-xs transition-all active:scale-95 cursor-pointer shadow-sm ${
+            className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 cursor-pointer shadow-sm min-h-[38px] ${
               isPlaying
                 ? isTouchPaused
                   ? "bg-amber-600 text-black animate-pulse"
@@ -92,24 +92,24 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
           </button>
 
           {/* Speed Stepper */}
-          <div className="flex items-center bg-zinc-900 rounded-lg p-0.5 border border-zinc-800">
+          <div className="flex items-center bg-zinc-900 rounded-xl p-0.5 border border-zinc-800">
             <button
               type="button"
               onClick={handleSpeedDown}
               disabled={currentSpeedIdx <= 0}
-              className="w-6 h-6 flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded active:bg-zinc-800 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-sm font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded-lg active:bg-zinc-800 cursor-pointer select-none"
               aria-label="Decrease Scroll Speed"
             >
               -
             </button>
-            <span className="px-1 text-[11px] font-mono font-bold text-zinc-300 min-w-[2.5rem] text-center select-none">
+            <span className="px-1 text-xs font-mono font-bold text-zinc-300 min-w-[2.75rem] text-center select-none">
               {speed.toFixed(2).replace(/\.?0+$/, "")}x
             </span>
             <button
               type="button"
               onClick={handleSpeedUp}
               disabled={currentSpeedIdx >= SPEED_STEPS.length - 1}
-              className="w-6 h-6 flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded active:bg-zinc-800 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-sm font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded-lg active:bg-zinc-800 cursor-pointer select-none"
               aria-label="Increase Scroll Speed"
             >
               +
@@ -118,12 +118,12 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
         </div>
 
         {/* Right Side: Font Zoom & Quick Jump */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {onChangeFontSize && (
             <button
               type="button"
               onClick={handleCycleFont}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white text-xs font-mono transition-all cursor-pointer"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white text-xs font-mono transition-all cursor-pointer min-h-[36px]"
               title="Cycle Font Size"
               aria-label="Cycle Font Size"
             >
@@ -135,7 +135,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
           <button
             type="button"
             onClick={onScrollToTop}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer active:scale-95"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
             title="Scroll to Top"
             aria-label="Scroll to Top"
           >
@@ -146,7 +146,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
             <button
               type="button"
               onClick={onScrollToBottom}
-              className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer active:scale-95"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
               title="Scroll to Bottom"
               aria-label="Scroll to Bottom"
             >

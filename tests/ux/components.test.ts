@@ -781,3 +781,39 @@ Deno.test("UX-12: 5-Row CBA Section-Header Mini-Grip Previews & Clean In-Line Ba
   assertEquals(lineHtml.includes("<svg"), true);
   assertEquals(lineHtml.includes("#10b981"), true);
 });
+
+Deno.test("UX-13: Capo & Key Controller with Quick On/Off and Reset to Default Capo", () => {
+  const song = createPresetSongs()[0]; // Bella Ciao (defaultCapo: 2)
+  song.capoFret = 2;
+  song.originalKey = "Am";
+
+  let currentCapo = 2;
+  const onChangeCapo = (c: number) => {
+    currentCapo = c;
+  };
+
+  const readerHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: currentCapo,
+      viewMode: "stradella",
+      onChangeCapo: onChangeCapo,
+    }),
+  );
+
+  // 1. Controller bar elements
+  assertEquals(readerHtml.includes("Capo 2"), true);
+  assertEquals(readerHtml.includes("Capo ON"), true);
+  assertEquals(readerHtml.includes("Key:"), true);
+
+  // 2. When capo is changed to 4, Reset button appears showing Reset (2)
+  const modifiedHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 4,
+      viewMode: "stradella",
+      onChangeCapo: onChangeCapo,
+    }),
+  );
+  assertEquals(modifiedHtml.includes("Reset (2)"), true);
+});
