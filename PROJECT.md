@@ -1,225 +1,76 @@
-# Project: Accordion Lead Sheet Companion
+# Project: Accordion Lead Sheet Companion UI & Ergonomic Live Audit and Enhancement
 
 ## Architecture
 
-The Accordion Lead Sheet Companion is a high-performance, mobile-first web application and PWA
-engineered for accordionists performing from guitar lead sheets. It combines pure TypeScript music
-theory/solver engines with a modern React 19 / Tailwind CSS 4 user interface, offline persistence
-via IndexedDB, hardware pedal/wake-lock integrations, and a Deno Deploy serverless edge scraper.
-
-### Data Flow & Component Architecture
-
-1. **Input & Ingestion**:
-   - Web Tab Scraping (`api/import.ts`) -> Target site HTML/JSON parsed to standardized lead sheet
-     text with Capo metadata.
-   - 1-Tap Clipboard Ingestion (`ImportModal.tsx`) -> `navigator.clipboard.readText()` with
-     automatic capo regex detection.
-   - Offline Songbook (`src/lib/storage/songbook.ts`) -> Custom songs and presets stored in
-     IndexedDB (`idb-keyval`).
-2. **Parsing & Music Theory Engine (`src/lib/`)**:
-   - `parser/`: Splits 2-line chord/lyric text or ChordPro tags into atomic `ChordLyricSegment`
-     tokens.
-   - `capo/`: Transposes written chords to sounding pitch based on Capo fret (0–11) with
-     key-signature-aware enharmonic spelling.
-   - `stradella/`: Solves Stradella bass button coordinates, slash chords via Minimum Physical
-     Button Distance Algorithm, and compound voicings (maj7, m7, m7b5, 6, 9, sus4).
-   - `cba/`: Maps right-hand CBA C-system treble grips across 3-row core and 5-row extended grids
-     with minimal voice leading shifts.
-3. **User Interface (`src/components/`)**:
-   - `LeadSheetReader.tsx`: Renders atomic flex-column segments
-     (`display: inline-flex; flex-direction: column;`) preventing mobile font drift on 360px–430px
-     screens.
-   - `CapoBar.tsx`: Sticky control bar with Capo stepper and view switcher (🪗 Stradella LH, 🔘 CBA
-     RH, 🎸 Dual).
-   - `MiniGripDrawer.tsx`: Focused 3x3 interactive visual grid bottom sheet triggered by chord badge
-     clicks (`e.stopPropagation()`).
-   - `AutoScrollFooter.tsx`: Delta-time `requestAnimationFrame` smooth scrolling with 3.5s
-     touch-pause resume.
-4. **Hardware & Lifecycle Hooks (`src/hooks/`)**:
-   - `useWakeLock`: Screen Wake-Lock API management with automatic `visibilitychange`
-     re-acquisition.
-   - `useAutoScroll`: Delta-time rAF scrolling with gesture pause/resume.
-   - `usePedalNavigation`: Bluetooth pedal event listeners (`PageDown`, `PageUp`, `Space`,
-     `ArrowDown`, `ArrowUp`).
-
----
+- **Framework & Runtime**: Pure Deno 2 + Vite 6 + React 19 + Tailwind CSS 4 + TypeScript.
+- **UI & Layout**: Mobile-first segmented flexbox architecture (`LineRenderer` +
+  `ChordLyricSegment`) ensuring vertical chord-syllable anchoring without horizontal overflow across
+  360px–768px viewports.
+- **UI Audit Runner**: Programmatic test runner in `tests/ui-audit/audit_runner.ts` driven by
+  `agent-browser` (`AGENT_BROWSER_ENGINE=lightpanda`) against local Vite dev server
+  (`http://localhost:5173`).
+- **Safety & Copyright Guardrails**: Strict exclusion of `tests/ui-audit/screenshots/` and
+  `tests/ui-audit/reports/` in `.gitignore`. Zero copyrighted lyrics or screenshot binaries
+  committed to Git.
 
 ## Feature Inventory
 
-| #   | Feature                        | Description                                                                  | Milestone | Source                |
-| --- | ------------------------------ | ---------------------------------------------------------------------------- | --------- | --------------------- |
-| F1  | Deno 2 Toolchain & Config      | `deno.json` unified tasks, compiler options, npm specifiers                  | M1        | SPEC.md §5.1          |
-| F2  | Vite + React 19 + Tailwind 4   | Project build setup with PWA plugin and zero-config Tailwind 4               | M1        | SPEC.md §5.1-5.3      |
-| F3  | GitHub Actions CI/CD           | Automated workflow with `denoland/setup-deno@v2` for GitHub Pages            | M1        | SPEC.md §5.4          |
-| F4  | TypeScript Core Types          | Shared data contracts (`ChordLyricSegment`, `StradellaButton`, etc.)         | M1        | SPEC.md §6            |
-| F5  | Capo & Enharmonics Engine      | Sounding pitch modulo math and key-signature enharmonic spelling             | M2        | SPEC.md §3.3          |
-| F6  | Stradella Core Layout          | Circle of fifths column indexing, standard bass & counter-bass rows          | M2        | SPEC.md §3.4          |
-| F7  | Stradella Minimum Distance     | Physical button distance metric & counter-bass slash chord solver            | M2        | SPEC.md §3.5          |
-| F8  | Stradella Compound Voicings    | Fundamental bass + upper chord button combinations (maj7, m7, etc.)          | M2        | SPEC.md §3.5          |
-| F9  | CBA C-System Treble Engine     | 3-row core and 5-row extended grids, geometric grips, voice leading          | M2        | SPEC.md §3.2          |
-| F10 | Segmented Tokenizer            | 2-line text, ChordPro bracket tags, tab staff filtering, capo headers        | M2        | SPEC.md §2.4          |
-| F11 | Theory Test Suites             | Complete test suites for CAPO-01..08, STRAD-01..19, CBA-01..06, PARSE-01..04 | M2        | SPEC.md §9.1-9.4      |
-| F12 | Deno Deploy Edge Scraper       | `api/import.ts` edge handler with OPTIONS preflight and 403 origin block     | M3        | SPEC.md §2.2          |
-| F13 | CORS Origin Allowlist          | Strict CORS allowlist for `https://arthow4n.github.io` and localhost         | M3        | SPEC.md §2.2          |
-| F14 | Tab Site Scrapers & Parsers    | Extractors for Ultimate Guitar, Chordie, E-Chords, Cifra Club, Generic       | M3        | SPEC.md §2.2          |
-| F15 | Scraper Test Suites            | Edge API test suites for API-01..05 + extended test matrix                   | M3        | SPEC.md §9.5          |
-| F16 | IndexedDB Offline Songbook     | Songbook CRUD with preset songs stored locally via `idb-keyval`              | M4        | SPEC.md §4.2          |
-| F17 | Screen Wake-Lock Hook          | Display keep-awake with `visibilitychange` re-acquisition                    | M4        | SPEC.md §4.4          |
-| F18 | Delta-Time Auto-Scroll Hook    | Smooth rAF scrolling with touch-pause and 3.5s auto-resume                   | M4        | SPEC.md §4.4          |
-| F19 | Bluetooth Pedal Hook           | Keyboard listeners for PageDown/Up, Space, ArrowDown/Up (80% viewport)       | M4        | SPEC.md §4.4          |
-| F20 | Segmented Reader UI            | Inline flex-column chord/syllable rendering preventing mobile drift          | M4        | SPEC.md §4.2          |
-| F21 | Capo & View Control Bar        | Sticky top bar with quick Capo stepper and view switcher                     | M4        | SPEC.md §4.2          |
-| F22 | Focused Mini-Grip Drawer       | 3x3 visual button grid bottom sheet for LH and RH with fingerings            | M4        | SPEC.md §4.2          |
-| F23 | 1-Tap Clipboard Ingest Modal   | Ingestion via `navigator.clipboard.readText()` with capo detection           | M4        | SPEC.md §2.1          |
-| F24 | PWA Service Worker & Manifest  | Offline caching with `registerType: 'prompt'`, PWA icons and manifest        | M4        | SPEC.md §5.5          |
-| F25 | UX & Component Tests           | React test suite covering UX-01 to UX-07                                     | M4        | SPEC.md §9.6          |
-| F26 | E2E Browser Validation Suite   | Playwright browser automation tests covering E2E-01 to E2E-06                | M5        | SPEC.md §9.7          |
-| F27 | Final Integration & Gate Check | `deno test`, `deno lint`, `deno fmt --check`, `deno task build`              | M5        | Acceptance Criteria   |
-| F28 | Tier 5 Adversarial Hardening   | White-box edge case testing and robustness verification                      | M5        | Orchestrator Protocol |
-| F29 | Forensic Integrity Audit       | Systematic authenticity validation by `teamwork_preview_auditor`             | M5        | Orchestrator Protocol |
-
----
+| #  | Feature                                        | Description                                                                                     | Milestone | Source                    |
+| -- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------- | ------------------------- |
+| 1  | UI Audit Plan Document                         | `tests/ui-audit/UI_AUDIT_PLAN.md` documenting 6-flow audit matrix, rubric, and copyright safety | M1        | ORIGINAL_REQUEST §R1      |
+| 2  | Screenshot & Artifact Safety Guardrail         | `.gitignore` rule for `tests/ui-audit/screenshots/` and `tests/ui-audit/reports/`               | M1        | ORIGINAL_REQUEST §R1      |
+| 3  | Programmatic UI Audit Runner                   | `tests/ui-audit/audit_runner.ts` with `agent-browser` + Lightpanda engine                       | M1        | ORIGINAL_REQUEST §R1      |
+| 4  | Deno Audit Task Wiring                         | `deno task audit:ui` configured in `deno.json`                                                  | M1        | ORIGINAL_REQUEST §R1      |
+| 5  | Mini-Grip Drawer Occlusion Optimization        | Compact layout ensuring `<= 35%` viewport height occlusion on mobile                            | M2        | ORIGINAL_REQUEST §R1, §R3 |
+| 6  | ChordBadge 44x44px Touch Targets               | Touch target expansion via CSS pseudo-elements (`>= 44x44px`)                                   | M2        | ORIGINAL_REQUEST §R2, §R3 |
+| 7  | CBA Emerald Badge Theme                        | Update CBA badge theme to Emerald (`text-emerald-400`) per specification                        | M2        | ORIGINAL_REQUEST §R2      |
+| 8  | Mobile Responsive Line Wrapping                | Ensure zero horizontal overflow across 360px, 375px, 390px, 430px, 768px viewports              | M2        | ORIGINAL_REQUEST §R3      |
+| 9  | Syllable-to-Chord Spatial Pinning Verification | Multi-input verification across UG, Chordie, E-Chords, Cifra Club, 2-line, ChordPro             | M3        | ORIGINAL_REQUEST §R2      |
+| 10 | Auto-Scroll & Pedal Navigation Verification    | Verify delta-time auto-scroll, 3.5s touch-pause, and Bluetooth pedal keybindings                | M3        | ORIGINAL_REQUEST §R2      |
+| 11 | Automated UI Audit Execution                   | Run `deno task audit:ui` end-to-end against local dev server                                    | M3        | ORIGINAL_REQUEST §R2      |
+| 12 | Mandatory Pre-Push Quality Gates               | `deno fmt --check`, `deno lint`, `deno task test` (101 tests), `deno task build`                | M4        | ORIGINAL_REQUEST §R4      |
+| 13 | Atomic Conventional Commits & Git Push         | Commit atomic changes and push to `origin/master`                                               | M4        | ORIGINAL_REQUEST §R4      |
 
 ## Milestones
 
-| #  | Name                           | Scope                                                                          | Dependencies | Status |
-| -- | ------------------------------ | ------------------------------------------------------------------------------ | ------------ | ------ |
-| M1 | Project Setup & Toolchain      | F1, F2, F3, F4 (`deno.json`, `vite.config.ts`, Tailwind 4, types, CI workflow) | none         | DONE   |
-| M2 | Pure TS Music Theory Engines   | F5, F6, F7, F8, F9, F10, F11 (`src/lib/capo`, `stradella`, `cba`, `parser`)    | M1           | DONE   |
-| M3 | Deno Scraper Edge API          | F12, F13, F14, F15 (`api/import.ts`, site parsers, API test suites)            | M1           | DONE   |
-| M4 | React 19 UI, PWA & Hardware    | F16, F17, F18, F19, F20, F21, F22, F23, F24, F25 (`src/components/`, hooks)    | M2, M3       | DONE   |
-| M5 | E2E Integration & Verification | F26, F27, F28, F29 (Playwright E2E suite, 100% tests, audit)                   | M4           | DONE   |
-
----
+| #  | Name                                     | Scope                                                                                                                                  | Dependencies | Status    |
+| -- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------- |
+| M1 | UI Audit Framework & Test Infrastructure | `tests/ui-audit/UI_AUDIT_PLAN.md`, `tests/ui-audit/audit_runner.ts`, `.gitignore`, `deno.json`                                         | None         | COMPLETED |
+| M2 | UI & Ergonomic Defect Resolution         | `src/components/MiniGripDrawer.tsx`, `src/components/ChordBadge.tsx`, `src/components/CapoBar.tsx`, `src/components/StradellaGrid.tsx` | None         | COMPLETED |
+| M3 | UI Audit Execution & Verification Gate   | Execute `deno task audit:ui`, verify all 6 flows, evaluate assertions                                                                  | M1, M2       | COMPLETED |
+| M4 | Final Quality Gates & Master Push        | Pass all 4 pre-push quality gates, atomic commits, push to `origin/master`                                                             | M3           | COMPLETED |
 
 ## Interface Contracts
 
-### `src/types/index.ts`
+### `tests/ui-audit/audit_runner.ts` ↔ `deno.json`
 
-```typescript
-export interface ChordLyricSegment {
-  chord?: string;
-  lyric: string;
-}
+- Command: `deno task audit:ui`
+- Runner spawns or attaches to Vite dev server at `http://localhost:5173` (or ephemeral free port).
+- Runs `agent-browser` session with `AGENT_BROWSER_ENGINE=lightpanda`.
+- Executes 6 audit flows and exits with code 0 on all assertions pass, non-zero on failure.
 
-export type ViewMode = "stradella" | "cba" | "dual";
+### `LineRenderer.tsx` ↔ `ChordBadge.tsx`
 
-export interface StradellaButton {
-  label: string;
-  row: "counter-bass" | "bass" | "major" | "minor" | "seventh" | "diminished";
-  column: number; // -4 to +7 (Circle of Fifths, C=0)
-  note: string;
-  fingering: number; // 4: bass, 3: major/counter, 2: minor/seventh/dim
-  isSecondary?: boolean;
-}
+- Badge touch target: `>= 44x44px` hit box via `relative before:absolute before:-inset-2.5` without
+  altering flex inline flow or layout dimensions.
+- Badges emit `e.stopPropagation()` to prevent triggering parent auto-scroll pause or drag
+  listeners.
 
-export interface StradellaVoicing {
-  rootButton: StradellaButton;
-  chordButton?: StradellaButton;
-  fingeringDescription: string;
-  isAlternative?: boolean;
-}
+### `MiniGripDrawer.tsx` ↔ `StradellaGrid.tsx` / `CbaGrid.tsx`
 
-export interface CbaGrip {
-  chord: string;
-  notes: string[];
-  buttons: Array<{ row: number; column: number; note: string; finger: number }>;
-  fingeringPattern: "1-2-4" | "2-3-5" | "1-2-5" | "1-3-5" | string;
-  centroidColumn: number;
-}
-
-export interface LeadSheet {
-  id: string;
-  title: string;
-  artist: string;
-  capo: number;
-  viewMode: ViewMode;
-  rawText: string;
-  lines: ChordLyricSegment[][];
-  updatedAt: number;
-}
-```
-
-### Module Contracts
-
-- `src/lib/capo/`:
-  - `transposeChord(chord: string, capo: number, keyHint?: string): string`
-  - `transposeLeadSheet(lines: ChordLyricSegment[][], capo: number): ChordLyricSegment[][]`
-- `src/lib/stradella/`:
-  - `solveStradella(chord: string): StradellaVoicing`
-  - `solveSlashChord(chord: string, bass: string): StradellaVoicing`
-  - `getPhysicalDistance(b1: StradellaButton, b2: StradellaButton): number`
-- `src/lib/cba/`:
-  - `solveCbaGrip(chord: string, previousCentroid?: number): CbaGrip`
-- `src/lib/parser/`:
-  - `parseLeadSheet(raw: string): { title?: string; artist?: string; capo?: number; lines: ChordLyricSegment[][] }`
-- `api/import.ts`:
-  - `GET /api/import?url=<encoded_url>` -> JSON
-    `{ title: string, artist: string, capo: number, rawText: string, source: string }`
-
----
+- Occlusion boundary: total height `<= 35vh` on mobile viewports (`<= 35%` of window innerHeight).
+- Scroll retention: opening drawer preserves current document scroll position (`scrollTop` delta =
+  0).
 
 ## Code Layout
 
-```
-/home/hevar/git/accordion-lead-sheet-companion/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml              # CI/CD GitHub Pages deployment
-├── api/
-│   ├── import.ts                   # Deno Deploy serverless edge scraper function
-│   └── import.test.ts              # Edge API test suite (API-01..API-05)
-├── src/
-│   ├── components/
-│   │   ├── App.tsx                 # Root layout & state provider
-│   │   ├── AutoScrollFooter.tsx    # Smooth delta-time auto-scrolling bar
-│   │   ├── CapoBar.tsx             # Sticky Capo stepper & view switcher
-│   │   ├── ChordBadge.tsx          # Single chord badge with click handler
-│   │   ├── ImportModal.tsx         # 1-tap clipboard paste & URL importer
-│   │   ├── LeadSheetReader.tsx     # Atomic flex-column lead sheet renderer
-│   │   ├── LineRenderer.tsx        # Line-level segment renderer
-│   │   ├── MiniGripDrawer.tsx      # Focused 3x3 LH/RH visual grip drawer
-│   │   ├── SongbookDrawer.tsx      # Offline songbook list & CRUD
-│   │   ├── StradellaGrid.tsx       # 3x3 interactive Stradella button grid
-│   │   └── CbaGrid.tsx             # 3x3 / 5-row interactive CBA button grid
-│   ├── hooks/
-│   │   ├── useAutoScroll.ts        # rAF delta-time scrolling & gesture pause hook
-│   │   ├── usePedalNavigation.ts   # Bluetooth pedal keyboard event hook
-│   │   └── useWakeLock.ts          # Screen Wake-Lock API & visibilitychange hook
-│   ├── lib/
-│   │   ├── capo/
-│   │   │   ├── enharmonics.ts      # Key-signature-aware flat/sharp spellings
-│   │   │   ├── transposition.ts    # Modulo 12 pitch transposition
-│   │   │   └── capo.test.ts        # Unit tests (CAPO-01..CAPO-08)
-│   │   ├── stradella/
-│   │   │   ├── layout.ts           # Circle of fifths & button coordinate maps
-│   │   │   ├── solver.ts           # Standard & compound voicing generator
-│   │   │   ├── slash.ts            # Minimum button distance slash chord solver
-│   │   │   └── stradella.test.ts   # Unit tests (STRAD-01..STRAD-19)
-│   │   ├── cba/
-│   │   │   ├── grid.ts             # 3-row & 5-row coordinate system
-│   │   │   ├── grips.ts            # Geometric grip generation & fingerings
-│   │   │   ├── voiceLeading.ts     # Minimal hand-shift inversion selector
-│   │   │   └── cba.test.ts         # Unit tests (CBA-01..CBA-06)
-│   │   ├── parser/
-│   │   │   ├── chordpro.ts         # Bracketed [Chord] parser
-│   │   │   ├── twoline.ts          # 2-line chord/lyric alignment parser
-│   │   │   ├── tokenizer.ts        # Atomic ChordLyricSegment splitter
-│   │   │   └── parser.test.ts      # Unit tests (PARSE-01..PARSE-04)
-│   │   └── storage/
-│   │       ├── presets.ts          # Default built-in lead sheet presets
-│   │       └── songbook.ts         # IndexedDB wrapper via idb-keyval
-│   ├── types/
-│   │   └── index.ts                # Master TypeScript interface contracts
-│   ├── index.css                   # Tailwind CSS 4 root styles & dark theme
-│   └── main.tsx                    # React 19 application entry point
-├── tests/
-│   ├── e2e/
-│   │   └── leadsheet.spec.ts       # Browser automation E2E suite (E2E-01..E2E-06)
-│   └── ux/
-│       └── components.test.ts      # Component & UX test suite (UX-01..UX-07)
-├── deno.json                       # Unified Deno 2 configuration
-├── index.html                      # HTML5 entry with mobile viewport & PWA meta
-├── vite.config.ts                  # Vite 6 + React 19 + Tailwind 4 + PWA plugin
-└── SPEC.md                         # Technical specification
-```
+- `src/components/`: React UI components (`LineRenderer.tsx`, `ChordBadge.tsx`, `CapoBar.tsx`,
+  `MiniGripDrawer.tsx`, `StradellaGrid.tsx`, `CbaGrid.tsx`, `ImportModal.tsx`,
+  `SongbookDrawer.tsx`).
+- `src/lib/`: Music theory algorithms (Stradella, CBA, Capo, parser tokenizers).
+- `src/hooks/`: Hardware & interaction hooks (`useAutoScroll.ts`, `useWakeLock.ts`,
+  `usePedalNavigation.ts`).
+- `tests/ui-audit/`: UI Audit specification (`UI_AUDIT_PLAN.md`) and programmatic runner
+  (`audit_runner.ts`).
+- `tests/unit/`, `tests/ux/`, `tests/e2e/`: Hermetic offline test suite (101 tests).
+- `tests/live/`: External web scraper integration tests (on-demand via `deno task test:live`).
