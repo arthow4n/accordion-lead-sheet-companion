@@ -98,9 +98,14 @@ export function enrichLeadSheetLines(
  */
 export function detectChordPro(rawText: string): boolean {
   if (isChordProDocument?.(rawText)) return true;
-  if (/\{(?:title|t|artist|a|capo|comment|c|soc|eoc):/i.test(rawText)) return true;
+  if (
+    /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus):/i
+      .test(rawText)
+  ) {
+    return true;
+  }
 
-  const lines = rawText.split(/\r?\n/);
+  const lines = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   let chordProLineCount = 0;
   for (const line of lines) {
     if (isChordProLine(line)) {
@@ -118,32 +123,33 @@ export function parseLeadSheetText(
   defaultCapo = 0,
   keyContext?: string,
 ): LeadSheetSong {
-  const extractedCapo = extractCapoFret(rawText);
+  const normalizedText = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const extractedCapo = extractCapoFret(normalizedText);
   const capoFret = extractedCapo > 0 ? extractedCapo : defaultCapo;
 
   let title = "Untitled Lead Sheet";
   let artist: string | undefined;
 
   // Extract Title / Artist from standard header patterns
-  const titleMatch = rawText.match(/^(?:\{title:\s*([^}]+)\}|title:\s*(.+)$)/im);
+  const titleMatch = normalizedText.match(/^(?:\{title:\s*([^}]+)\}|title:\s*(.+)$)/im);
   if (titleMatch) {
     title = (titleMatch[1] || titleMatch[2]).trim();
   }
 
-  const artistMatch = rawText.match(/^(?:\{artist:\s*([^}]+)\}|artist:\s*(.+)$)/im);
+  const artistMatch = normalizedText.match(/^(?:\{artist:\s*([^}]+)\}|artist:\s*(.+)$)/im);
   if (artistMatch) {
     artist = (artistMatch[1] || artistMatch[2]).trim();
   }
 
   let lines: LeadSheetLine[];
 
-  if (detectChordPro(rawText)) {
-    const doc = parseChordProDocument(rawText);
+  if (detectChordPro(normalizedText)) {
+    const doc = parseChordProDocument(normalizedText);
     if (doc.title && title === "Untitled Lead Sheet") title = doc.title;
     if (doc.artist && !artist) artist = doc.artist;
     lines = doc.lines;
   } else {
-    lines = parseTwoLineDocument(rawText);
+    lines = parseTwoLineDocument(normalizedText);
   }
 
   const enrichedLines = enrichLeadSheetLines(lines, capoFret, keyContext);
@@ -157,7 +163,7 @@ export function parseLeadSheetText(
     capo: capoFret,
     originalKey: keyContext,
     viewMode: "stradella",
-    rawText,
+    rawText: normalizedText,
     lines: enrichedLines,
     createdAt: now,
     updatedAt: now,
@@ -172,7 +178,8 @@ export function parseChordPro(
   defaultCapo = 0,
   keyContext?: string,
 ): LeadSheetSong {
-  const doc = parseChordProDocument(rawText);
+  const normalizedText = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const doc = parseChordProDocument(normalizedText);
   const capoFret = doc.capoFret !== undefined ? doc.capoFret : defaultCapo;
   const enrichedLines = enrichLeadSheetLines(doc.lines, capoFret, keyContext);
 
@@ -185,7 +192,7 @@ export function parseChordPro(
     capo: capoFret,
     originalKey: keyContext,
     viewMode: "stradella",
-    rawText,
+    rawText: normalizedText,
     lines: enrichedLines,
     createdAt: now,
     updatedAt: now,

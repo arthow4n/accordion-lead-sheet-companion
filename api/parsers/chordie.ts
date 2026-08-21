@@ -12,14 +12,49 @@ import { decodeHtmlEntities, extractCapoFret, extractMetadataFromHtml } from "./
 export function parseChordie(html: string): TabImportResponse | null {
   if (!html) return null;
 
-  const preMatch =
-    html.match(/<pre[^>]*class=["'][^"']*chordpro[^"']*["'][^>]*>([\s\S]*?)<\/pre>/i) ||
-    html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i) ||
-    html.match(/<div[^>]*class=["'][^"']*chordpro[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+  let raw = "";
 
-  if (!preMatch) return null;
+  // 1. Primary Strategy: Extract textarea#chordproContent or textarea[name=chopro]
+  const textareaMatch =
+    html.match(/<textarea[^>]*id=["']chordproContent["'][^>]*>([\s\S]*?)<\/textarea>/i) ||
+    html.match(/<textarea[^>]*name=["']chopro["'][^>]*>([\s\S]*?)<\/textarea>/i) ||
+    html.match(/<textarea[^>]*class=["'][^"']*chordpro[^"']*["'][^>]*>([\s\S]*?)<\/textarea>/i);
 
-  const raw = decodeHtmlEntities(preMatch[1].replace(/<[^>]+>/g, "")).trim();
+  if (textareaMatch && textareaMatch[1].trim().length > 0) {
+    raw = decodeHtmlEntities(textareaMatch[1]).trim();
+  }
+
+  // 2. Secondary Strategy: Extract <pre class="chordpro"> or <pre>
+  if (!raw) {
+    const preMatch =
+      html.match(/<pre[^>]*class=["'][^"']*chordpro[^"']*["'][^>]*>([\s\S]*?)<\/pre>/i) ||
+      html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i) ||
+      html.match(/<div[^>]*class=["'][^"']*chordpro[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+
+    if (preMatch && preMatch[1].trim().length > 0) {
+      raw = decodeHtmlEntities(preMatch[1].replace(/<[^>]+>/g, "")).trim();
+    }
+  }
+
+  // 3. Tertiary Strategy: Extract from #song or .chordline / .textline divs
+  if (!raw) {
+    const songDivMatch = html.match(/<div[^>]*id=["']song["'][^>]*>([\s\S]*?)<\/div>/i);
+    if (songDivMatch) {
+      const lines = songDivMatch[1].split(/<\/div>|<br\s*\/?>/i);
+      const cleanedLines = lines.map((line) => {
+        return decodeHtmlEntities(
+          line
+            .replace(/<span[^>]*class=["'][^"']*bracket[^"']*["'][^>]*>/gi, "")
+            .replace(/<\/span>/gi, "")
+            .replace(/<[^>]+>/g, ""),
+        ).trim();
+      }).filter(Boolean);
+      if (cleanedLines.length > 0) {
+        raw = cleanedLines.join("\n");
+      }
+    }
+  }
+
   if (!raw) return null;
 
   let title: string | undefined;

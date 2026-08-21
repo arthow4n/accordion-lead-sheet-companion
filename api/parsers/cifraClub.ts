@@ -20,31 +20,63 @@ export function parseCifraClub(html: string): TabImportResponse | null {
     .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, "$1")
     .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, "$1")
     .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, "$1")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
     .replace(/<[^>]+>/g, "");
 
-  raw = decodeHtmlEntities(raw).trim();
+  raw = decodeHtmlEntities(raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
   if (!raw) return null;
 
   let title: string | undefined;
   let artist: string | undefined;
 
-  // Title selector: <h1 class="t1">
-  const titleMatch = html.match(/<h1[^>]*class=["'][^"']*t1[^"']*["'][^>]*>([^<]+)<\/h1>/i) ||
-    html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-  if (titleMatch) title = decodeHtmlEntities(titleMatch[1].trim());
+  // 1. Check Schema.org JSON-LD for MusicRecording
+  const jsonLdMatch = html.match(
+    /<script\s+type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/i,
+  );
+  if (jsonLdMatch) {
+    try {
+      const data = JSON.parse(jsonLdMatch[1]);
+      const record = Array.isArray(data)
+        ? data.find((d: { "@type"?: string }) => d["@type"] === "MusicRecording")
+        : data;
+      if (record && record["@type"] === "MusicRecording") {
+        if (record.name) title = record.name;
+        if (record.byArtist?.name) artist = record.byArtist.name;
+      }
+    } catch {
+      // Fall through
+    }
+  }
 
-  // Artist selector: <h2 class="t3">, <span class="t3">, or <a class="t3">
-  const artistMatch = html.match(/<h2[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([^<]+)<\/h2>/i) ||
-    html.match(/<span[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([^<]+)<\/span>/i) ||
-    html.match(/<a[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([^<]+)<\/a>/i) ||
-    html.match(/<h2[^>]*>([^<]+)<\/h2>/i);
-  if (artistMatch) artist = decodeHtmlEntities(artistMatch[1].trim());
+  // 2. Title selector: <h1 class="t1"> or <h1 class="head-title">
+  if (!title) {
+    const titleMatch = html.match(
+      /<h1[^>]*class=["'][^"']*(?:t1|head-title|cifra-titulo)[^"']*["'][^>]*>([^<]+)<\/h1>/i,
+    ) ||
+      html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+    if (titleMatch) title = decodeHtmlEntities(titleMatch[1].trim());
+  }
 
-  // Fallback metadata if missing
+  // 3. Artist selector: <h2 class="t3">, <span class="t3">, or <a class="t3">
+  if (!artist) {
+    const artistMatch = html.match(/<h2[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([^<]+)<\/h2>/i) ||
+      html.match(/<span[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([^<]+)<\/span>/i) ||
+      html.match(/<a[^>]*class=["'][^"']*(?:t3|head-subtitle)[^"']*["'][^>]*>([^<]+)<\/a>/i);
+    if (artistMatch) artist = decodeHtmlEntities(artistMatch[1].trim());
+  }
+
+  // 4. Fallback metadata from OpenGraph / title if missing
   if (!title || !artist) {
     const meta = extractMetadataFromHtml(html);
     if (!title && meta.title) title = meta.title;
     if (!artist && meta.artist) artist = meta.artist;
+  }
+
+  // Filter out unwanted menu texts
+  if (artist && artist.toLowerCase().includes("menu principal")) {
+    const meta = extractMetadataFromHtml(html);
+    artist = meta.artist || "Unknown Artist";
   }
 
   // Capo detection: Portuguese strings like "com capotraste na 5ª casa", `<span id="cifra_capo">5ª casa</span>`
@@ -53,8 +85,8 @@ export function parseCifraClub(html: string): TabImportResponse | null {
   return {
     success: true,
     source: "cifraclub",
-    title,
-    artist,
+    title: title || "Unknown Title",
+    artist: artist || "Unknown Artist",
     capoFret,
     rawContent: raw,
   };

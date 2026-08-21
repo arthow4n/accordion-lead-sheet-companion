@@ -36,13 +36,15 @@ export function identifyTabSource(urlString: string): TabSource {
     const host = parsed.hostname.toLowerCase();
     if (host.includes("ultimate-guitar.com")) return "ultimate-guitar";
     if (host.includes("chordie.com")) return "chordie";
-    if (host.includes("e-chords.com")) return "e-chords";
+    if (host.includes("e-chords.com") || host.includes("cifras.com.br")) return "e-chords";
     if (host.includes("cifraclub.com")) return "cifraclub";
   } catch {
     // Fall back to substring match if URL constructor fails
     if (urlString.includes("ultimate-guitar.com")) return "ultimate-guitar";
     if (urlString.includes("chordie.com")) return "chordie";
-    if (urlString.includes("e-chords.com")) return "e-chords";
+    if (urlString.includes("e-chords.com") || urlString.includes("cifras.com.br")) {
+      return "e-chords";
+    }
     if (urlString.includes("cifraclub.com")) return "cifraclub";
   }
   return "generic";

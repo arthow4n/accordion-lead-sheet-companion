@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.0",
+    "@std/expect": "jsr:@std/expect@^1.0.0"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom", "dom.iterable", "esnext"],
+    "strict": true,
+    "noImplicitAny": true
+  },
+  "test": {
+    "include": ["**/*.test.ts"],
+    "exclude": []
+  }
+}

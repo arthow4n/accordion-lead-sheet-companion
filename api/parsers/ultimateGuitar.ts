@@ -57,20 +57,27 @@ export function parseUltimateGuitar(html: string): TabImportResponse | null {
   if (storeJsonStr) {
     try {
       const store = JSON.parse(storeJsonStr);
-      const tabView = store?.data?.tab_view || store?.tab_view || store?.data;
-      const wikiTab = tabView?.wiki_tab;
-      const tab = tabView?.tab;
+      const pageData = store?.store?.page?.data || store?.page?.data ||
+        store?.data?.page?.data || store?.data || store;
+      const tabView = pageData?.tab_view || pageData;
+      const wikiTab = tabView?.wiki_tab || pageData?.wiki_tab;
+      const tab = pageData?.tab || tabView?.tab;
 
-      if (wikiTab?.content || tabView?.tab?.song_name) {
+      if (wikiTab?.content || tab?.song_name || tab?.name) {
         const rawTabContent = wikiTab?.content || "";
-        const cleanedContent = decodeHtmlEntities(cleanUgContent(rawTabContent)).trim();
+        const cleanedContent = decodeHtmlEntities(cleanUgContent(rawTabContent))
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n")
+          .trim();
 
         const title = tab?.song_name || tab?.name || extractMetadataFromHtml(html).title ||
           "Unknown Title";
         const artist = tab?.artist_name || extractMetadataFromHtml(html).artist || "Unknown Artist";
 
         let capoFret = 0;
-        if (typeof wikiTab?.applicature?.capo === "number") {
+        if (typeof tabView?.meta?.capo === "number") {
+          capoFret = tabView.meta.capo;
+        } else if (typeof wikiTab?.applicature?.capo === "number") {
           capoFret = wikiTab.applicature.capo;
         } else if (typeof tab?.applicature?.capo === "number") {
           capoFret = tab.applicature.capo;
@@ -80,7 +87,7 @@ export function parseUltimateGuitar(html: string): TabImportResponse | null {
           capoFret = extractCapoFret(html) || extractCapoFret(cleanedContent);
         }
 
-        const originalKey = tab?.tonality_name || tab?.key || tabView?.meta?.tonality || undefined;
+        const originalKey = tab?.tonality_name || tabView?.meta?.tonality || tab?.key || undefined;
 
         return {
           success: cleanedContent.length > 0,
@@ -103,7 +110,10 @@ export function parseUltimateGuitar(html: string): TabImportResponse | null {
     html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
 
   if (preMatch) {
-    const raw = decodeHtmlEntities(cleanUgContent(preMatch[1].replace(/<[^>]+>/g, ""))).trim();
+    const raw = decodeHtmlEntities(cleanUgContent(preMatch[1].replace(/<[^>]+>/g, "")))
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .trim();
     if (raw) {
       const meta = extractMetadataFromHtml(html);
       const capoFret = extractCapoFret(html) || extractCapoFret(raw);

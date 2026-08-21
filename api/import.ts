@@ -142,7 +142,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     );
   }
 
-  // Validate that the target is a valid HTTP/HTTPS URL
+  // Validate that the target is a valid HTTP/HTTPS URL and normalize host if needed
   try {
     const parsedTarget = new URL(targetUrl);
     if (parsedTarget.protocol !== "http:" && parsedTarget.protocol !== "https:") {
@@ -157,6 +157,15 @@ export async function handleRequest(req: Request): Promise<Response> {
         },
       );
     }
+
+    // Normalize Ultimate Guitar www. to tabs. subdomain to avoid 404
+    if (
+      parsedTarget.hostname === "www.ultimate-guitar.com" &&
+      parsedTarget.pathname.startsWith("/tab/")
+    ) {
+      parsedTarget.hostname = "tabs.ultimate-guitar.com";
+      targetUrl = parsedTarget.toString();
+    }
   } catch {
     return new Response(
       JSON.stringify({
@@ -170,26 +179,43 @@ export async function handleRequest(req: Request): Promise<Response> {
     );
   }
 
-  // 5. Fetch target website HTML with custom User-Agent and timeout
+  // 5. Fetch target website HTML with custom headers and timeout
   try {
     const upstreamRes = await fetch(targetUrl, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept":
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
+        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!upstreamRes.ok) {
+      const status = upstreamRes.status;
+      let errorDetail = `Upstream request failed with status ${status} ${upstreamRes.statusText}`;
+      if (status === 403) {
+        errorDetail =
+          "Upstream server returned 403 Forbidden (Cloudflare or bot protection active)";
+      } else if (status === 404) {
+        errorDetail = "Upstream tab not found (404)";
+      }
       return new Response(
         JSON.stringify({
           success: false,
-          error:
-            `Upstream request failed with status ${upstreamRes.status} ${upstreamRes.statusText}`,
+          error: errorDetail,
         }),
         {
-          status: 500,
+          status: status >= 500 ? 502 : status,
           headers: baseHeaders,
         },
       );

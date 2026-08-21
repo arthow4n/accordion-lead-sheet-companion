@@ -57,9 +57,11 @@ export function extractCapoFret(text: string): number {
     }
   }
 
-  // 2. Portuguese: "com capotraste na 2ª casa" / "capotraste: 3" / `<span id="cifra_capo">2ª casa</span>`
+  // 2. Portuguese: "com capotraste na 2ª casa" / "capotraste: 3" / `<span id="cifra_capo">2ª casa</span>` / `2ª casa`
   const ptMatch = text.match(
-    /(?:capotraste|capo)\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
+    /(?:capotraste|capo)?\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)\s*casa/i,
+  ) || text.match(
+    /(?:capotraste|capo)\s*(?:na|no|em|:)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
   );
   if (ptMatch) {
     const fret = parseInt(ptMatch[1], 10);
@@ -159,7 +161,7 @@ export function parseGeneric(html: string): TabImportResponse {
     }
   }
 
-  raw = decodeHtmlEntities(raw).trim();
+  raw = decodeHtmlEntities(raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
 
   const { title, artist } = extractMetadataFromHtml(html);
   const capoFret = extractCapoFret(html) || extractCapoFret(raw);

@@ -1,4 +1,5 @@
 import type { ChordLyricSegment, LeadSheetLine } from "../../types/index.ts";
+import { isChordToken, isSectionHeaderLine } from "./twoline.ts";
 
 /**
  * Check if a line is a ChordPro directive (e.g. {title: ...}, {c: ...})
@@ -11,17 +12,24 @@ export function isChordProDirective(line: string): boolean {
  * Check if raw document text is in ChordPro format
  */
 export function isChordProDocument(rawText: string): boolean {
-  return /\{(?:title|t|artist|a|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus):/i.test(
-    rawText,
-  );
+  return /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus):/i
+    .test(
+      rawText,
+    );
 }
 
 /**
  * Check if a line contains ChordPro inline chord tags (e.g. [G], [Em])
  */
 export function isChordProLine(line: string): boolean {
-  // Line has at least one [Chord] tag where chord starts with [A-G]
-  return /\[[A-G][#b]?[^\]]*\]/.test(line);
+  if (isSectionHeaderLine(line)) return false;
+  const matches = line.matchAll(/\[([^\]]+)\]/g);
+  for (const m of matches) {
+    if (isChordToken(m[1].trim())) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -83,7 +91,7 @@ export function parseChordProDocument(rawText: string): {
   capoFret?: number;
   lines: LeadSheetLine[];
 } {
-  const rawLines = rawText.split(/\r?\n/);
+  const rawLines = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const lines: LeadSheetLine[] = [];
   let title: string | undefined;
   let artist: string | undefined;
@@ -106,7 +114,7 @@ export function parseChordProDocument(rawText: string): {
         continue;
       }
 
-      const artistMatch = trimmed.match(/^\{(?:artist|a):\s*(.+?)\s*\}$/i);
+      const artistMatch = trimmed.match(/^\{(?:artist|a|subtitle|st|su):\s*(.+?)\s*\}$/i);
       if (artistMatch) {
         artist = artistMatch[1];
         continue;
@@ -147,10 +155,7 @@ export function parseChordProDocument(rawText: string): {
     }
 
     // 3. Section header in brackets: [Chorus], [Verse 1], [Refrão], [Couplet 1], etc.
-    const sectionHeaderMatch = trimmed.match(
-      /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab|Refrão|Refrain|Couplet|Strophe|Verso)[^\]]*\]\s*$/i,
-    );
-    if (sectionHeaderMatch) {
+    if (isSectionHeaderLine(trimmed)) {
       lines.push({
         type: "section_header",
         headerTitle: trimmed.replace(/^\[|\]$/g, "").trim(),

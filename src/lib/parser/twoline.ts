@@ -25,7 +25,7 @@ export function isChordToken(token: string): boolean {
 
   // Chord regex matching root note [A-G][#b]?, optional quality/extension, optional slash bass
   const chordRegex =
-    /^[A-G][#b]?(maj7|maj9|maj|M7|M9|min7|min9|min|m7b5|m7|m9|m6|m|dim7|dim|aug|sus4|sus2|sus|7b5|7#9|7b9|7|9|11|13|6|add9|5|ø|°|\+)?(\/[A-G][#b]?)?$/;
+    /^[A-G][#b]?(maj7|maj9|maj11|maj13|maj|M7|M9|M|min7|min9|min11|min|m7b5|m7|m9|m11|m6|m|dim7|dim|aug7|aug|7sus4|7sus|9sus4|sus4|sus2|sus|7b5|7#9|7b9|7|9|11|13|6\/9|6|add9|add2|add4|4|\(4\)|7\(4\)|7\(9\)|7M|7M\(9\)|5|ø|°|\+)?(\/[A-G][#b]?)?$/;
   return chordRegex.test(clean);
 }
 
@@ -40,7 +40,7 @@ export function isTabStaffLine(line: string): boolean {
  * Check if a line is a section header (e.g. [Chorus], [Verse 1])
  */
 export function isSectionHeaderLine(line: string): boolean {
-  return /^\s*\[(Verse\s*\d*|Chorus|Bridge|Intro|Outro|Pre-Chorus|Solo|Interlude|Hook|Tab|Refrão|Refrain|Couplet|Strophe|Verso)[^\]]*\]\s*$/i
+  return /^\s*\[(Verse\s*\d*|Chorus\s*\d*|Bridge\s*\d*|Intro\s*\d*|Outro\s*\d*|Pre-Chorus\s*\d*|Solo\s*\d*|Interlude|Hook|Tab|Refrão\s*\d*|Refrain\s*\d*|Couplet\s*\d*|Strophe\s*\d*|Verso\s*\d*|Guitar Solo|Instrumental|Primeira Parte|Segunda Parte|Terceira Parte|Final|Ending|Coda|Ponte|Estrofe|Estribilho)[^\]]*\]\s*$/i
     .test(line.trim());
 }
 
@@ -126,7 +126,7 @@ export function parseTwoLinePair(
  * Parse an array of raw text lines using the 2-line pairing algorithm
  */
 export function parseTwoLineDocument(rawText: string): LeadSheetLine[] {
-  const rawLines = rawText.split(/\r?\n/);
+  const rawLines = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const lines: LeadSheetLine[] = [];
   let i = 0;
 
