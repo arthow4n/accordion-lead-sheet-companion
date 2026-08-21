@@ -126,8 +126,8 @@ The programmatic audit runner is implemented in pure Deno 2 TypeScript
               │ (Auto-spawns Vite if needed)
               ▼
 ┌───────────────────────────┐
-│ agent-browser Initialization │
-│ Engine: lightpanda        │
+│ agent-browser Init        │
+│ Engine: Chromium (Chrome) │
 └─────────────┬─────────────┘
               │
               ▼
@@ -165,4 +165,14 @@ deno run --allow-run --allow-read --allow-write --allow-env --allow-net tests/ui
 2. **JSON Test Report**: `tests/ui-audit/reports/ui_audit_report.json` detailing per-flow outcomes,
    timing, DOM measurements, and viewport results (strictly gitignored).
 3. **Ephemeral Screenshots**: `tests/ui-audit/screenshots/flow_*.png` capturing visual snapshots at
-   critical audit steps for developer debugging (strictly gitignored).
+   critical audit steps for developer debugging (strictly gitignored):
+   - FLOW-01: `flow01_target1_ultimate_guitar_*.png`, `flow01_target2_chordie_*.png`,
+     `flow01_target3_echords_*.png`, `flow01_target4_cifraclub_*.png`,
+     `flow01_target5_presets_*.png`
+   - FLOW-02: `flow02_viewport_360px_*.png`, `flow02_viewport_375px_*.png`,
+     `flow02_viewport_390px_*.png`, `flow02_viewport_430px_*.png`, `flow02_viewport_768px_*.png`,
+     `flow02_viewport_1024px_*.png`
+   - FLOW-03: `flow03_capo_stepper_*.png`
+   - FLOW-04: `flow04_view_modes_*.png`
+   - FLOW-05: `flow05_minigrip_drawer_*.png`
+   - FLOW-06: `flow06_autoscroll_pedal_*.png`

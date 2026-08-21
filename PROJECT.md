@@ -7,8 +7,8 @@
   `ChordLyricSegment`) ensuring vertical chord-syllable anchoring without horizontal overflow across
   360px–768px viewports.
 - **UI Audit Runner**: Programmatic test runner in `tests/ui-audit/audit_runner.ts` driven by
-  `agent-browser` (`AGENT_BROWSER_ENGINE=lightpanda`) against local Vite dev server
-  (`http://localhost:5173`).
+  `agent-browser` (`AGENT_BROWSER_ENGINE=chrome`, Chromium / Chrome for Testing) against local Vite
+  dev server (`http://localhost:5173`).
 - **Safety & Copyright Guardrails**: Strict exclusion of `tests/ui-audit/screenshots/` and
   `tests/ui-audit/reports/` in `.gitignore`. Zero copyrighted lyrics or screenshot binaries
   committed to Git.
@@ -19,7 +19,7 @@
 | -- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------- | ------------------------- |
 | 1  | UI Audit Plan Document                         | `tests/ui-audit/UI_AUDIT_PLAN.md` documenting 6-flow audit matrix, rubric, and copyright safety | M1        | ORIGINAL_REQUEST §R1      |
 | 2  | Screenshot & Artifact Safety Guardrail         | `.gitignore` rule for `tests/ui-audit/screenshots/` and `tests/ui-audit/reports/`               | M1        | ORIGINAL_REQUEST §R1      |
-| 3  | Programmatic UI Audit Runner                   | `tests/ui-audit/audit_runner.ts` with `agent-browser` + Lightpanda engine                       | M1        | ORIGINAL_REQUEST §R1      |
+| 3  | Programmatic UI Audit Runner                   | `tests/ui-audit/audit_runner.ts` with `agent-browser` + Chromium (Chrome for Testing) engine    | M1        | ORIGINAL_REQUEST §R1      |
 | 4  | Deno Audit Task Wiring                         | `deno task audit:ui` configured in `deno.json`                                                  | M1        | ORIGINAL_REQUEST §R1      |
 | 5  | Mini-Grip Drawer Occlusion Optimization        | Compact layout ensuring `<= 35%` viewport height occlusion on mobile                            | M2        | ORIGINAL_REQUEST §R1, §R3 |
 | 6  | ChordBadge 44x44px Touch Targets               | Touch target expansion via CSS pseudo-elements (`>= 44x44px`)                                   | M2        | ORIGINAL_REQUEST §R2, §R3 |
@@ -46,7 +46,7 @@
 
 - Command: `deno task audit:ui`
 - Runner spawns or attaches to Vite dev server at `http://localhost:5173` (or ephemeral free port).
-- Runs `agent-browser` session with `AGENT_BROWSER_ENGINE=lightpanda`.
+- Runs `agent-browser` session with `AGENT_BROWSER_ENGINE=chrome` (Chromium / Chrome for Testing).
 - Executes 6 audit flows and exits with code 0 on all assertions pass, non-zero on failure.
 
 ### `LineRenderer.tsx` ↔ `ChordBadge.tsx`
