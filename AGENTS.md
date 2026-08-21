@@ -110,3 +110,26 @@ When modifying music theory engines (`src/lib/`):
   - Frontend: GitHub Pages via `.github/workflows/deploy.yml` with `denoland/setup-deno@v2`.
   - Backend Scraper: Deno Deploy via `console.deno.com` targeting `api/import.ts` with strict CORS
     allowlist (`https://arthow4n.github.io` and `http://localhost:*`).
+
+---
+
+## 6. 🌐 Browser Automation & UI Auditing Standards (`agent-browser`)
+
+When conducting automated browser testing, live exploratory UI audits, side-by-side visual
+comparisons, or capturing screenshots:
+
+1. **Preferred Automation Tool:**
+   - Always prefer using the **`agent-browser`** CLI command with its **default browser (Chromium /
+     Chrome for Testing)**.
+2. **Installation & Skills Setup:**
+   - If `agent-browser` is not found in the environment, install it and its skills per the official
+     instructions at
+     [https://github.com/vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser):
+     ```bash
+     npm install -g agent-browser
+     agent-browser install
+     npx skills add vercel-labs/agent-browser
+     ```
+3. **Genuine Visual Rendering:**
+   - Ensure the default Chromium browser is used for visual audits and screenshot capture to
+     guarantee full 2D graphical rasterization and accurate pixel layout verification.
