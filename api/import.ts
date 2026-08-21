@@ -144,14 +144,43 @@ export async function handleRequest(req: Request): Promise<Response> {
     );
   }
 
-  // Validate that the target is a valid HTTP/HTTPS URL and normalize host if needed
+  // Strict allowlist of authorized tab website domains to prevent SSRF and open proxy abuse
+  const ALLOWED_TAB_DOMAINS = [
+    "ultimate-guitar.com",
+    "chordie.com",
+    "e-chords.com",
+    "cifras.com.br",
+    "cifraclub.com.br",
+    "cifraclub.com",
+  ];
+
+  // Validate that the target is a valid HTTP/HTTPS URL and matches an allowed tab domain
   try {
     const parsedTarget = new URL(targetUrl);
     if (parsedTarget.protocol !== "http:" && parsedTarget.protocol !== "https:") {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Invalid URL format",
+          error: "Invalid URL protocol (only http and https are allowed)",
+        }),
+        {
+          status: 400,
+          headers: baseHeaders,
+        },
+      );
+    }
+
+    const host = parsedTarget.hostname.toLowerCase().trim();
+    const isAllowedDomain = ALLOWED_TAB_DOMAINS.some(
+      (domain) => host === domain || host.endsWith(`.${domain}`),
+    );
+
+    if (!isAllowedDomain) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            `Disallowed URL domain: '${host}'. Scraper proxy only supports authorized tab sources (Ultimate Guitar, Chordie, E-Chords, Cifras, Cifra Club).`,
         }),
         {
           status: 400,

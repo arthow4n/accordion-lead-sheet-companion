@@ -418,7 +418,7 @@ Deno.test("extractMetadataFromHtml: extracts title and artist from OpenGraph and
 
 Deno.test("API-09b: Upstream network failure returns 500 with JSON error message", async () => {
   const req = new Request(
-    "https://edge.deno.dev/api/import?url=https://nonexistent-host-12345-fail.invalid/tab",
+    "https://edge.deno.dev/api/import?url=https://tabs.ultimate-guitar.com:9999/tab",
     {
       method: "GET",
       headers: { Origin: "https://arthow4n.github.io" },
@@ -561,4 +561,42 @@ Deno.test("API-19: Ultimate Guitar cleanUgContent normalizes extended section he
   assertStringIncludes(cleaned, "[Guitar Solo]");
   assertStringIncludes(cleaned, "[Pre-Chorus 2]");
   assertStringIncludes(cleaned, "[Post-Chorus]");
+});
+
+Deno.test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains and private/internal IP addresses", async () => {
+  const disallowedUrls = [
+    // 1. Unauthorized external domains
+    "https://example.com/tab",
+    "https://google.com/search?q=test",
+    "https://attacker.com/exploit",
+    "https://pastebin.com/raw/1234",
+    // 2. Cloud metadata & SSRF targets
+    "http://169.254.169.254/latest/meta-data",
+    "http://metadata.google.internal/computeMetadata/v1",
+    // 3. Localhost & private IPv4 / IPv6 addresses
+    "http://127.0.0.1:8080/admin",
+    "http://localhost:3000/internal",
+    "http://10.0.0.1/secrets",
+    "http://192.168.1.1/router",
+    "http://172.16.0.1/private",
+    "http://[::1]/internal",
+    // 4. Subdomain spoofing & domain deception
+    "https://ultimate-guitar.com.attacker.com/tab",
+    "https://tabs.ultimate-guitar.com.malicious.net/tab",
+    "https://fake-chordie.com/song",
+    "https://cifraclub.com.br.phishing.io/tab",
+  ];
+
+  for (const urlStr of disallowedUrls) {
+    const req = new Request(`https://edge.deno.dev/api/import?url=${encodeURIComponent(urlStr)}`, {
+      method: "GET",
+      headers: { Origin: "http://localhost:5173" },
+    });
+
+    const res = await handleRequest(req);
+    assertEquals(res.status, 400, `Expected 400 Bad Request for disallowed URL: ${urlStr}`);
+    const json = await res.json();
+    assertEquals(json.success, false);
+    assertStringIncludes(json.error, "Disallowed URL domain");
+  }
 });
