@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import type { AccordionSize, ParsedChord, StradellaVoicing } from "../types/index.ts";
 import {
   getBassNoteForColumn,
@@ -84,9 +84,9 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
     { key: "dim", rowIndex: 5, xOffset: 0 },
   ];
 
-  // Auto-center the scroll container on the active chord buttons
+  // Instant layout jump to centered position before browser paint (no animated glide)
   if (hasDispatcher) {
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (activeAnchorRef?.current && scrollContainerRef?.current) {
         const container = scrollContainerRef.current;
         const activeEl = activeAnchorRef.current;
@@ -117,10 +117,10 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
         </div>
       )}
 
-      {/* Scrollable Stradella Diagonal Button Keyboard auto-centered on active chord */}
+      {/* Scrollable Stradella Diagonal Button Keyboard instantly centered on active chord */}
       <div
         ref={scrollContainerRef || undefined}
-        className="overflow-x-auto scroll-smooth pb-1"
+        className="overflow-x-auto pb-1"
         style={{ scrollbarWidth: "thin" }}
       >
         <div className="py-1 space-y-1.5 min-w-max px-4">
