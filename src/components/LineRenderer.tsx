@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { ChordDetail, ChordLyricSegment, LeadSheetLine, ViewMode } from "../types/index.ts";
 import { ChordBadge } from "./ChordBadge.tsx";
+import { CbaMiniCard } from "./CbaMiniCard.tsx";
 import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
 
 export interface LineRendererProps {
@@ -9,6 +10,7 @@ export interface LineRendererProps {
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   fontSizeClass?: string;
+  sectionChords?: Array<ChordDetail | string>;
 }
 
 export interface TabStaffLineProps {
@@ -87,6 +89,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   onSelectChord,
   selectedChord,
   fontSizeClass = "text-base",
+  sectionChords = [],
 }) => {
   const renderDenseMeasureLine = (segments: ChordLyricSegment[]) => {
     return (
@@ -126,15 +129,6 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                           (selectedChord as ChordDetail)?.soundingChord?.raw)),
                 )}
               />
-              {lyricTrim &&
-                (isMeasureDelimiter(lyricTrim) || /^[|:/\s]+$/.test(lyricTrim)) && (
-                <span
-                  className="text-zinc-500 font-mono font-bold select-none border-r border-zinc-700/60 pr-1 text-sm"
-                  aria-hidden="true"
-                >
-                  {lyricTrim}
-                </span>
-              )}
             </div>
           );
         })}
@@ -144,7 +138,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
 
   const renderStandardChordLyricLine = (segments: ChordLyricSegment[]) => {
     return (
-      <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
+      <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 leading-normal max-w-full overflow-x-clip">
         {segments.map((segment, idx) => (
           <div
             key={`seg-${idx}`}
@@ -189,11 +183,35 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   switch (line.type) {
     case "section_header": {
       const title = line.headerTitle || line.rawText || "";
+      const displayTitle = title.replace(/[\[\]]/g, "").trim();
       return (
-        <div className="pt-4 pb-1 mt-2 border-b border-zinc-800/80 flex items-center gap-2 max-w-full">
-          <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-xs font-bold font-mono uppercase tracking-wider">
-            {title.replace(/[\[\]]/g, "")}
-          </span>
+        <div className="pt-4 pb-2 mt-2 border-b border-zinc-800/80 flex flex-col gap-2 max-w-full">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-xs font-bold font-mono uppercase tracking-wider">
+              {displayTitle}
+            </span>
+          </div>
+
+          {/* If CBA mode and sectionChords exist, render 5-row mini-cards row */}
+          {viewMode === "cba" && sectionChords && sectionChords.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 overflow-x-auto">
+              {sectionChords.map((chord, cIdx) => (
+                <CbaMiniCard
+                  key={`sec-cba-${cIdx}`}
+                  chord={chord}
+                  onSelectChord={onSelectChord}
+                  active={Boolean(
+                    selectedChord &&
+                      ((typeof chord === "string" && chord === selectedChord) ||
+                        (typeof chord === "object" &&
+                          typeof selectedChord === "object" &&
+                          chord?.soundingChord?.raw ===
+                            (selectedChord as ChordDetail)?.soundingChord?.raw)),
+                  )}
+                />
+              ))}
+            </div>
+          )}
         </div>
       );
     }

@@ -23,7 +23,7 @@ import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
-import type { ChordDetail, LeadSheetSong } from "../../src/types/index.ts";
+import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
 
 interface MockReactElement {
   type: string;
@@ -746,4 +746,38 @@ Deno.test("UX-11: Guitar View Mode renders original guitar chords & LeadSheetRea
   );
   assertEquals(readerHtml.includes("https://tabs.ultimate-guitar.com/tab/sample"), true);
   assertEquals(readerHtml.includes("Source"), true);
+});
+
+Deno.test("UX-12: 5-Row CBA Section-Header Mini-Grip Previews & Clean In-Line Badges", () => {
+  // 1. In-line ChordBadge in CBA mode has clean chord name without [1-2-4-5]
+  const chordDetail = enrichChord("F#7", 0);
+  const cbaBadgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      viewMode: "cba",
+    }),
+  );
+  assertEquals(cbaBadgeHtml.includes("F#7"), true);
+  assertEquals(
+    cbaBadgeHtml.includes("[1-2-4-5]"),
+    false,
+    "Finger numbers should be removed from in-line badges",
+  );
+
+  // 2. Section header renders 5-row CbaMiniCard previews when in CBA mode
+  const sectionLine: LeadSheetLine = {
+    type: "section_header",
+    headerTitle: "Verse 1",
+  };
+  const lineHtml = renderToStaticMarkup(
+    React.createElement(LineRenderer, {
+      line: sectionLine,
+      viewMode: "cba",
+      sectionChords: [chordDetail],
+    }),
+  );
+  assertEquals(lineHtml.includes("Verse 1"), true);
+  assertEquals(lineHtml.includes("F#7"), true);
+  // Contains 5-row dot container
+  assertEquals(lineHtml.includes("bg-emerald-400"), true);
 });

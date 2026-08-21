@@ -66,7 +66,6 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   const soundingChordName = chord.soundingChord?.raw || rawChordName;
   const primaryBass = chord.stradella?.primaryBass || chord.soundingChord?.root || "";
   const chordButton = chord.stradella?.chordButton?.label || "";
-  const cbaFingering = chord.cba?.fingeringPattern || "";
 
   // Classification for clean Stradella view
   const isSlash = Boolean(
@@ -183,9 +182,8 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       )}
 
       {viewMode === "cba" && (
-        <span className="flex items-center gap-1">
-          <span className="text-emerald-400 font-bold">{soundingChordName}</span>
-          {cbaFingering && <span className="text-[10px] text-zinc-300">[{cbaFingering}]</span>}
+        <span className="text-emerald-400 font-bold tracking-tight">
+          {soundingChordName}
         </span>
       )}
 

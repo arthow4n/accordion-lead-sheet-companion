@@ -10,6 +10,7 @@ import type {
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
+import { CbaMiniCard } from "./CbaMiniCard.tsx";
 
 export interface LeadSheetReaderProps {
   song: LeadSheetSong;
@@ -36,6 +37,54 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     const rawLines = (song.lines || []) as LeadSheetLine[];
     return enrichLeadSheetLines(rawLines, capo, song.originalKey);
   }, [song.lines, capo, song.originalKey]);
+
+  // Precompute unique chords per section
+  const { sectionChordsMap, allSongChords } = useMemo(() => {
+    const map = new Map<number, Array<ChordDetail | string>>();
+    const allChords: Array<ChordDetail | string> = [];
+    const allSeen = new Set<string>();
+
+    for (let i = 0; i < renderedLines.length; i++) {
+      const line = renderedLines[i];
+      if (line.type === "section_header") {
+        const uniqueChords: Array<ChordDetail | string> = [];
+        const seen = new Set<string>();
+        for (let j = i + 1; j < renderedLines.length; j++) {
+          const nextLine = renderedLines[j];
+          if (nextLine.type === "section_header") break;
+          if (nextLine.segments) {
+            for (const seg of nextLine.segments) {
+              if (seg.chord) {
+                const rawName = typeof seg.chord === "string"
+                  ? seg.chord
+                  : seg.chord.soundingChord?.raw || seg.chord.originalChord?.raw || "Chord";
+                if (!seen.has(rawName)) {
+                  seen.add(rawName);
+                  uniqueChords.push(seg.chord);
+                }
+              }
+            }
+          }
+        }
+        map.set(i, uniqueChords);
+      }
+
+      if (line.segments) {
+        for (const seg of line.segments) {
+          if (seg.chord) {
+            const rawName = typeof seg.chord === "string"
+              ? seg.chord
+              : seg.chord.soundingChord?.raw || seg.chord.originalChord?.raw || "Chord";
+            if (!allSeen.has(rawName)) {
+              allSeen.add(rawName);
+              allChords.push(seg.chord);
+            }
+          }
+        }
+      }
+    }
+    return { sectionChordsMap: map, allSongChords: allChords };
+  }, [renderedLines]);
 
   return (
     <div
@@ -74,6 +123,32 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
         </div>
       </header>
 
+      {/* Fallback 5-Row Grips preview if song has no section headers */}
+      {viewMode === "cba" && sectionChordsMap.size === 0 && allSongChords.length > 0 && (
+        <div className="mb-4 p-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase tracking-wider">
+            5-Row CBA Grips in Song:
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
+            {allSongChords.map((chord, cIdx) => (
+              <CbaMiniCard
+                key={`top-cba-${cIdx}`}
+                chord={chord}
+                onSelectChord={onSelectChord}
+                active={Boolean(
+                  selectedChord &&
+                    ((typeof chord === "string" && chord === selectedChord) ||
+                      (typeof chord === "object" &&
+                        typeof selectedChord === "object" &&
+                        chord?.soundingChord?.raw ===
+                          (selectedChord as ChordDetail)?.soundingChord?.raw)),
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Song Lines */}
       <div className="space-y-4">
         {renderedLines.map((line, idx) => (
@@ -84,6 +159,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             onSelectChord={onSelectChord}
             selectedChord={selectedChord}
             fontSizeClass={fontSizeClass}
+            sectionChords={sectionChordsMap.get(idx)}
           />
         ))}
       </div>
