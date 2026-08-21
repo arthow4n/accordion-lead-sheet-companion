@@ -89,9 +89,14 @@ export interface CbaGrip {
   buttonCoords?: CbaButtonCoord[];
   fingeringPattern: "1-2-4" | "2-3-5" | "1-2-5" | "1-3-5" | string;
   centroidColumn?: number;
+  centroidRow?: number;
   isRootGrip?: boolean;
   rootButtonCoord?: CbaButtonCoord;
   inversion?: number;
+  flowVector?: "●" | "↗" | "↘" | "↖" | "↙" | "➔" | "⬅" | string;
+  sharedCoords?: CbaButtonCoord[];
+  enteringCoords?: CbaButtonCoord[];
+  exitingCoords?: CbaButtonCoord[];
 }
 
 export interface ChordDetail {

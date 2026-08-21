@@ -37,7 +37,92 @@ export function optimizeVoiceLeading(
     }
   }
 
-  return bestGrip;
+  const enrichedGrip = computeCbaTransition(
+    bestGrip,
+    typeof previousGrip === "object" && previousGrip !== null ? previousGrip : undefined,
+  );
+
+  return enrichedGrip;
+}
+
+/**
+ * Computes transition diff dynamics (shared buttons, entering strikes, exiting ghosts, and hand flow vector)
+ * between consecutive CBA grips.
+ */
+export function computeCbaTransition(
+  currGrip: CbaGrip,
+  prevGrip?: CbaGrip,
+): CbaGrip {
+  const currBtns = currGrip.buttonCoords || currGrip.buttons || [];
+  const currCentroidCol = currGrip.centroidColumn ??
+    (currBtns.length > 0 ? currBtns.reduce((acc, b) => acc + b.column, 0) / currBtns.length : 5);
+  const currCentroidRow = currGrip.centroidRow ??
+    (currBtns.length > 0 ? currBtns.reduce((acc, b) => acc + b.row, 0) / currBtns.length : 3);
+
+  if (!prevGrip) {
+    return {
+      ...currGrip,
+      centroidColumn: currCentroidCol,
+      centroidRow: currCentroidRow,
+      flowVector: undefined,
+      sharedCoords: [],
+      enteringCoords: currBtns,
+      exitingCoords: [],
+    };
+  }
+
+  const prevBtns = prevGrip.buttonCoords || prevGrip.buttons || [];
+  const prevCentroidCol = prevGrip.centroidColumn ??
+    (prevBtns.length > 0 ? prevBtns.reduce((acc, b) => acc + b.column, 0) / prevBtns.length : 5);
+  const prevCentroidRow = prevGrip.centroidRow ??
+    (prevBtns.length > 0 ? prevBtns.reduce((acc, b) => acc + b.row, 0) / prevBtns.length : 3);
+
+  // Set Deltas
+  const sharedCoords = currBtns.filter((cb) =>
+    prevBtns.some((pb) => pb.row === cb.row && pb.column === cb.column)
+  );
+  const enteringCoords = currBtns.filter((cb) =>
+    !prevBtns.some((pb) => pb.row === cb.row && pb.column === cb.column)
+  );
+  const exitingCoords = prevBtns.filter((pb) =>
+    !currBtns.some((cb) => cb.row === pb.row && cb.column === pb.column)
+  );
+
+  // Centroid delta vectors
+  const dRow = currCentroidRow - prevCentroidRow;
+  const dCol = currCentroidCol - prevCentroidCol;
+
+  let flowVector: "●" | "↗" | "↘" | "↖" | "↙" | "➔" | "⬅" = "●";
+
+  if (Math.abs(dRow) < 0.35 && Math.abs(dCol) < 0.35) {
+    flowVector = "●"; // Hand stationary / pivot
+  } else if (dRow >= 0.35 && dCol >= 0.2) {
+    flowVector = "↗"; // Shift inward / up-right
+  } else if (dRow >= 0.35 && dCol <= -0.2) {
+    flowVector = "↖"; // Shift inward / up-left
+  } else if (dRow <= -0.35 && dCol >= 0.2) {
+    flowVector = "↘"; // Shift outward / down-right
+  } else if (dRow <= -0.35 && dCol <= -0.2) {
+    flowVector = "↙"; // Shift outward / down-left
+  } else if (dRow >= 0.35) {
+    flowVector = "↗"; // General inward shift
+  } else if (dRow <= -0.35) {
+    flowVector = "↙"; // General outward shift
+  } else if (dCol >= 0.35) {
+    flowVector = "➔"; // Slide right
+  } else if (dCol <= -0.35) {
+    flowVector = "⬅"; // Slide left
+  }
+
+  return {
+    ...currGrip,
+    centroidColumn: currCentroidCol,
+    centroidRow: currCentroidRow,
+    flowVector,
+    sharedCoords,
+    enteringCoords,
+    exitingCoords,
+  };
 }
 
 /**

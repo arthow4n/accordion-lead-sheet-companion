@@ -292,6 +292,7 @@ export function generateCbaGrip(
   }
 
   const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
+  const centroidRow = coords.reduce((acc, c) => acc + c.row, 0) / coords.length;
 
   return {
     chord: parsed.raw || parsed.root,
@@ -301,6 +302,7 @@ export function generateCbaGrip(
     buttonCoords: coords,
     fingeringPattern,
     centroidColumn: centroid,
+    centroidRow,
     isRootGrip: inversion === 0,
     rootButtonCoord: inversion === 0 ? coords[0] : undefined,
     inversion,
@@ -362,6 +364,7 @@ export function generateCanonicalRootGrip(
   }
 
   const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
+  const centroidRow = coords.reduce((acc, c) => acc + c.row, 0) / coords.length;
   const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : "1-2-4";
 
   return {
@@ -372,6 +375,7 @@ export function generateCanonicalRootGrip(
     buttonCoords: coords,
     fingeringPattern,
     centroidColumn: centroid,
+    centroidRow,
     isRootGrip: true,
     rootButtonCoord: coords[0],
     inversion: 0,

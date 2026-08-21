@@ -11,7 +11,7 @@ import type {
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
-import { optimizeVoiceLeading } from "../lib/cba/voiceLeading.ts";
+import { computeCbaTransition, optimizeVoiceLeading } from "../lib/cba/voiceLeading.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
@@ -118,7 +118,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
           const sounding = chord.soundingChord || chord.originalChord;
           if (!sounding) return chord;
           const grip = cbaGripMode === "root"
-            ? generateCanonicalRootGrip(sounding)
+            ? computeCbaTransition(generateCanonicalRootGrip(sounding), prevGrip)
             : optimizeVoiceLeading(sounding, prevGrip);
           prevGrip = grip;
           return {

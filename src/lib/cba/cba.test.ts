@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
+import type { CbaGrip } from "../../types/index.ts";
 import { generateCanonicalRootGrip, generateCbaGrip } from "./grips.ts";
-import { optimizeVoiceLeading } from "./voiceLeading.ts";
+import { computeCbaTransition, optimizeVoiceLeading } from "./voiceLeading.ts";
 
 Deno.test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("Bb", 0, 5);
@@ -214,5 +215,40 @@ Deno.test("CBA-16: Pearl-White Root Beacon tagging on 7th and extended chords", 
     assertEquals(grip.rootButtonCoord?.finger, 1);
     assertEquals(grip.buttonCoords?.length, 4);
     assertEquals(grip.fingeringPattern, "1-2-4-5");
+  }
+});
+
+Deno.test("CBA-17: Transition Diff Dynamics (shared, entering, exiting, flowVector)", () => {
+  const cGrip = generateCanonicalRootGrip("C", 5);
+  const amGrip = generateCanonicalRootGrip("Am", 5);
+  const transition = computeCbaTransition(amGrip, cGrip);
+
+  // Both C and Am share note C (r:1, c:5) and E (r:2, c:6)
+  assertEquals(transition.sharedCoords?.length, 2);
+  // Am introduces note A (r:1, c:4)
+  assertEquals(transition.enteringCoords?.length, 1);
+  assertEquals(transition.enteringCoords?.[0]?.note, "A");
+  // C releases note G (r:2, c:7) as ghost
+  assertEquals(transition.exitingCoords?.length, 1);
+  assertEquals(transition.exitingCoords?.[0]?.note, "G");
+  // Flow vector is defined
+  assertEquals(typeof transition.flowVector, "string");
+});
+
+Deno.test("CBA-18: Voice-Led Inversions Flow across Autumn Leaves progression", () => {
+  const progression = ["Am7", "D7", "Gmaj7", "Cmaj7", "F#m7b5", "B7", "Em"];
+  let prevGrip: CbaGrip | undefined = undefined;
+
+  for (const chord of progression) {
+    const grip = optimizeVoiceLeading(chord, prevGrip);
+    assertEquals(grip.buttonCoords && grip.buttonCoords.length >= 3, true);
+    // Flow vectors and transition dynamics are attached
+    if (prevGrip) {
+      assertEquals(typeof grip.flowVector, "string");
+      assertEquals(Array.isArray(grip.sharedCoords), true);
+      assertEquals(Array.isArray(grip.enteringCoords), true);
+      assertEquals(Array.isArray(grip.exitingCoords), true);
+    }
+    prevGrip = grip;
   }
 });
