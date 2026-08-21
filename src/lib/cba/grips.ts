@@ -35,6 +35,16 @@ export function getChordPitchClasses(
       return [(root + 4) % 12, (root + 7) % 12, (root + 11) % 12, (root + 2) % 12];
     case "minor9":
       return [(root + 3) % 12, (root + 7) % 12, (root + 10) % 12, (root + 2) % 12];
+    case "dominant13":
+      return [root, (root + 4) % 12, (root + 10) % 12, (root + 9) % 12];
+    case "sevenSharpEleven":
+      return [root, (root + 4) % 12, (root + 6) % 12, (root + 10) % 12];
+    case "sevenFlatNine":
+      return [root, (root + 4) % 12, (root + 10) % 12, (root + 1) % 12];
+    case "sixNine":
+      return [root, (root + 4) % 12, (root + 9) % 12, (root + 2) % 12];
+    case "altered":
+      return [root, (root + 4) % 12, (root + 6) % 12, (root + 10) % 12];
     case "sus4":
       return [root, (root + 5) % 12, (root + 7) % 12];
     case "sus2":
@@ -58,18 +68,22 @@ export function getChordNotes(chord: ParsedChord): string[] {
 
   return pitchClasses.map((pc) => {
     let preferFlats = false;
-    if (pc === 10) { // Bb / A#
+    if (chord.quality === "sevenFlatNine" && pc === (rootPc + 1) % 12) {
+      preferFlats = true;
+    } else if (chord.quality === "sevenSharpEleven" && pc === (rootPc + 6) % 12) {
+      preferFlats = false;
+    } else if (pc === 10) { // Bb / A#
       preferFlats = !["B", "E", "F#", "C#", "G#"].includes(chord.root);
     } else if (pc === 3) { // Eb / D#
       preferFlats = !["B", "E", "F#", "C#", "G#", "D#"].includes(chord.root);
     } else if (pc === 8) { // Ab / G#
-      preferFlats = ["F", "Bb", "Eb", "Ab", "Db", "Gb", "Fm", "Bbm", "Ebm", "Cm"].includes(
+      preferFlats = ["F", "Bb", "Eb", "Ab", "Db", "Gb", "Fm", "Bbm", "Ebm", "Cm", "C"].includes(
         chord.root,
       );
     } else if (pc === 1) { // Db / C#
-      preferFlats = ["Db", "Gb", "Ab", "Eb", "Bbm", "Fm"].includes(chord.root);
+      preferFlats = ["Db", "Gb", "Ab", "Eb", "Bbm", "Fm", "C", "F"].includes(chord.root);
     } else if (pc === 6) { // Gb / F#
-      preferFlats = ["Gb", "Db", "Ab", "Ebm"].includes(chord.root);
+      preferFlats = ["Gb", "Db", "Ab", "Ebm", "Bb", "Eb"].includes(chord.root);
     }
     return getNoteName(pc, preferFlats);
   });
@@ -98,6 +112,7 @@ export function findBestCoordinateCluster(
     return { note, pc, positions };
   });
 
+  const isTriad = notes.length === 3;
   const combinations: Array<Array<{ row: number; column: number; note: string }>> = [];
 
   function search(
@@ -110,30 +125,43 @@ export function findBestCoordinateCluster(
     }
 
     const { note, positions } = notePositions[index];
-    const prev = current.length > 0 ? current[current.length - 1] : null;
 
     for (const pos of positions) {
       // Must not collide on the exact same (row, column) button with previous notes
       const hasCollision = current.some((c) => c.row === pos.row && c.column === pos.column);
       if (hasCollision) continue;
 
-      // On same row, columns must be strictly increasing
-      if (prev && prev.row === pos.row && pos.column <= prev.column) {
-        continue;
+      // For 3-note triads in standard inversion order, preserve same-row column order
+      if (isTriad) {
+        const sameRowPrev = current.find((c) => c.row === pos.row);
+        if (sameRowPrev && pos.column <= sameRowPrev.column) {
+          continue;
+        }
       }
 
-      // Column must be within reasonable reach of previous note
-      if (!prev || (pos.column >= prev.column - 1 && pos.column <= prev.column + 3)) {
-        current.push({ ...pos, note });
-        search(index + 1, current);
-        current.pop();
-      }
+      current.push({ ...pos, note });
+      search(index + 1, current);
+      current.pop();
     }
   }
 
   search(0, []);
 
-  if (combinations.length === 0) {
+  // Filter candidate combinations
+  let candidates = combinations;
+  if (isTriad) {
+    // For 3-note triads in pitch order, columns must not jump backwards by >= 2 columns
+    const validTriads = combinations.filter(
+      (combo) =>
+        combo[0].column <= combo[1].column + 1 &&
+        combo[1].column <= combo[2].column + 1,
+    );
+    if (validTriads.length > 0) {
+      candidates = validTriads;
+    }
+  }
+
+  if (candidates.length === 0) {
     // Fallback: take closest position for each note to targetColumnCenter
     return notePositions.map(({ note, positions }, i) => {
       let closest = positions[0];
@@ -150,10 +178,10 @@ export function findBestCoordinateCluster(
   }
 
   // Score combinations by compactness (maxCol - minCol) and proximity to targetColumnCenter
-  let best = combinations[0];
+  let best = candidates[0];
   let bestScore = Infinity;
 
-  for (const combo of combinations) {
+  for (const combo of candidates) {
     const cols = combo.map((c) => c.column);
     const minCol = Math.min(...cols);
     const maxCol = Math.max(...cols);
@@ -161,12 +189,17 @@ export function findBestCoordinateCluster(
     const avgCol = cols.reduce((a, b) => a + b, 0) / cols.length;
     const centerDist = Math.abs(avgCol - targetColumnCenter);
 
-    // Score: center distance + spread + penalty for column out of bounds 2..8
+    // Score: center distance + spread + penalty for column out of bounds 2..9
     let outOfBoundsPenalty = 0;
-    if (minCol < 2) outOfBoundsPenalty += (2 - minCol) * 15;
-    if (maxCol > 9) outOfBoundsPenalty += (maxCol - 9) * 15;
+    if (minCol < 2) outOfBoundsPenalty += (2 - minCol) * 20;
+    if (maxCol > 9) outOfBoundsPenalty += (maxCol - 9) * 20;
 
-    const score = centerDist * 10 + spread * 5 + outOfBoundsPenalty;
+    let spreadPenalty = spread * 10;
+    if (spread > 4) {
+      spreadPenalty += (spread - 4) * 30;
+    }
+
+    const score = centerDist * 8 + spreadPenalty + outOfBoundsPenalty;
 
     if (score < bestScore) {
       bestScore = score;

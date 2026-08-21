@@ -88,3 +88,74 @@ Deno.test("CBA 4-note chord generation: Cmaj7 with 1-2-4-5 fingering", () => {
   assertEquals(grip.notes.length, 4);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
 });
+
+Deno.test("CBA-07: SevenSharpEleven (C7#11) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("C7#11", 0);
+  assertEquals(grip.notes, ["C", "E", "F#", "Bb"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-08: SevenFlatNine (C7b9) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("C7b9", 0);
+  assertEquals(grip.notes, ["C", "E", "Bb", "Db"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-09: Dominant13 (C13) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("C13", 0);
+  assertEquals(grip.notes, ["C", "E", "Bb", "A"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-10: SixNine (C6/9) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("C6/9", 0);
+  assertEquals(grip.notes, ["C", "E", "A", "D"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-11: Minor9 (Cm9) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("Cm9", 0);
+  assertEquals(grip.notes, ["Eb", "G", "Bb", "D"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-12: Altered (C7alt) with 1-2-4-5 fingering", () => {
+  const grip = generateCbaGrip("C7alt", 0);
+  assertEquals(grip.notes, ["C", "E", "F#", "Bb"]);
+  assertEquals(grip.fingeringPattern, "1-2-4-5");
+  assertEquals(grip.buttonCoords?.length, 4);
+});
+
+Deno.test("CBA-13: Voice leading progression Dm7 -> G7 -> Cmaj7 minimizes shift", () => {
+  const dm7 = generateCbaGrip("Dm7", 0, 5);
+  const g7 = optimizeVoiceLeading("G7", dm7);
+  const cmaj7 = optimizeVoiceLeading("Cmaj7", g7);
+
+  // Centroids should remain tightly clustered around column 4-6
+  assertEquals(Math.abs((dm7.centroidColumn ?? 5) - (g7.centroidColumn ?? 5)) <= 2.5, true);
+  assertEquals(Math.abs((g7.centroidColumn ?? 5) - (cmaj7.centroidColumn ?? 5)) <= 2.5, true);
+});
+
+Deno.test("CBA-14: Multi-note same-row chord cluster compactness (C7b9, G7b9, Cdim7, Dbdim7)", () => {
+  const sameRowChords = ["C7b9", "G7b9", "Cdim7", "Dbdim7", "Edim7", "A7b9"];
+  for (const chord of sameRowChords) {
+    const grip = generateCbaGrip(chord, 0, 5);
+    assertEquals(grip.buttonCoords?.length, 4);
+    const cols = grip.buttonCoords!.map((b) => b.column);
+    const spread = Math.max(...cols) - Math.min(...cols);
+    assertEquals(
+      spread <= 4,
+      true,
+      `Chord ${chord} cluster spread ${spread} exceeds max compact spread (4)`,
+    );
+
+    // Verify all button coordinates are unique (no collision)
+    const set = new Set(grip.buttonCoords!.map((b) => `r${b.row}c${b.column}`));
+    assertEquals(set.size, 4, `Chord ${chord} has button collision`);
+  }
+});
