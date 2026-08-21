@@ -3,7 +3,7 @@
  * Path: tests/ui-audit/audit_runner.ts
  *
  * Runs end-to-end browser automation against local Vite dev server
- * across 6 comprehensive UI/ergonomic flows using agent-browser (Lightpanda engine).
+ * across 6 comprehensive UI/ergonomic flows using agent-browser (Chromium / Chrome for Testing).
  *
  * Requirements:
  * - Deno 2 runtime with --allow-run --allow-read --allow-write --allow-env --allow-net
@@ -54,6 +54,7 @@ const LD_PATH =
 
 Deno.env.set("PATH", AUGMENTED_PATH);
 Deno.env.set("LD_LIBRARY_PATH", LD_PATH);
+Deno.env.set("AGENT_BROWSER_ENGINE", "chrome");
 
 const APP_URL = Deno.env.get("AUDIT_APP_URL") || "http://127.0.0.1:5173";
 const SCREENSHOT_DIR = join(Deno.cwd(), "tests/ui-audit/screenshots");
@@ -115,6 +116,7 @@ async function runBrowserCmd(
     env: {
       PATH: AUGMENTED_PATH,
       LD_LIBRARY_PATH: LD_PATH,
+      AGENT_BROWSER_ENGINE: "chrome",
     },
     stdout: "piped",
     stderr: "piped",
@@ -160,13 +162,41 @@ async function captureScreenshot(name: string): Promise<string> {
   return filePath;
 }
 
+async function loadTabIntoApp(tabText: string): Promise<void> {
+  await clickElement("button[aria-label='Import New Lead Sheet']");
+  await new Promise((r) => setTimeout(r, 120));
+
+  await evalJs(`(() => {
+    const btns = Array.from(document.querySelectorAll('button'));
+    const manualBtn = btns.find(b => b.textContent && b.textContent.includes('Manual Text'));
+    if (manualBtn) manualBtn.click();
+  })()`);
+  await new Promise((r) => setTimeout(r, 60));
+
+  await evalJs(`((text) => {
+    const textarea = document.querySelector('textarea');
+    if (!textarea) throw new Error('Textarea not found in ImportModal');
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+    nativeSetter.call(textarea, text);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  })(${JSON.stringify(tabText)})`);
+  await new Promise((r) => setTimeout(r, 120));
+
+  await evalJs(`(() => {
+    const btns = Array.from(document.querySelectorAll('button'));
+    const saveBtn = btns.find(b => b.textContent && b.textContent.includes('Save to Songbook'));
+    if (saveBtn) saveBtn.click();
+  })()`);
+  await new Promise((r) => setTimeout(r, 180));
+}
+
 // Main Audit Execution
 async function main() {
   const startTime = Date.now();
   console.log("================================================================================");
   console.log("             ACCORDION LEAD SHEET COMPANION - UI & ERGONOMIC AUDIT             ");
   console.log("================================================================================");
-  console.log(`Engine: agent-browser (Lightpanda)`);
+  console.log(`Engine: agent-browser (Chromium / Chrome for Testing)`);
   console.log(`Target: ${APP_URL}`);
   console.log(`Session: ${SESSION_ID}`);
   console.log("--------------------------------------------------------------------------------\n");
@@ -189,12 +219,13 @@ async function main() {
 
     // -------------------------------------------------------------------------
     // FLOW 01: Syllable-to-Chord Spatial Pinning Across Input Sources
+    // Evaluates 5 benchmark targets: Ultimate Guitar, Chordie, E-Chords, Cifra Club, Presets
     // -------------------------------------------------------------------------
     {
       const flowStart = Date.now();
       const flow: FlowResult = {
         flowId: "FLOW-01",
-        name: "Syllable-to-Chord Spatial Pinning Across Input Sources",
+        name: "Syllable-to-Chord Spatial Pinning Across Input Sources (5 Benchmark Targets)",
         passed: true,
         durationMs: 0,
         assertions: [],
@@ -204,62 +235,477 @@ async function main() {
       console.log(`[FLOW-01] Executing: ${flow.name}...`);
 
       try {
-        // 1. Check default preset (Bella Ciao) segments structure
-        const presetStructure = await evalJs<{
+        // --- TARGET 1: Ultimate Guitar (Oasis - Wonderwall) ---
+        console.log("  [Target 1/5] Evaluating Ultimate Guitar 2-line layout (Wonderwall)...");
+        const ugTab = `[Verse 1]
+Em7          G                     Dsus4                A7sus4
+Today is gonna be the day that they're gonna throw it back to you
+Em7               G                   Dsus4                A7sus4
+By now you should've somehow realized what you gotta do`;
+
+        await loadTabIntoApp(ugTab);
+
+        const ugMetrics = await evalJs<{
           totalSegments: number;
-          hasInlineFlexColumn: boolean;
-          hasChordBadge: boolean;
-          hasLyricSyllable: boolean;
           allSegmentsColumnFlex: boolean;
           hasWhitespacePre: boolean;
+          badgeTitles: string[];
+          badgeTexts: string[];
+          lyricText: string;
+          scrollWidth: number;
+          innerWidth: number;
+          noHorizontalOverflow: boolean;
         }>(`(() => {
           const segments = Array.from(document.querySelectorAll('.inline-flex.flex-col'));
-          if (segments.length === 0) {
-            return JSON.stringify({
-              totalSegments: 0,
-              hasInlineFlexColumn: false,
-              hasChordBadge: false,
-              hasLyricSyllable: false,
-              allSegmentsColumnFlex: false,
-              hasWhitespacePre: false
-            });
-          }
-          
-          const allColFlex = segments.every(s => {
+          const allColFlex = segments.length > 0 && segments.every(s => {
             return s.style.display === 'inline-flex' && s.style.flexDirection === 'column';
           });
-
-          const firstSeg = segments[0];
-          const badge = firstSeg.querySelector('button');
-          const syllable = firstSeg.querySelector('.lyric-syllable');
-          const hasWsPre = syllable ? syllable.classList.contains('whitespace-pre') : false;
-
+          const badges = Array.from(document.querySelectorAll('.inline-flex.flex-col button'));
+          const titles = badges.map(b => b.getAttribute('title') || '');
+          const texts = badges.map(b => b.textContent?.trim() || '');
+          const syllables = Array.from(document.querySelectorAll('.lyric-syllable')).map(s => s.textContent || '');
+          const hasWsPre = Array.from(document.querySelectorAll('.lyric-syllable')).every(s => s.classList.contains('whitespace-pre'));
+          const scrollW = document.documentElement.scrollWidth;
+          const innerW = window.innerWidth;
           return JSON.stringify({
             totalSegments: segments.length,
-            hasInlineFlexColumn: firstSeg.style.display === 'inline-flex',
-            hasChordBadge: Boolean(badge),
-            hasLyricSyllable: Boolean(syllable),
             allSegmentsColumnFlex: allColFlex,
-            hasWhitespacePre: hasWsPre
+            hasWhitespacePre: hasWsPre,
+            badgeTitles: titles,
+            badgeTexts: texts,
+            lyricText: syllables.join(''),
+            scrollWidth: scrollW,
+            innerWidth: innerW,
+            noHorizontalOverflow: scrollW <= innerW
           });
         })()`);
 
         flow.assertions.push({
-          description: "Preset renders segments with inline-flex column layout style",
-          passed: presetStructure.totalSegments > 0 && presetStructure.allSegmentsColumnFlex,
-          actual: presetStructure,
+          description:
+            "Target 1 (Ultimate Guitar): Segments render with inline-flex column layout style",
+          passed: ugMetrics.totalSegments > 0 && ugMetrics.allSegmentsColumnFlex,
+          actual: {
+            totalSegments: ugMetrics.totalSegments,
+            allSegmentsColumnFlex: ugMetrics.allSegmentsColumnFlex,
+          },
           expected: { totalSegments: ">0", allSegmentsColumnFlex: true },
         });
 
         flow.assertions.push({
-          description: "Lyric syllables preserve exact spacing via whitespace-pre",
-          passed: presetStructure.hasWhitespacePre,
-          actual: presetStructure.hasWhitespacePre,
-          expected: true,
+          description:
+            "Target 1 (Ultimate Guitar): Zero horizontal document overflow (scrollWidth <= innerWidth)",
+          passed: ugMetrics.noHorizontalOverflow,
+          actual: {
+            scrollWidth: ugMetrics.scrollWidth,
+            innerWidth: ugMetrics.innerWidth,
+          },
+          expected: "scrollWidth <= innerWidth",
         });
 
-        const ssPath = await captureScreenshot("flow01_spatial_pinning");
-        flow.screenshots.push(ssPath);
+        const hasUgChords = ["Em7", "G", "Dsus4", "A7sus4"].every((ch) =>
+          ugMetrics.badgeTitles.some((t) => t.includes(ch)) ||
+          ugMetrics.badgeTexts.some((t) => t.includes(ch))
+        );
+
+        flow.assertions.push({
+          description:
+            "Target 1 (Ultimate Guitar): Chords Em7, G, Dsus4, A7sus4 pinned over matching verse lyrics",
+          passed: ugMetrics.hasWhitespacePre &&
+            ugMetrics.lyricText.includes("Today is gonna be the day") &&
+            hasUgChords,
+          actual: {
+            badgeTitles: ugMetrics.badgeTitles.slice(0, 4),
+            lyricSnippet: ugMetrics.lyricText.slice(0, 30),
+          },
+          expected: "Em7, G, Dsus4, A7sus4 over 'Today is gonna be the day'",
+        });
+
+        const ssUg = await captureScreenshot("flow01_target1_ultimate_guitar");
+        flow.screenshots.push(ssUg);
+
+        // --- TARGET 2: Chordie (The Beatles - All My Loving) ---
+        console.log("  [Target 2/5] Evaluating Chordie inline bracketed format (All My Loving)...");
+        const chordieTab = `[Verse 1]
+Close your [Fm]eyes and I'll [Bb7]kiss you, to[Eb]morrow I'll [Cm]miss you
+Re[Ab]member I'll [Fm]always be [Db]true [Bb7]`;
+
+        await loadTabIntoApp(chordieTab);
+
+        const chordieMetrics = await evalJs<{
+          totalSegments: number;
+          allSegmentsColumnFlex: boolean;
+          badgeTitles: string[];
+          badgeTexts: string[];
+          lyricsClean: boolean;
+          lyricText: string;
+          scrollWidth: number;
+          innerWidth: number;
+          noHorizontalOverflow: boolean;
+        }>(`(() => {
+          const segments = Array.from(document.querySelectorAll('.inline-flex.flex-col'));
+          const allColFlex = segments.length > 0 && segments.every(s => {
+            return s.style.display === 'inline-flex' && s.style.flexDirection === 'column';
+          });
+          const badges = Array.from(document.querySelectorAll('.inline-flex.flex-col button'));
+          const titles = badges.map(b => b.getAttribute('title') || '');
+          const texts = badges.map(b => b.textContent?.trim() || '');
+          const syllables = Array.from(document.querySelectorAll('.lyric-syllable')).map(s => s.textContent || '');
+          const rawJoined = syllables.join('');
+          const hasBrackets = syllables.some(s => s.includes('[') || s.includes(']'));
+          const scrollW = document.documentElement.scrollWidth;
+          const innerW = window.innerWidth;
+          return JSON.stringify({
+            totalSegments: segments.length,
+            allSegmentsColumnFlex: allColFlex,
+            badgeTitles: titles,
+            badgeTexts: texts,
+            lyricsClean: !hasBrackets && rawJoined.includes('Close your') && rawJoined.includes('kiss you'),
+            lyricText: rawJoined,
+            scrollWidth: scrollW,
+            innerWidth: innerW,
+            noHorizontalOverflow: scrollW <= innerW
+          });
+        })()`);
+
+        flow.assertions.push({
+          description: "Target 2 (Chordie): Segments render with inline-flex column layout style",
+          passed: chordieMetrics.totalSegments > 0 && chordieMetrics.allSegmentsColumnFlex,
+          actual: {
+            totalSegments: chordieMetrics.totalSegments,
+            allSegmentsColumnFlex: chordieMetrics.allSegmentsColumnFlex,
+          },
+          expected: { totalSegments: ">0", allSegmentsColumnFlex: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Target 2 (Chordie): Zero horizontal document overflow (scrollWidth <= innerWidth)",
+          passed: chordieMetrics.noHorizontalOverflow,
+          actual: {
+            scrollWidth: chordieMetrics.scrollWidth,
+            innerWidth: chordieMetrics.innerWidth,
+          },
+          expected: "scrollWidth <= innerWidth",
+        });
+
+        const hasChordieChords = ["Fm", "Bb7", "Eb", "Cm", "Ab", "Db"].every((ch) =>
+          chordieMetrics.badgeTitles.some((t) => t.includes(ch)) ||
+          chordieMetrics.badgeTexts.some((t) => t.includes(ch))
+        );
+
+        flow.assertions.push({
+          description:
+            "Target 2 (Chordie): Bracketed chords render as top badges and bracket markup is stripped",
+          passed: chordieMetrics.lyricsClean && hasChordieChords,
+          actual: {
+            badgeTitles: chordieMetrics.badgeTitles.slice(0, 4),
+            lyricsClean: chordieMetrics.lyricsClean,
+          },
+          expected: "Top badges Fm, Bb7, Eb and clean lyrics without [ ]",
+        });
+
+        const ssChordie = await captureScreenshot("flow01_target2_chordie");
+        flow.screenshots.push(ssChordie);
+
+        // --- TARGET 3: E-Chords / Cifras (Eagles - Hotel California) ---
+        console.log(
+          "  [Target 3/5] Evaluating E-Chords / Cifras whitespace alignment (Hotel California)...",
+        );
+        const echordsTab = `[Intro]
+Bm  F#7  A  E7  G  D  Em  F#7
+
+[Verse 1]
+Bm                               F#7
+On a dark desert highway, cool wind in my hair
+A                               E7
+Warm smell of colitas, rising up through the air
+G                                  D
+Up ahead in the distance, I saw a shimmering light
+Em                                       F#7
+My head grew heavy and my sight grew dim, I had to stop for the night`;
+
+        await loadTabIntoApp(echordsTab);
+
+        const echordsMetrics = await evalJs<{
+          totalSegments: number;
+          allSegmentsColumnFlex: boolean;
+          badgeTitles: string[];
+          badgeTexts: string[];
+          hasIntroSpacing: boolean;
+          lyricText: string;
+          scrollWidth: number;
+          innerWidth: number;
+          noHorizontalOverflow: boolean;
+        }>(`(() => {
+          const segments = Array.from(document.querySelectorAll('.inline-flex.flex-col'));
+          const allColFlex = segments.length > 0 && segments.every(s => {
+            return s.style.display === 'inline-flex' && s.style.flexDirection === 'column';
+          });
+          const badges = Array.from(document.querySelectorAll('.inline-flex.flex-col button'));
+          const titles = badges.map(b => b.getAttribute('title') || '');
+          const texts = badges.map(b => b.textContent?.trim() || '');
+          const syllables = Array.from(document.querySelectorAll('.lyric-syllable')).map(s => s.textContent || '');
+          const hasIntroBars = syllables.some(s => s === '\u00A0' || s.trim() === '');
+          const scrollW = document.documentElement.scrollWidth;
+          const innerW = window.innerWidth;
+          return JSON.stringify({
+            totalSegments: segments.length,
+            allSegmentsColumnFlex: allColFlex,
+            badgeTitles: titles,
+            badgeTexts: texts,
+            hasIntroSpacing: hasIntroBars,
+            lyricText: syllables.join(''),
+            scrollWidth: scrollW,
+            innerWidth: innerW,
+            noHorizontalOverflow: scrollW <= innerW
+          });
+        })()`);
+
+        flow.assertions.push({
+          description:
+            "Target 3 (E-Chords/Cifras): Segments render with inline-flex column layout style",
+          passed: echordsMetrics.totalSegments > 0 && echordsMetrics.allSegmentsColumnFlex,
+          actual: {
+            totalSegments: echordsMetrics.totalSegments,
+            allSegmentsColumnFlex: echordsMetrics.allSegmentsColumnFlex,
+          },
+          expected: { totalSegments: ">0", allSegmentsColumnFlex: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Target 3 (E-Chords/Cifras): Zero horizontal document overflow (scrollWidth <= innerWidth)",
+          passed: echordsMetrics.noHorizontalOverflow,
+          actual: {
+            scrollWidth: echordsMetrics.scrollWidth,
+            innerWidth: echordsMetrics.innerWidth,
+          },
+          expected: "scrollWidth <= innerWidth",
+        });
+
+        const hasEchordsChords = ["Bm", "F#7", "A", "E7", "G", "D", "Em"].every((ch) =>
+          echordsMetrics.badgeTitles.some((t) => t.includes(ch)) ||
+          echordsMetrics.badgeTexts.some((t) => t.includes(ch))
+        );
+
+        flow.assertions.push({
+          description:
+            "Target 3 (E-Chords/Cifras): Chords Bm, F#7, A, E7, G, D, Em over lyrics and even whitespace intro bars",
+          passed: echordsMetrics.hasIntroSpacing && hasEchordsChords,
+          actual: {
+            badgeTitles: echordsMetrics.badgeTitles.slice(0, 8),
+            hasIntroSpacing: echordsMetrics.hasIntroSpacing,
+          },
+          expected: "Chords Bm, F#7, A, E7, G, D, Em with intro spacing",
+        });
+
+        const ssEchords = await captureScreenshot("flow01_target3_echords");
+        flow.screenshots.push(ssEchords);
+
+        // --- TARGET 4: Cifra Club (The Beatles - Let It Be) ---
+        console.log("  [Target 4/5] Evaluating Cifra Club accented headers (Let It Be)...");
+        const cifraTab = `[Verso 1]
+C                G
+When I find myself in times of trouble
+Am          F
+Mother Mary comes to me
+C                 G              F  C
+Speaking words of wisdom, let it be
+
+[Refrão]
+Am          G          F          C
+Let it be, let it be, let it be, let it be
+C                 G              F  C
+Whisper words of wisdom, let it be`;
+
+        await loadTabIntoApp(cifraTab);
+
+        const cifraMetrics = await evalJs<{
+          totalSegments: number;
+          allSegmentsColumnFlex: boolean;
+          badgeTitles: string[];
+          badgeTexts: string[];
+          hasRefraoHeader: boolean;
+          lyricText: string;
+          scrollWidth: number;
+          innerWidth: number;
+          noHorizontalOverflow: boolean;
+        }>(`(() => {
+          const segments = Array.from(document.querySelectorAll('.inline-flex.flex-col'));
+          const allColFlex = segments.length > 0 && segments.every(s => {
+            return s.style.display === 'inline-flex' && s.style.flexDirection === 'column';
+          });
+          const badges = Array.from(document.querySelectorAll('.inline-flex.flex-col button'));
+          const titles = badges.map(b => b.getAttribute('title') || '');
+          const texts = badges.map(b => b.textContent?.trim() || '');
+          const headers = Array.from(document.querySelectorAll('span, div, h3, header')).map(h => h.textContent?.trim() || '');
+          const hasRefrao = headers.some(h => h.toLowerCase().includes('refrão') || h.toLowerCase().includes('refrao'));
+          const syllables = Array.from(document.querySelectorAll('.lyric-syllable')).map(s => s.textContent || '');
+          const scrollW = document.documentElement.scrollWidth;
+          const innerW = window.innerWidth;
+          return JSON.stringify({
+            totalSegments: segments.length,
+            allSegmentsColumnFlex: allColFlex,
+            badgeTitles: titles,
+            badgeTexts: texts,
+            hasRefraoHeader: hasRefrao,
+            lyricText: syllables.join(''),
+            scrollWidth: scrollW,
+            innerWidth: innerW,
+            noHorizontalOverflow: scrollW <= innerW
+          });
+        })()`);
+
+        flow.assertions.push({
+          description:
+            "Target 4 (Cifra Club): Segments render with inline-flex column layout style",
+          passed: cifraMetrics.totalSegments > 0 && cifraMetrics.allSegmentsColumnFlex,
+          actual: {
+            totalSegments: cifraMetrics.totalSegments,
+            allSegmentsColumnFlex: cifraMetrics.allSegmentsColumnFlex,
+          },
+          expected: { totalSegments: ">0", allSegmentsColumnFlex: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Target 4 (Cifra Club): Zero horizontal document overflow (scrollWidth <= innerWidth)",
+          passed: cifraMetrics.noHorizontalOverflow,
+          actual: {
+            scrollWidth: cifraMetrics.scrollWidth,
+            innerWidth: cifraMetrics.innerWidth,
+          },
+          expected: "scrollWidth <= innerWidth",
+        });
+
+        const hasCifraChords = ["C", "G", "Am", "F"].every((ch) =>
+          cifraMetrics.badgeTitles.some((t) => t.includes(ch)) ||
+          cifraMetrics.badgeTexts.some((t) => t.includes(ch))
+        );
+
+        flow.assertions.push({
+          description:
+            "Target 4 (Cifra Club): Accented section headers ([Refrão]) render as clean dividers with chords C, G, Am, F pinned",
+          passed: cifraMetrics.hasRefraoHeader && hasCifraChords,
+          actual: {
+            hasRefraoHeader: cifraMetrics.hasRefraoHeader,
+            badgeTitles: cifraMetrics.badgeTitles.slice(0, 4),
+          },
+          expected: "Accented [Refrão] header divider and C, G, Am, F pinned",
+        });
+
+        const ssCifra = await captureScreenshot("flow01_target4_cifraclub");
+        flow.screenshots.push(ssCifra);
+
+        // --- TARGET 5: Standard Presets (Autumn Leaves / Bella Ciao) ---
+        console.log(
+          "  [Target 5/5] Evaluating Presets jazz slash chords & compounds (Autumn Leaves)...",
+        );
+        const autumnLeavesTab = `[Verse 1]
+The falling [Am7]leaves drift by the [D7]window
+The autumn [Gmaj7]leaves of red and [Cmaj7]gold
+I see your [F#m7b5]lips, the summer [B7]kisses
+The sun-burned [Em]hands I used to hold
+
+[Bridge]
+[C/B]Passing through the [Am/F#]golden woods
+With [Cm6]memories and [Bm7b5]autumn goods`;
+
+        await loadTabIntoApp(autumnLeavesTab);
+
+        const presetMetrics = await evalJs<{
+          totalSegments: number;
+          allSegmentsColumnFlex: boolean;
+          badgeTitles: string[];
+          badgeTexts: string[];
+          hasAmberCounterBass: boolean;
+          hasCompoundVoicings: boolean;
+          scrollWidth: number;
+          innerWidth: number;
+          noHorizontalOverflow: boolean;
+        }>(`(() => {
+          const segments = Array.from(document.querySelectorAll('.inline-flex.flex-col'));
+          const allColFlex = segments.length > 0 && segments.every(s => {
+            return s.style.display === 'inline-flex' && s.style.flexDirection === 'column';
+          });
+          const badges = Array.from(document.querySelectorAll('.inline-flex.flex-col button'));
+          const titles = badges.map(b => b.getAttribute('title') || '');
+          const texts = badges.map(b => b.textContent?.trim() || '');
+          const hasAmber = badges.some(b => b.className.includes('bg-amber') || b.className.includes('text-amber'));
+          const hasCompounds = titles.some(t => t.includes('Cm6') || t.includes('Bm7b5') || t.includes('Am7') || t.includes('Gmaj7') || t.includes('C/B') || t.includes('Am/F#'));
+          const scrollW = document.documentElement.scrollWidth;
+          const innerW = window.innerWidth;
+          return JSON.stringify({
+            totalSegments: segments.length,
+            allSegmentsColumnFlex: allColFlex,
+            badgeTitles: titles,
+            badgeTexts: texts,
+            hasAmberCounterBass: hasAmber,
+            hasCompoundVoicings: hasCompounds,
+            scrollWidth: scrollW,
+            innerWidth: innerW,
+            noHorizontalOverflow: scrollW <= innerW
+          });
+        })()`);
+
+        flow.assertions.push({
+          description:
+            "Target 5 (Standard Presets): Segments render with inline-flex column layout style",
+          passed: presetMetrics.totalSegments > 0 && presetMetrics.allSegmentsColumnFlex,
+          actual: {
+            totalSegments: presetMetrics.totalSegments,
+            allSegmentsColumnFlex: presetMetrics.allSegmentsColumnFlex,
+          },
+          expected: { totalSegments: ">0", allSegmentsColumnFlex: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Target 5 (Standard Presets): Zero horizontal document overflow (scrollWidth <= innerWidth)",
+          passed: presetMetrics.noHorizontalOverflow,
+          actual: {
+            scrollWidth: presetMetrics.scrollWidth,
+            innerWidth: presetMetrics.innerWidth,
+          },
+          expected: "scrollWidth <= innerWidth",
+        });
+
+        flow.assertions.push({
+          description:
+            "Target 5 (Standard Presets): Jazz slash chords (C/B, Am/F#) and compound voicings (Cm6, Bm7b5) visually anchor without badge crowding",
+          passed: presetMetrics.hasAmberCounterBass && presetMetrics.hasCompoundVoicings,
+          actual: {
+            hasAmberCounterBass: presetMetrics.hasAmberCounterBass,
+            hasCompoundVoicings: presetMetrics.hasCompoundVoicings,
+            badgeTitles: presetMetrics.badgeTitles.slice(0, 6),
+          },
+          expected: "Amber counter-bass styling and compound voicings anchored",
+        });
+
+        const ssPreset = await captureScreenshot("flow01_target5_presets");
+        flow.screenshots.push(ssPreset);
+
+        // Restore Bella Ciao for subsequent flows (FLOW-02 through FLOW-06)
+        console.log("  [Teardown FLOW-01] Restoring standard preset (Bella Ciao)...");
+        const bellaCiaoTab = `[Verse 1]
+[Am]Una mattina mi son svegliato
+O bella [Dm]ciao bella ciao bella [Am]ciao ciao ciao
+Una mat[Am]tina mi son svegli[Dm]ato
+E ho tro[E7]vato l'inva[Am]sor
+
+[Verse 2]
+[Am]O partigiano porta-mi via
+O bella [Dm]ciao bella ciao bella [Am]ciao ciao ciao
+O parti[Am]giano porta-mi [Dm]via
+Che mi [E7]sento di mo[Am]rir
+
+[Chorus]
+[Am]E se io muoio da partigiano
+O bella [Dm]ciao bella ciao bella [Am]ciao ciao ciao
+E se io [Am]muoio da parti[Dm]giano
+Tu mi [E7]devi seppel[Am]lir`;
+        await loadTabIntoApp(bellaCiaoTab);
+        await evalJs(`(() => window.scrollTo(0, 0))()`);
       } catch (err) {
         flow.passed = false;
         flow.error = err instanceof Error ? err.message : String(err);
@@ -291,7 +737,8 @@ async function main() {
         { width: 375, height: 667, name: "375x667 (iPhone SE)" },
         { width: 390, height: 844, name: "390x844 (iPhone 12/13/14/15/16)" },
         { width: 430, height: 932, name: "430x932 (iPhone Pro Max)" },
-        { width: 768, height: 1024, name: "768x1024 (iPad Tablet)" },
+        { width: 768, height: 1024, name: "768x1024 (iPad Tablet Portrait)" },
+        { width: 1024, height: 768, name: "1024x768 (iPad Tablet Landscape)" },
       ];
 
       try {
@@ -300,26 +747,39 @@ async function main() {
 
           const overflowMetrics = await evalJs<{
             innerWidth: number;
+            scrollWidth: number;
             mainWidth: number;
             hasWrapping: boolean;
             flexWrapEnabled: boolean;
+            noHorizontalOverflow: boolean;
           }>(`(() => {
             const main = document.querySelector('main');
             const lines = Array.from(document.querySelectorAll('.flex.flex-wrap'));
+            const scrollW = document.documentElement.scrollWidth;
+            const innerW = window.innerWidth;
             return JSON.stringify({
-              innerWidth: window.innerWidth,
+              innerWidth: innerW,
+              scrollWidth: scrollW,
               mainWidth: main ? main.clientWidth : 0,
               hasWrapping: lines.length > 0,
-              flexWrapEnabled: lines.every(l => l.classList.contains('flex-wrap'))
+              flexWrapEnabled: lines.every(l => l.classList.contains('flex-wrap')),
+              noHorizontalOverflow: scrollW <= innerW
             });
           })()`);
 
-          const fitsViewport = overflowMetrics.mainWidth <= vp.width;
+          const fitsViewport = overflowMetrics.noHorizontalOverflow &&
+            overflowMetrics.mainWidth <= vp.width;
           flow.assertions.push({
-            description: `Viewport ${vp.name} flex containers wrap without horizontal overflow`,
-            passed: fitsViewport && overflowMetrics.hasWrapping && overflowMetrics.flexWrapEnabled,
-            actual: { mainWidth: overflowMetrics.mainWidth, innerWidth: vp.width },
-            expected: `mainWidth <= ${vp.width} and flex-wrap enabled`,
+            description:
+              `Viewport ${vp.name} flex containers wrap without horizontal overflow (scrollWidth <= innerWidth)`,
+            passed: fitsViewport && overflowMetrics.hasWrapping &&
+              overflowMetrics.flexWrapEnabled,
+            actual: {
+              scrollWidth: overflowMetrics.scrollWidth,
+              innerWidth: overflowMetrics.innerWidth,
+              mainWidth: overflowMetrics.mainWidth,
+            },
+            expected: `scrollWidth <= innerWidth (${vp.width}px) and flex-wrap enabled`,
           });
 
           const ssPath = await captureScreenshot(`flow02_viewport_${vp.width}px`);
@@ -522,28 +982,147 @@ async function main() {
       try {
         await runBrowserCmd(["set", "viewport", "375", "667"]);
 
-        // 1. Verify ChordBadge button attributes & styling
-        const touchTarget = await evalJs<{
+        // 1. Verify ChordBadge button attributes, styling & touch target hitbox (>= 44x44px) across modes
+        // 1a. Single-line Stradella LH Mode
+        await clickElement("button[title='Left Hand Stradella Bass Mode']");
+        await new Promise((r) => setTimeout(r, 100));
+
+        const stradellaTouchTarget = await evalJs<{
           isButton: boolean;
           hasCursorPointer: boolean;
           hasActiveScale: boolean;
           hasAriaOrTitle: boolean;
+          hasPseudoHitbox: boolean;
+          badgeWidth: number;
+          badgeHeight: number;
+          hitboxWidth: number;
+          hitboxHeight: number;
+          satisfiesTouchTarget: boolean;
         }>(`(() => {
           const badge = document.querySelector('.inline-flex.flex-col button');
-          if (!badge) return JSON.stringify({ isButton: false, hasCursorPointer: false, hasActiveScale: false, hasAriaOrTitle: false });
+          if (!badge) return JSON.stringify({
+            isButton: false,
+            hasCursorPointer: false,
+            hasActiveScale: false,
+            hasAriaOrTitle: false,
+            hasPseudoHitbox: false,
+            badgeWidth: 0,
+            badgeHeight: 0,
+            hitboxWidth: 0,
+            hitboxHeight: 0,
+            satisfiesTouchTarget: false
+          });
+          
+          const rect = badge.getBoundingClientRect();
+          const hasPseudo = badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-2.5') || badge.className.includes('before:absolute');
+          const exp = (badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-y-3.5')) ? 24 : (badge.className.includes('before:-inset-2.5') ? 20 : 0);
+          const hitboxW = rect.width + exp;
+          const hitboxH = rect.height + exp;
+          
           return JSON.stringify({
             isButton: badge.tagName.toLowerCase() === 'button',
             hasCursorPointer: badge.classList.contains('cursor-pointer'),
             hasActiveScale: badge.className.includes('active:scale'),
-            hasAriaOrTitle: Boolean(badge.getAttribute('title') || badge.getAttribute('aria-label'))
+            hasAriaOrTitle: Boolean(badge.getAttribute('title') || badge.getAttribute('aria-label')),
+            hasPseudoHitbox: hasPseudo,
+            badgeWidth: Math.round(rect.width),
+            badgeHeight: Math.round(rect.height),
+            hitboxWidth: Math.round(hitboxW),
+            hitboxHeight: Math.round(hitboxH),
+            satisfiesTouchTarget: hasPseudo && (hitboxW >= 44 || rect.width >= 44) && (hitboxH >= 44 || rect.height >= 44)
           });
         })()`);
 
         flow.assertions.push({
-          description: "Chord badge is an accessible, touch-interactive button element",
-          passed: touchTarget.isButton && touchTarget.hasCursorPointer,
-          actual: touchTarget,
+          description:
+            "Single-line Stradella mode: Chord badge is an accessible, touch-interactive button element",
+          passed: stradellaTouchTarget.isButton && stradellaTouchTarget.hasCursorPointer,
+          actual: stradellaTouchTarget,
           expected: { isButton: true, hasCursorPointer: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Single-line Stradella mode: Chord badge touch target hitbox satisfies mobile ergonomics (>= 44x44px)",
+          passed: stradellaTouchTarget.satisfiesTouchTarget,
+          actual: {
+            badgeWidth: stradellaTouchTarget.badgeWidth,
+            badgeHeight: stradellaTouchTarget.badgeHeight,
+            hitboxWidth: stradellaTouchTarget.hitboxWidth,
+            hitboxHeight: stradellaTouchTarget.hitboxHeight,
+            hasPseudoHitbox: stradellaTouchTarget.hasPseudoHitbox,
+          },
+          expected: "hitboxWidth >= 44px and hitboxHeight >= 44px",
+        });
+
+        // 1b. Single-line CBA RH Mode
+        await clickElement("button[title='Right Hand CBA C-System Treble Mode']");
+        await new Promise((r) => setTimeout(r, 100));
+
+        const cbaTouchTarget = await evalJs<{
+          badgeWidth: number;
+          badgeHeight: number;
+          hitboxWidth: number;
+          hitboxHeight: number;
+          satisfiesTouchTarget: boolean;
+        }>(`(() => {
+          const badge = document.querySelector('.inline-flex.flex-col button');
+          if (!badge) return JSON.stringify({ badgeWidth: 0, badgeHeight: 0, hitboxWidth: 0, hitboxHeight: 0, satisfiesTouchTarget: false });
+          const rect = badge.getBoundingClientRect();
+          const hasPseudo = badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-2.5') || badge.className.includes('before:absolute');
+          const exp = (badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-y-3.5')) ? 24 : (badge.className.includes('before:-inset-2.5') ? 20 : 0);
+          const hitboxW = rect.width + exp;
+          const hitboxH = rect.height + exp;
+          return JSON.stringify({
+            badgeWidth: Math.round(rect.width),
+            badgeHeight: Math.round(rect.height),
+            hitboxWidth: Math.round(hitboxW),
+            hitboxHeight: Math.round(hitboxH),
+            satisfiesTouchTarget: hasPseudo && (hitboxW >= 44 || rect.width >= 44) && (hitboxH >= 44 || rect.height >= 44)
+          });
+        })()`);
+
+        flow.assertions.push({
+          description:
+            "Single-line CBA mode: Chord badge touch target hitbox satisfies mobile ergonomics (>= 44x44px)",
+          passed: cbaTouchTarget.satisfiesTouchTarget,
+          actual: cbaTouchTarget,
+          expected: "hitboxWidth >= 44px and hitboxHeight >= 44px",
+        });
+
+        // 1c. Dual Mode
+        await clickElement("button[title='Dual Mode (Guitar Chords + Stradella)']");
+        await new Promise((r) => setTimeout(r, 100));
+
+        const dualTouchTarget = await evalJs<{
+          badgeWidth: number;
+          badgeHeight: number;
+          hitboxWidth: number;
+          hitboxHeight: number;
+          satisfiesTouchTarget: boolean;
+        }>(`(() => {
+          const badge = document.querySelector('.inline-flex.flex-col button');
+          if (!badge) return JSON.stringify({ badgeWidth: 0, badgeHeight: 0, hitboxWidth: 0, hitboxHeight: 0, satisfiesTouchTarget: false });
+          const rect = badge.getBoundingClientRect();
+          const hasPseudo = badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-2.5') || badge.className.includes('before:absolute');
+          const exp = (badge.className.includes('before:-inset-3') || badge.className.includes('before:-inset-y-3.5')) ? 24 : (badge.className.includes('before:-inset-2.5') ? 20 : 0);
+          const hitboxW = rect.width + exp;
+          const hitboxH = rect.height + exp;
+          return JSON.stringify({
+            badgeWidth: Math.round(rect.width),
+            badgeHeight: Math.round(rect.height),
+            hitboxWidth: Math.round(hitboxW),
+            hitboxHeight: Math.round(hitboxH),
+            satisfiesTouchTarget: hasPseudo && (hitboxW >= 44 || rect.width >= 44) && (hitboxH >= 44 || rect.height >= 44)
+          });
+        })()`);
+
+        flow.assertions.push({
+          description:
+            "Dual view mode: Chord badge touch target hitbox satisfies mobile ergonomics (>= 44x44px)",
+          passed: dualTouchTarget.satisfiesTouchTarget,
+          actual: dualTouchTarget,
+          expected: "hitboxWidth >= 44px and hitboxHeight >= 44px",
         });
 
         // 2. Open Mini-Grip Drawer by clicking a chord badge
@@ -554,16 +1133,43 @@ async function main() {
           hasDrawerHeader: boolean;
           hasVoicingGrid: boolean;
           hasCloseButton: boolean;
+          drawerHeight: number;
+          windowHeight: number;
+          occlusionRatio: number;
+          withinOcclusionThreshold: boolean;
         }>(`(() => {
-          const drawer = document.querySelector('.fixed.inset-0.z-50');
-          const header = drawer ? drawer.querySelector('h2') : null;
-          const grid = drawer ? drawer.querySelector('table, svg, .grid, [class*="grid"], [class*="rounded"]') : null;
+          const backdrop = document.querySelector('.fixed.inset-0.z-50');
+          if (!backdrop) {
+            return JSON.stringify({
+              isOpen: false,
+              hasDrawerHeader: false,
+              hasVoicingGrid: false,
+              hasCloseButton: false,
+              drawerHeight: 0,
+              windowHeight: window.innerHeight,
+              occlusionRatio: 0,
+              withinOcclusionThreshold: false
+            });
+          }
+          
+          const sheet = backdrop.querySelector('.rounded-t-2xl') || backdrop.querySelector('[class*="max-h-"]') || backdrop.lastElementChild;
+          const header = backdrop.querySelector('h2');
+          const grid = backdrop.querySelector('table, svg, .grid, [class*="grid"], [class*="rounded"]');
           const closeBtn = document.querySelector('button[aria-label="Close Grip Drawer"]');
+          
+          const sheetRect = sheet ? sheet.getBoundingClientRect() : { height: 0 };
+          const winHeight = window.innerHeight;
+          const ratio = sheetRect.height / winHeight;
+          
           return JSON.stringify({
-            isOpen: Boolean(drawer),
+            isOpen: true,
             hasDrawerHeader: Boolean(header),
             hasVoicingGrid: Boolean(grid),
-            hasCloseButton: Boolean(closeBtn)
+            hasCloseButton: Boolean(closeBtn),
+            drawerHeight: Math.round(sheetRect.height),
+            windowHeight: winHeight,
+            occlusionRatio: Math.round(ratio * 1000) / 1000,
+            withinOcclusionThreshold: ratio <= 0.35
           });
         })()`);
 
@@ -572,6 +1178,18 @@ async function main() {
           passed: drawerMetrics.isOpen && drawerMetrics.hasDrawerHeader,
           actual: drawerMetrics,
           expected: { isOpen: true, hasDrawerHeader: true },
+        });
+
+        flow.assertions.push({
+          description:
+            "Mini-Grip Drawer screen occlusion complies with RUBRIC-03 (<= 35% viewport height)",
+          passed: drawerMetrics.withinOcclusionThreshold,
+          actual: {
+            drawerHeight: drawerMetrics.drawerHeight,
+            windowHeight: drawerMetrics.windowHeight,
+            occlusionRatio: drawerMetrics.occlusionRatio,
+          },
+          expected: "occlusionRatio <= 0.35 (drawerHeight / windowHeight <= 35%)",
         });
 
         flow.assertions.push({
@@ -629,6 +1247,7 @@ async function main() {
         );
 
         await clickElement("button[aria-label*='Auto-Scroll']");
+        await new Promise((r) => setTimeout(r, 100));
 
         const afterPlayState = await evalJs<string>(
           `(() => document.querySelector('button[aria-label*="Scroll"]')?.getAttribute('aria-label') || '')()`,
@@ -641,7 +1260,38 @@ async function main() {
           expected: "State transition triggered",
         });
 
-        // 2. Speed Stepper Interaction
+        // 2. Touch-Pause Gesture Simulation (pointerdown during active scroll)
+        await evalJs(`(() => {
+          window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+        })()`);
+        await new Promise((r) => setTimeout(r, 50));
+
+        const touchPauseState = await evalJs<{
+          isButtonPresent: boolean;
+          buttonText: string;
+          hasAmberIndicator: boolean;
+          isPausedState: boolean;
+        }>(`(() => {
+          const btn = document.querySelector('button[aria-label*="Scroll"]');
+          if (!btn) return JSON.stringify({ isButtonPresent: false, buttonText: '', hasAmberIndicator: false, isPausedState: false });
+          const text = btn.textContent || '';
+          const hasAmber = btn.className.includes('bg-amber-600') || btn.className.includes('text-black');
+          return JSON.stringify({
+            isButtonPresent: true,
+            buttonText: text.trim(),
+            hasAmberIndicator: hasAmber,
+            isPausedState: text.includes('Paused') || hasAmber
+          });
+        })()`);
+
+        flow.assertions.push({
+          description: "Screen touch gesture triggers Amber touch-pause state (Paused 3.5s)",
+          passed: touchPauseState.isPausedState,
+          actual: touchPauseState,
+          expected: { isPausedState: true, hasAmberIndicator: true },
+        });
+
+        // 3. Speed Stepper Interaction
         await clickElement("button[aria-label='Increase Scroll Speed']");
 
         const speedText = await evalJs<string>(`(() => {
@@ -656,7 +1306,7 @@ async function main() {
           expected: "Formatted speed multiplier (e.g. 1.2x)",
         });
 
-        // 3. Font Size Stepper Interaction
+        // 4. Font Size Stepper Interaction
         const initialFont = await evalJs<string>(
           `(() => document.querySelector('.lyric-syllable')?.className || '')()`,
         );
@@ -673,7 +1323,7 @@ async function main() {
           expected: "Updated font size classes",
         });
 
-        // 4. Bluetooth Pedal Keystroke Simulation
+        // 5. Bluetooth Pedal Keystroke Simulation
         const initialScrollY = await evalJs<number>(`(() => window.scrollY)()`);
         await evalJs(`(() => {
           const event = new KeyboardEvent('keydown', {
@@ -692,6 +1342,12 @@ async function main() {
           actual: { initialScrollY },
           expected: "Pedal listener registered",
         });
+
+        // Cleanly stop auto-scroll if still active
+        await evalJs(`(() => {
+          const btn = document.querySelector('button[aria-label="Pause Auto-Scroll"]');
+          if (btn) btn.click();
+        })()`);
 
         const ssPath = await captureScreenshot("flow06_autoscroll_pedal");
         flow.screenshots.push(ssPath);
@@ -740,7 +1396,7 @@ async function main() {
     passedAssertions,
     failedAssertions,
     durationMs,
-    engine: "agent-browser (lightpanda)",
+    engine: "agent-browser (Chromium / Chrome for Testing)",
     appUrl: APP_URL,
     results,
   };
