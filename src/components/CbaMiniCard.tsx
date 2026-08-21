@@ -3,12 +3,27 @@ import type { CbaButtonCoord, ChordDetail, ParsedChord } from "../types/index.ts
 import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
+import { getNoteName } from "../lib/capo/enharmonics.ts";
+import { PITCH_CLASS_POSITIONS } from "../lib/cba/grid.ts";
 
 export interface CbaMiniCardProps {
   chord: ChordDetail | string;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   className?: string;
+}
+
+/**
+ * Lookup pitch class at (row, col) from the CBA C-System grid definition
+ */
+function getPitchClassAt(row: number, col: number): number | null {
+  const coreRow = row === 4 ? 1 : row === 5 ? 2 : row;
+  for (const [pcStr, positions] of Object.entries(PITCH_CLASS_POSITIONS)) {
+    if (positions.some((p) => p.row === coreRow && p.column === col)) {
+      return parseInt(pcStr, 10);
+    }
+  }
+  return null;
 }
 
 export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
@@ -39,12 +54,16 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   // Row 2: Core (Middle)
   // Row 1: Core (Edge)
   const rows = [
-    { rowNum: 5, y: 7, xOffset: 12 },
-    { rowNum: 4, y: 16, xOffset: 9 },
-    { rowNum: 3, y: 25, xOffset: 6 },
-    { rowNum: 2, y: 34, xOffset: 3 },
-    { rowNum: 1, y: 43, xOffset: 0 },
+    { rowNum: 5, y: 6, xOffset: 12 },
+    { rowNum: 4, y: 15, xOffset: 9 },
+    { rowNum: 3, y: 24, xOffset: 6 },
+    { rowNum: 2, y: 33, xOffset: 3 },
+    { rowNum: 1, y: 42, xOffset: 0 },
   ];
+
+  // Determine if note spelling should prefer flats
+  const preferFlats = notes.some((n) => n.includes("b")) ||
+    Boolean(soundingChord?.root && soundingChord.root.includes("b"));
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,32 +77,30 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
       type="button"
       onClick={handleClick}
       title={`${chordName}: ${notes.join(" - ")} (5-Row CBA Grip)`}
-      className={`flex flex-col items-center justify-between px-2 py-1.5 rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
+      className={`flex flex-col items-center justify-between p-1.5 rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
         active
           ? "bg-emerald-950/90 border-emerald-400 shadow-md ring-1 ring-emerald-400"
           : "bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 hover:border-emerald-600/60"
       } ${className}`}
-      style={{ minWidth: "70px" }}
+      style={{ minWidth: "66px" }}
     >
-      {/* Chord Name Header */}
-      <span className="text-[11px] font-bold text-emerald-400 font-mono tracking-tight leading-none mb-0.5">
+      {/* Bold, Clear Chord Name Header */}
+      <span className="text-xs font-bold text-emerald-400 font-mono tracking-tight leading-none mb-1">
         {chordName}
       </span>
 
-      {/* Notes summary */}
-      <span className="text-[8px] text-zinc-400 font-mono leading-none mb-1 text-center whitespace-nowrap">
-        {notes.join(" ")}
-      </span>
-
-      {/* Authentic Staggered 5-Row CBA Diagonal Lattice */}
-      <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
+      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes */}
+      <div className="bg-zinc-950/90 rounded-lg p-0.5 border border-zinc-800/80 shadow-inner flex items-center justify-center">
         <svg
-          viewBox="0 0 54 50"
-          className="w-[50px] h-[46px] overflow-visible"
+          viewBox="0 0 54 48"
+          className="w-[52px] h-[46px] overflow-visible"
           aria-hidden="true"
         >
           {rows.map(({ rowNum, y, xOffset }) => {
             return displayCols.map((col, colIdx) => {
+              const pc = getPitchClassAt(rowNum, col);
+              const noteName = pc !== null ? getNoteName(pc, preferFlats) : "";
+
               // Direct active button in primary grip
               const isDirectActive = activeButtons.some(
                 (b) => b.row === rowNum && b.column === col,
@@ -96,7 +113,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
 
               const isLit = isDirectActive || isAuxDuplicate;
               const isPrimary = isDirectActive;
-              const x = xOffset + 4 + colIdx * 9.5;
+              const x = xOffset + 5 + colIdx * 9.5;
 
               return (
                 <g key={`cba-dot-${rowNum}-${col}`}>
@@ -105,22 +122,41 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r={4.2}
+                      r={4.8}
                       fill="none"
                       stroke="#34d399"
                       strokeWidth={1.2}
                       opacity={0.85}
                     />
                   )}
-                  {/* Button circle: all buttons have identical 3.0px radius */}
+
+                  {/* Button circle */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={3.0}
+                    r={isPrimary ? 4.2 : isAuxDuplicate ? 3.6 : 2.0}
                     fill={isPrimary ? "#10b981" : isAuxDuplicate ? "#065f46" : "#27272a"}
                     stroke={isPrimary ? "#6ee7b7" : isAuxDuplicate ? "#10b981" : "#3f3f46"}
-                    strokeWidth={isLit ? 0.75 : 0.5}
+                    strokeWidth={isLit ? 0.75 : 0.4}
                   />
+
+                  {/* Direct In-Button Note Initials on lit buttons */}
+                  {isLit && noteName && (
+                    <text
+                      x={x}
+                      y={y + (noteName.length > 2 ? 0.9 : 1.1)}
+                      fontSize={isPrimary
+                        ? (noteName.length > 2 ? "2.6" : "3.2")
+                        : (noteName.length > 2 ? "2.3" : "2.7")}
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      textAnchor="middle"
+                      fill={isPrimary ? "#042f2e" : "#a7f3d0"}
+                      className="select-none pointer-events-none"
+                    >
+                      {noteName}
+                    </text>
+                  )}
                 </g>
               );
             });
