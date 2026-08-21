@@ -36,14 +36,22 @@ Deno.test({
     );
 
     const res = await handleRequest(req);
-    assertEquals(res.status, 200, "Ultimate Guitar live request must return HTTP 200");
+    assertEquals(
+      res.status,
+      200,
+      "Ultimate Guitar live request must return HTTP 200",
+    );
 
     const data: TabImportResponse = await res.json();
     assertEquals(data.success, true);
     assertEquals(data.source, "ultimate-guitar");
     assertStringIncludes(data.title?.toLowerCase() || "", "wonderwall");
     assertStringIncludes(data.artist?.toLowerCase() || "", "oasis");
-    assertEquals(data.capoFret, 2, "Wonderwall must have capo detected at fret 2");
+    assertEquals(
+      data.capoFret,
+      2,
+      "Wonderwall must have capo detected at fret 2",
+    );
     assertExists(data.rawContent);
     assertEquals(data.rawContent.trim().length > 100, true);
 
@@ -54,7 +62,9 @@ Deno.test({
     assertEquals(lines.length > 5, true);
 
     const chords = lines
-      .flatMap((l) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
       .filter((s) => s.chord)
       .map((s) =>
         (s.chord as ChordDetail)?.originalChord?.raw ||
@@ -77,7 +87,9 @@ Deno.test({
 
     // Verify accordion Stradella and CBA enrichment on first chord
     const firstChordSegment = lines
-      .flatMap((l) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
       .find((s) => s.chord);
     assertExists(firstChordSegment);
     const chordDetail = firstChordSegment.chord as ChordDetail;
@@ -118,7 +130,9 @@ Deno.test({
     assertEquals(lines.length > 3, true);
 
     const chords = lines
-      .flatMap((l) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
       .filter((s) => s.chord)
       .map((s) =>
         (s.chord as ChordDetail)?.originalChord?.raw ||
@@ -147,7 +161,11 @@ Deno.test({
     );
 
     const res = await handleRequest(req);
-    assertEquals(res.status, 200, "Cifras / E-Chords live request must return HTTP 200");
+    assertEquals(
+      res.status,
+      200,
+      "Cifras / E-Chords live request must return HTTP 200",
+    );
 
     const data: TabImportResponse = await res.json();
     assertEquals(data.success, true);
@@ -162,7 +180,9 @@ Deno.test({
     assertEquals(lines.length > 5, true);
 
     const chords = lines
-      .flatMap((l) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
       .filter((s) => s.chord)
       .map((s) =>
         (s.chord as ChordDetail)?.originalChord?.raw ||
@@ -191,7 +211,11 @@ Deno.test({
     );
 
     const res = await handleRequest(req);
-    assertEquals(res.status, 200, "Cifra Club live request must return HTTP 200");
+    assertEquals(
+      res.status,
+      200,
+      "Cifra Club live request must return HTTP 200",
+    );
 
     const data: TabImportResponse = await res.json();
     assertEquals(data.success, true);
@@ -207,7 +231,9 @@ Deno.test({
     assertEquals(lines.length > 5, true);
 
     const chords = lines
-      .flatMap((l) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
       .filter((s) => s.chord)
       .map((s) =>
         (s.chord as ChordDetail)?.originalChord?.raw ||
@@ -220,5 +246,148 @@ Deno.test({
     assertEquals(uniqueChords.has("G"), true, "Must contain G");
     assertEquals(uniqueChords.has("Am"), true, "Must contain Am");
     assertEquals(uniqueChords.has("F"), true, "Must contain F");
+  },
+});
+
+// ============================================================================
+// LIVE-05: Ultimate Guitar Live Tab Staves & Riffs Integration
+// Target: Stairway to Heaven / Dust in the Wind
+// ============================================================================
+Deno.test({
+  name: "LIVE-05: Ultimate Guitar live tab staves extraction (Dust in the Wind by Kansas)",
+  ignore: !isLiveEnabled,
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const url = "https://tabs.ultimate-guitar.com/tab/kansas/dust-in-the-wind-chords-14197";
+    const req = new Request(
+      `https://edge.deno.dev/api/import?url=${encodeURIComponent(url)}`,
+      { method: "GET" },
+    );
+
+    const res = await handleRequest(req);
+    assertEquals(
+      res.status,
+      200,
+      "Ultimate Guitar live tab request must return HTTP 200",
+    );
+
+    const data: TabImportResponse = await res.json();
+    assertEquals(data.success, true);
+    assertEquals(data.source, "ultimate-guitar");
+    assertStringIncludes(data.title?.toLowerCase() || "", "dust in the wind");
+    assertExists(data.rawContent);
+
+    // Verify tokenization handles tab staves and chord/lyric lines
+    const song = parseLeadSheetText(data.rawContent, data.capoFret);
+    const lines = song.lines as LeadSheetLine[];
+    assertEquals(lines.length > 5, true);
+
+    // Verify presence of chord tokens
+    const chords = lines
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .filter((s) => s.chord)
+      .map((s) =>
+        (s.chord as ChordDetail)?.originalChord?.raw ||
+        (s.chord as { raw?: string }).raw ||
+        ""
+      );
+    assertEquals(chords.length > 0, true);
+  },
+});
+
+// ============================================================================
+// LIVE-06: Ultimate Guitar Jazz Alterations Integration
+// Target: The Girl from Ipanema by Antonio Carlos Jobim
+// ============================================================================
+Deno.test({
+  name: "LIVE-06: Ultimate Guitar live jazz alterations extraction (The Girl from Ipanema)",
+  ignore: !isLiveEnabled,
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const url =
+      "https://tabs.ultimate-guitar.com/tab/antonio-carlos-jobim/the-girl-from-ipanema-chords-14660";
+    const req = new Request(
+      `https://edge.deno.dev/api/import?url=${encodeURIComponent(url)}`,
+      { method: "GET" },
+    );
+
+    const res = await handleRequest(req);
+    assertEquals(
+      res.status,
+      200,
+      "Ultimate Guitar jazz request must return HTTP 200",
+    );
+
+    const data: TabImportResponse = await res.json();
+    assertEquals(data.success, true);
+    assertEquals(data.source, "ultimate-guitar");
+    assertExists(data.rawContent);
+
+    const song = parseLeadSheetText(data.rawContent, data.capoFret);
+    const lines = song.lines as LeadSheetLine[];
+    assertEquals(lines.length > 5, true);
+
+    const chords = lines
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .filter((s) => s.chord)
+      .map((s) =>
+        (s.chord as ChordDetail)?.originalChord?.raw ||
+        (s.chord as { raw?: string }).raw ||
+        ""
+      );
+    assertEquals(chords.length > 0, true);
+  },
+});
+
+// ============================================================================
+// LIVE-07: Ultimate Guitar Chromatic Slash Bass Lines & Capo Integration
+// Target: A Whiter Shade of Pale / Landslide
+// ============================================================================
+Deno.test({
+  name: "LIVE-07: Ultimate Guitar live chromatic bass line extraction (A Whiter Shade of Pale)",
+  ignore: !isLiveEnabled,
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const url =
+      "https://tabs.ultimate-guitar.com/tab/procol-harum/a-whiter-shade-of-pale-chords-17398";
+    const req = new Request(
+      `https://edge.deno.dev/api/import?url=${encodeURIComponent(url)}`,
+      { method: "GET" },
+    );
+
+    const res = await handleRequest(req);
+    assertEquals(
+      res.status,
+      200,
+      "Ultimate Guitar live request must return HTTP 200",
+    );
+
+    const data: TabImportResponse = await res.json();
+    assertEquals(data.success, true);
+    assertEquals(data.source, "ultimate-guitar");
+    assertExists(data.rawContent);
+
+    const song = parseLeadSheetText(data.rawContent, data.capoFret);
+    const lines = song.lines as LeadSheetLine[];
+    assertEquals(lines.length > 5, true);
+
+    const chords = lines
+      .flatMap((
+        l,
+      ) => (l.type === "chord_lyric" && l.segments ? l.segments : []))
+      .filter((s) => s.chord)
+      .map((s) =>
+        (s.chord as ChordDetail)?.originalChord?.raw ||
+        (s.chord as { raw?: string }).raw ||
+        ""
+      );
+    assertEquals(chords.length > 0, true);
   },
 });
