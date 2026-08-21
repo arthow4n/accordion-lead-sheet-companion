@@ -9,25 +9,63 @@ import { transposeChord } from "../capo/enharmonics.ts";
 import { solveStradellaChord } from "../stradella/solver.ts";
 import { generateCbaGrip } from "../cba/grips.ts";
 import { isChordProDocument, isChordProLine, parseChordProDocument } from "./chordpro.ts";
-import { parseTwoLineDocument } from "./twoline.ts";
+import { isChordToken, isMeasureDelimiter, parseTwoLineDocument } from "./twoline.ts";
 
 /**
- * Robust Capo Header extractor matching all standard lead sheet formats:
- * e.g. "Capo 3", "Capo: 3rd fret", "Capo on 2", "CAPO AT 4", "{capo: 5}"
+ * Robust Capo Header extractor matching standard lead sheet formats across
+ * English, Portuguese, Spanish, and ChordPro:
+ * e.g. "Capo 3", "Capo: 3rd fret", "Capo on 2", "CAPO AT 4", "{capo: 5}",
+ * "com capotraste na 3ª casa", "cejilla en el 2do traste", "Capo - 2nd fret"
  */
 export function extractCapoFret(text: string): number {
-  const match = text.match(
-    /(?:(?:\{capo:\s*(\d+)\})|(?:capo\s*(?:at|on|fret|:)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*fret)?))/i,
-  );
-  if (match) {
-    const val = match[1] || match[2];
-    if (val) {
-      const parsed = parseInt(val, 10);
-      if (!isNaN(parsed) && parsed >= 0) {
-        return parsed % 12;
-      }
+  if (!text) return 0;
+
+  // 1. ChordPro directive: {capo: 3} or {c: 3}
+  const chordProMatch = text.match(/\{(?:capo|c):\s*(\d+)[^}]*\}/i);
+  if (chordProMatch) {
+    const fret = parseInt(chordProMatch[1], 10);
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
     }
   }
+
+  // 2. Portuguese: "com capotraste na 3ª casa", "capotraste: 3", "2ª casa", "capo na 3 casa"
+  const ptMatch = text.match(
+    /(?:com\s+)?(?:capotraste|capo)?\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)?\s*casa/i,
+  ) || text.match(
+    /(?:capotraste|capo)\s*(?:na|no|em|:|-)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
+  );
+  if (ptMatch) {
+    const fret = parseInt(ptMatch[1], 10);
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
+    }
+  }
+
+  // 3. Spanish: "cejilla en el 2do traste", "cejilla: 3", "con cejilla en el 1er traste"
+  const esMatch = text.match(
+    /(?:con\s+)?cejilla\s*(?:en|en\s*el|:|-)?\s*(\d+)(?:do|er|ro|to|º|ª)?(?:\s*traste)?/i,
+  );
+  if (esMatch) {
+    const fret = parseInt(esMatch[1], 10);
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
+    }
+  }
+
+  // 4. English variants: "Capo: 3rd fret", "Capo on 2", "Capo - 3rd fret", "Capo: fret 3", "Capo 2nd", "Capo. 2", "CAPO AT 4"
+  const enMatch = text.match(
+    /capo\s*(?:at|on|fret|fret\s*:|:|\.|\-)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*fret)?/i,
+  ) || text.match(
+    /capo\s*(?:at|on|:|\-)?\s*fret\s*(\d+)/i,
+  );
+  if (enMatch) {
+    const fret = parseInt(enMatch[1], 10);
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
+    }
+  }
+
   return 0;
 }
 
@@ -54,7 +92,8 @@ export function enrichChord(
 }
 
 /**
- * Enrich an array of LeadSheetLines by converting raw chord strings to ChordDetail objects
+ * Enrich an array of LeadSheetLines by converting raw chord strings to ChordDetail objects.
+ * Guarantees that measure delimiters (|, ||, :|) are not enriched into chord badges.
  */
 export function enrichLeadSheetLines(
   lines: LeadSheetLine[],
@@ -76,14 +115,17 @@ export function enrichLeadSheetLines(
         : (seg.chord as ChordDetail).originalChord?.raw || (seg.chord as { raw?: string }).raw ||
           "";
 
-      if (rawChord) {
+      // If token is measure delimiter or invalid chord, do not enrich as chord badge
+      if (!rawChord || isMeasureDelimiter(rawChord) || !isChordToken(rawChord)) {
         return {
-          chord: enrichChord(rawChord, capoFret, keyContext),
-          lyric: seg.lyric,
+          lyric: seg.lyric || rawChord,
         };
       }
 
-      return seg;
+      return {
+        chord: enrichChord(rawChord, capoFret, keyContext),
+        lyric: seg.lyric,
+      };
     });
 
     return {
@@ -99,7 +141,7 @@ export function enrichLeadSheetLines(
 export function detectChordPro(rawText: string): boolean {
   if (isChordProDocument?.(rawText)) return true;
   if (
-    /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus):/i
+    /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus|start_of_tab|sot|end_of_tab|eot):?/i
       .test(rawText)
   ) {
     return true;

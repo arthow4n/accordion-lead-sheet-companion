@@ -14,20 +14,50 @@ export function cleanUgContent(content: string): string {
   if (!content) return "";
   return content
     .replace(/\[ch\](.*?)\[\/ch\]/g, "$1")
-    .replace(/\[\/?tab\]/gi, "")
-    .replace(/\[\/?intro\]/gi, "[Intro]")
-    .replace(/\[\/?verse(?:\s*\d*)?\]/gi, (match) => {
+    .replace(
+      /\[\/(?:tab|intro|verse|chorus|pre-chorus|post-chorus|bridge|outro|solo|guitar\s*solo|interlude|instrumental|riff|break|coda|hook)[^\]]*\]/gi,
+      "",
+    )
+    .replace(/\[tab\]/gi, "")
+    .replace(/\[intro\]/gi, "[Intro]")
+    .replace(/\[verse(?:\s*\d*)?\]/gi, (match) => {
       const numMatch = match.match(/\d+/);
       return numMatch ? `[Verse ${numMatch[0]}]` : "[Verse]";
     })
-    .replace(/\[\/?chorus(?:\s*\d*)?\]/gi, (match) => {
+    .replace(/\[chorus(?:\s*\d*)?\]/gi, (match) => {
       const numMatch = match.match(/\d+/);
       return numMatch ? `[Chorus ${numMatch[0]}]` : "[Chorus]";
     })
-    .replace(/\[\/?bridge\]/gi, "[Bridge]")
-    .replace(/\[\/?outro\]/gi, "[Outro]")
-    .replace(/\[\/?solo\]/gi, "[Solo]")
-    .replace(/\[\/?pre-chorus\]/gi, "[Pre-Chorus]");
+    .replace(/\[pre-chorus(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Pre-Chorus ${numMatch[0]}]` : "[Pre-Chorus]";
+    })
+    .replace(/\[post-chorus(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Post-Chorus ${numMatch[0]}]` : "[Post-Chorus]";
+    })
+    .replace(/\[bridge(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Bridge ${numMatch[0]}]` : "[Bridge]";
+    })
+    .replace(/\[outro\]/gi, "[Outro]")
+    .replace(/\[solo\]/gi, "[Solo]")
+    .replace(/\[guitar\s*solo\]/gi, "[Guitar Solo]")
+    .replace(/\[interlude(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Interlude ${numMatch[0]}]` : "[Interlude]";
+    })
+    .replace(/\[instrumental(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Instrumental ${numMatch[0]}]` : "[Instrumental]";
+    })
+    .replace(/\[riff(?:\s*\d*)?\]/gi, (match) => {
+      const numMatch = match.match(/\d+/);
+      return numMatch ? `[Riff ${numMatch[0]}]` : "[Riff]";
+    })
+    .replace(/\[break\]/gi, "[Break]")
+    .replace(/\[coda\]/gi, "[Coda]")
+    .replace(/\[hook\]/gi, "[Hook]");
 }
 
 /**

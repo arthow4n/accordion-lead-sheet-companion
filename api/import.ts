@@ -5,6 +5,7 @@
 
 import type { TabImportResponse, TabSource } from "../src/types/index.ts";
 import {
+  cleanUgContent,
   decodeHtmlEntities,
   extractCapoFret,
   extractMetadataFromHtml,
@@ -18,6 +19,7 @@ import {
 
 export type { TabImportResponse, TabSource };
 export {
+  cleanUgContent,
   decodeHtmlEntities,
   extractCapoFret,
   extractMetadataFromHtml,

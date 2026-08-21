@@ -24,6 +24,10 @@ export type ChordQuality =
   | "six"
   | "minorSix"
   | "altered"
+  | "sevenSharpEleven"
+  | "sevenFlatNine"
+  | "dominant13"
+  | "sixNine"
   | "unknown";
 
 export type AccordionSize = "48-bass" | "72-bass" | "96-bass" | "120-bass";
@@ -102,6 +106,7 @@ export interface LeadSheetLine {
   segments?: ChordLyricSegment[];
   headerTitle?: string; // e.g. "Chorus", "Verse 1"
   rawText?: string; // Fallback / tab staff line
+  tabBlock?: string[]; // Grouped multi-line ASCII tab staves
 }
 
 export interface LeadSheet {

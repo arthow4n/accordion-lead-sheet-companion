@@ -8,6 +8,7 @@
 
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import handleRequest, {
+  cleanUgContent,
   decodeHtmlEntities,
   extractCapoFret,
   extractMetadataFromHtml,
@@ -535,4 +536,29 @@ Deno.test("API-18: Generic parser unprocessable when no pre/code found", () => {
   assertEquals(parsed.success, false);
   assertEquals(parsed.rawContent, "");
   assertExists(parsed.error);
+});
+
+Deno.test("API-19: Ultimate Guitar cleanUgContent normalizes extended section headers", () => {
+  const ugRaw = [
+    "[interlude] [ch]Am[/ch] [ch]F[/ch] [/interlude]",
+    "[instrumental 1] [ch]C[/ch] [ch]G[/ch] [/instrumental]",
+    "[riff] [ch]D[/ch] [/riff]",
+    "[break] [ch]Em[/ch] [/break]",
+    "[coda] [ch]G[/ch] [/coda]",
+    "[hook] [ch]A[/ch] [/hook]",
+    "[guitar solo] [ch]B[/ch] [/guitar solo]",
+    "[pre-chorus 2] [ch]C[/ch] [/pre-chorus]",
+    "[post-chorus] [ch]D[/ch] [/post-chorus]",
+  ].join("\n");
+
+  const cleaned = cleanUgContent(ugRaw);
+  assertStringIncludes(cleaned, "[Interlude]");
+  assertStringIncludes(cleaned, "[Instrumental 1]");
+  assertStringIncludes(cleaned, "[Riff]");
+  assertStringIncludes(cleaned, "[Break]");
+  assertStringIncludes(cleaned, "[Coda]");
+  assertStringIncludes(cleaned, "[Hook]");
+  assertStringIncludes(cleaned, "[Guitar Solo]");
+  assertStringIncludes(cleaned, "[Pre-Chorus 2]");
+  assertStringIncludes(cleaned, "[Post-Chorus]");
 });

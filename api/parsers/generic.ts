@@ -52,43 +52,45 @@ export function extractCapoFret(text: string): number {
   const chordProMatch = text.match(/\{(?:capo|c):\s*(\d+)[^}]*\}/i);
   if (chordProMatch) {
     const fret = parseInt(chordProMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0 && fret <= 11) {
-      return fret;
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
     }
   }
 
-  // 2. Portuguese: "com capotraste na 2ª casa" / "capotraste: 3" / `<span id="cifra_capo">2ª casa</span>` / `2ª casa`
+  // 2. Portuguese: "com capotraste na 3ª casa", "capotraste: 3", "2ª casa", "capo na 3 casa"
   const ptMatch = text.match(
-    /(?:capotraste|capo)?\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)\s*casa/i,
+    /(?:com\s+)?(?:capotraste|capo)?\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)?\s*casa/i,
   ) || text.match(
-    /(?:capotraste|capo)\s*(?:na|no|em|:)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
+    /(?:capotraste|capo)\s*(?:na|no|em|:|-)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
   );
   if (ptMatch) {
     const fret = parseInt(ptMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0 && fret <= 11) {
-      return fret;
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
     }
   }
 
-  // 3. English: "Capo 2", "Capo: 3rd fret", "Capo at 4th", "Capo on fret 1"
-  const enMatch = text.match(
-    /capo\s*(?:at|on|fret|fret\s*:|:)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*fret)?/i,
-  );
-  if (enMatch) {
-    const fret = parseInt(enMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0 && fret <= 11) {
-      return fret;
-    }
-  }
-
-  // 4. Spanish: "cejilla en el 2do traste" / "cejilla: 3"
+  // 3. Spanish: "cejilla en el 2do traste", "cejilla: 3", "con cejilla en el 1er traste"
   const esMatch = text.match(
-    /cejilla\s*(?:en|en\s*el|:)?\s*(\d+)(?:do|er|ro|to)?(?:\s*traste)?/i,
+    /(?:con\s+)?cejilla\s*(?:en|en\s*el|:|-)?\s*(\d+)(?:do|er|ro|to|º|ª)?(?:\s*traste)?/i,
   );
   if (esMatch) {
     const fret = parseInt(esMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0 && fret <= 11) {
-      return fret;
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
+    }
+  }
+
+  // 4. English variants: "Capo: 3rd fret", "Capo on 2", "Capo - 3rd fret", "Capo: fret 3", "Capo 2nd", "Capo. 2", "CAPO AT 4"
+  const enMatch = text.match(
+    /capo\s*(?:at|on|fret|fret\s*:|:|\.|\-)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*fret)?/i,
+  ) || text.match(
+    /capo\s*(?:at|on|:|\-)?\s*fret\s*(\d+)/i,
+  );
+  if (enMatch) {
+    const fret = parseInt(enMatch[1], 10);
+    if (!isNaN(fret) && fret >= 0) {
+      return fret % 12;
     }
   }
 
