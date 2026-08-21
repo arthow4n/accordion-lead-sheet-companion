@@ -13,11 +13,19 @@ import { parseLeadSheetText } from "../../src/lib/parser/tokenizer.ts";
 import type { ChordDetail, LeadSheetLine, TabImportResponse } from "../../src/types/index.ts";
 
 // ============================================================================
+// Double-Lock Isolation Guard:
+// Live tests hit external domains and MUST ONLY run when RUN_LIVE_TESTS=1
+// ============================================================================
+const isLiveEnabled = Deno.env.get("RUN_LIVE_TESTS") === "1" ||
+  Deno.env.get("RUN_LIVE_TESTS") === "true";
+
+// ============================================================================
 // LIVE-01: Ultimate Guitar Live Integration
 // Target: https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-27596
 // ============================================================================
 Deno.test({
   name: "LIVE-01: Ultimate Guitar live extraction (Wonderwall by Oasis)",
+  ignore: !isLiveEnabled,
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -84,6 +92,7 @@ Deno.test({
 // ============================================================================
 Deno.test({
   name: "LIVE-02: Chordie live extraction (All My Loving by The Beatles)",
+  ignore: !isLiveEnabled,
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -127,6 +136,7 @@ Deno.test({
 // ============================================================================
 Deno.test({
   name: "LIVE-03: E-Chords / Cifras live extraction (Hotel California by Eagles)",
+  ignore: !isLiveEnabled,
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -170,6 +180,7 @@ Deno.test({
 // ============================================================================
 Deno.test({
   name: "LIVE-04: Cifra Club live extraction (Let It Be by The Beatles)",
+  ignore: !isLiveEnabled,
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
