@@ -76,16 +76,15 @@ The repository separates tests into two strictly isolated categories:
 When modifying music theory engines (`src/lib/`):
 
 1. **Key-Signature Enharmonic Spelling (`src/lib/capo/`):**
-   - Transpositions must respect harmonic context (e.g. $G + \text{Capo 3} = Bb$ Major, **never**
-     $A\#$).
-   - Flat keys must always use flats ($Bb, Eb, Ab, Db, Gb$), sharp keys must use sharps
-     ($F\#, C\#, G\#, D\#, A\#$).
+   - Transpositions must respect harmonic context (e.g. `G + Capo 3 = Bb` Major, **never** `A#`).
+   - Flat keys must always use flats (`Bb, Eb, Ab, Db, Gb`), sharp keys must use sharps
+     (`F#, C#, G#, D#, A#`).
 2. **Stradella Minimum Physical Distance Algorithm (`src/lib/stradella/`):**
    - Slash chords must search both fundamental bass and counter-bass buttons to minimize column
-     distance on the Circle of Fifths ($C/B \rightarrow B\_$ in $G$ col with distance 1, NOT
-     fundamental $B$ in col +5).
-   - Compound voicings ($maj7, m7, m7b5, 6, 9, sus4$) must map to correct fundamental bass + upper
-     chord button pairs ($Cmaj7 \rightarrow C + em$).
+     distance on the Circle of Fifths (`C/B -> B_` in `G` col with distance 1, NOT fundamental `B`
+     in col +5).
+   - Compound voicings (`maj7, m7, m7b5, 6, 9, sus4`) must map to correct fundamental bass + upper
+     chord button pairs (`Cmaj7 -> C + em`).
 3. **CBA C-System Geometry (`src/lib/cba/`):**
    - 3-row core and 5-row extended layouts must preserve isomorphic fingerings (`1-2-4 / 2-3-5`).
    - Voice leading engine must minimize centroid column shift across consecutive chord changes.

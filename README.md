@@ -15,20 +15,19 @@ hands-free stage controls.
 ## 🌟 Key Features
 
 - **🪗 Stradella Bass Solver (Left Hand):**
-  - Instant mapping from written chords to Stradella buttons (Counter-bass $M3$, Fundamental bass,
+  - Instant mapping from written chords to Stradella buttons (Counter-bass `M3`, Fundamental bass,
     Major, Minor, 7th, Diminished).
-  - **Minimum Physical Distance Algorithm** for slash chords ($C/E \rightarrow E\_$,
-    $G/B \rightarrow B\_$, $D/F\# \rightarrow F\#\_$, $C/B \rightarrow B\_$ in $G$ col,
-    $Am/F\# \rightarrow F\#\_$ in $D$ col).
-  - Advanced compound chord voicings ($Cmaj7 \rightarrow C + em$, $Am7 \rightarrow A + c$,
-    $Bm7b5 \rightarrow B + dm$, $C6 \rightarrow C + am$, $C9 \rightarrow C + gm$).
+  - **Minimum Physical Distance Algorithm** for slash chords (`C/E -> E_`, `G/B -> B_`,
+    `D/F# -> F#_`, `C/B -> B_` in `G` col, `Am/F# -> F#_` in `D` col).
+  - Advanced compound chord voicings (`Cmaj7 -> C + em`, `Am7 -> A + c`, `Bm7b5 -> B + dm`,
+    `C6 -> C + am`, `C9 -> C + gm`).
 - **🔘 CBA C-System Treble Engine (Right Hand):**
   - 3-row core and 5-row isomorphic button coordinate layout with standardized fingering
     recommendations (`1-2-4 / 2-3-5`).
   - Voice leading engine minimizing hand-shift centroid deltas across chord changes.
 - **⚡ Live Capo Stepper & Enharmonics:**
   - Dynamic `[ - ] Capo X [ + ]` stepper transposing written chords to sounding pitch in real-time
-    with key-signature-aware flat/sharp accidentals ($G + \text{Capo 3} = Bb$, never $A\#$).
+    with key-signature-aware flat/sharp accidentals (`G + Capo 3 = Bb`, never `A#`).
 - **📱 Zero-Drift Segmented Mobile Layout:**
   - Renders atomic flex-column `ChordLyricSegment` blocks
     (`display: inline-flex; flex-direction: column;`) ensuring chords never drift over lyrics across
