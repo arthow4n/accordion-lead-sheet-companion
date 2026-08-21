@@ -7,6 +7,7 @@ import { getNoteName } from "../capo/enharmonics.ts";
  * Center C = 0
  */
 export const NOTE_TO_COLUMN: Record<string, number> = {
+  "Fb": -8,
   "Cb": -7,
   "Gb": -6,
   "Db": -5,
@@ -25,6 +26,8 @@ export const NOTE_TO_COLUMN: Record<string, number> = {
   "G#": 8,
   "D#": 9,
   "A#": 10,
+  "E#": 11,
+  "B#": 12,
 };
 
 /**
@@ -49,6 +52,7 @@ export const PITCH_CLASS_TO_COLUMN: Record<number, number> = {
  * Circle of Fifths column index to Fundamental Bass note name
  */
 export const COLUMN_TO_BASS_NOTE: Record<number, string> = {
+  [-8]: "Fb",
   [-7]: "Cb",
   [-6]: "Gb",
   [-5]: "Db",
@@ -67,6 +71,8 @@ export const COLUMN_TO_BASS_NOTE: Record<number, string> = {
   8: "G#",
   9: "D#",
   10: "A#",
+  11: "E#",
+  12: "B#",
 };
 
 /**

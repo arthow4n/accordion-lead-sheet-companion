@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { solveStradellaChord } from "./solver.ts";
-import { isColumnOutOfRange } from "./layout.ts";
+import { getStradellaColumn, isColumnOutOfRange, NOTE_TO_COLUMN } from "./layout.ts";
 
 Deno.test("STRAD-01: Bb fundamental major triad", () => {
   const result = solveStradellaChord("Bb");
@@ -202,7 +202,6 @@ Deno.test("STRAD-20: Flat chord roots retain negative Circle of Fifths columns",
     { chord: "Ab", expectedBass: "Ab", expectedChord: "ab", expectedCol: -4 },
     { chord: "Eb", expectedBass: "Eb", expectedChord: "eb", expectedCol: -3 },
     { chord: "Bb", expectedBass: "Bb", expectedChord: "bb", expectedCol: -2 },
-    { chord: "Cb", expectedBass: "Cb", expectedChord: "cb", expectedCol: -7 },
     { chord: "Dbm", expectedBass: "Db", expectedChord: "dbm", expectedCol: -5 },
     { chord: "Db7", expectedBass: "Db", expectedChord: "db7", expectedCol: -5 },
     { chord: "Dbdim", expectedBass: "Db", expectedChord: "dbdim", expectedCol: -5 },
@@ -269,4 +268,145 @@ Deno.test("STRAD-22: Slash chords with flat chord roots and counter-bass", () =>
   assertEquals(ebOverG.isCounterBass, true);
   assertEquals(ebOverG.chordButton?.label, "eb");
   assertEquals(ebOverG.columnOffset, -3);
+});
+
+Deno.test("STRAD-23: sevenSharpEleven compound voicing (7#11 -> Bass + diminished on root)", () => {
+  // C7#11 -> C bass (col 0) + cdim chord (col 0)
+  const c7sharp11 = solveStradellaChord("C7#11");
+  assertEquals(c7sharp11.primaryBass, "C");
+  assertEquals(c7sharp11.chordButton?.label, "cdim");
+  assertEquals(c7sharp11.columnOffset, 0);
+
+  // Gb7(#11) -> Gb bass (col -6) + gbdim chord (col -6)
+  const gb7sharp11 = solveStradellaChord("Gb7(#11)");
+  assertEquals(gb7sharp11.primaryBass, "Gb");
+  assertEquals(gb7sharp11.chordButton?.label, "gbdim");
+  assertEquals(gb7sharp11.columnOffset, -6);
+});
+
+Deno.test("STRAD-24: sevenFlatNine compound voicing (7b9 -> Bass + diminished half-step up)", () => {
+  // C7b9 -> C bass (col 0) + dbdim chord (col -5)
+  const c7b9 = solveStradellaChord("C7b9");
+  assertEquals(c7b9.primaryBass, "C");
+  assertEquals(c7b9.chordButton?.label, "dbdim");
+  assertEquals(c7b9.columnOffset, 0);
+
+  // G7b9 -> G bass (col 1) + abdim chord (col -4)
+  const g7b9 = solveStradellaChord("G7b9");
+  assertEquals(g7b9.primaryBass, "G");
+  assertEquals(g7b9.chordButton?.label, "abdim");
+  assertEquals(g7b9.columnOffset, 1);
+});
+
+Deno.test("STRAD-25: dominant13 compound voicing (13 -> Bass + minor 5th up)", () => {
+  // C13 -> C bass (col 0) + gm chord (col 1)
+  const c13 = solveStradellaChord("C13");
+  assertEquals(c13.primaryBass, "C");
+  assertEquals(c13.chordButton?.label, "gm");
+  assertEquals(c13.columnOffset, 0);
+
+  // G13 -> G bass (col 1) + dm chord (col 2)
+  const g13 = solveStradellaChord("G13");
+  assertEquals(g13.primaryBass, "G");
+  assertEquals(g13.chordButton?.label, "dm");
+  assertEquals(g13.columnOffset, 1);
+});
+
+Deno.test("STRAD-26: minor9 compound voicing (m9 -> Bass + major b3 up)", () => {
+  // Cm9 -> C bass (col 0) + eb chord (col -3)
+  const cm9 = solveStradellaChord("Cm9");
+  assertEquals(cm9.primaryBass, "C");
+  assertEquals(cm9.chordButton?.label, "eb");
+  assertEquals(cm9.columnOffset, 0);
+
+  // Am9 -> A bass (col 3) + c chord (col 0)
+  const am9 = solveStradellaChord("Am9");
+  assertEquals(am9.primaryBass, "A");
+  assertEquals(am9.chordButton?.label, "c");
+  assertEquals(am9.columnOffset, 3);
+});
+
+Deno.test("STRAD-27: sixNine compound voicing (6/9 -> Bass + major 5th up)", () => {
+  // C6/9 -> C bass (col 0) + g chord (col 1)
+  const c69 = solveStradellaChord("C6/9");
+  assertEquals(c69.primaryBass, "C");
+  assertEquals(c69.chordButton?.label, "g");
+  assertEquals(c69.columnOffset, 0);
+
+  // F6/9 -> F bass (col -1) + c chord (col 0)
+  const f69 = solveStradellaChord("F6/9");
+  assertEquals(f69.primaryBass, "F");
+  assertEquals(f69.chordButton?.label, "c");
+  assertEquals(f69.columnOffset, -1);
+});
+
+Deno.test("STRAD-28: altered compound voicing (C7alt -> C + cdim)", () => {
+  const c7alt = solveStradellaChord("C7alt");
+  assertEquals(c7alt.primaryBass, "C");
+  assertEquals(c7alt.chordButton?.label, "cdim");
+  assertEquals(c7alt.columnOffset, 0);
+});
+
+Deno.test("STRAD-29: Rare root column mapping in layout.ts", () => {
+  assertEquals(NOTE_TO_COLUMN["Fb"], -8);
+  assertEquals(NOTE_TO_COLUMN["Cb"], -7);
+  assertEquals(NOTE_TO_COLUMN["E#"], 11);
+  assertEquals(NOTE_TO_COLUMN["B#"], 12);
+
+  assertEquals(getStradellaColumn("Fb"), -8);
+  assertEquals(getStradellaColumn("Cb"), -7);
+  assertEquals(getStradellaColumn("E#"), 11);
+  assertEquals(getStradellaColumn("B#"), 12);
+});
+
+Deno.test("STRAD-30: Rare root canonical resolution in Stradella solver", () => {
+  // Cb normalizes to B (Col 5)
+  const cb = solveStradellaChord("Cb");
+  assertEquals(cb.primaryBass, "B");
+  assertEquals(cb.chordButton?.label, "b");
+  assertEquals(cb.columnOffset, 5);
+
+  // Fb normalizes to E (Col 4)
+  const fb = solveStradellaChord("Fb");
+  assertEquals(fb.primaryBass, "E");
+  assertEquals(fb.chordButton?.label, "e");
+  assertEquals(fb.columnOffset, 4);
+
+  // B# normalizes to C (Col 0)
+  const bsharp = solveStradellaChord("B#");
+  assertEquals(bsharp.primaryBass, "C");
+  assertEquals(bsharp.chordButton?.label, "c");
+  assertEquals(bsharp.columnOffset, 0);
+
+  // E# normalizes to F (Col -1)
+  const esharp = solveStradellaChord("E#");
+  assertEquals(esharp.primaryBass, "F");
+  assertEquals(esharp.chordButton?.label, "f");
+  assertEquals(esharp.columnOffset, -1);
+});
+
+Deno.test("STRAD-31: Counter-bass slash distance comparisons across Circle of Fifths", () => {
+  // C/B: root C (0), bass B (5). Counter-bass B_ in G col (1) is dist 1 vs fund B dist 5
+  const cOverB = solveStradellaChord("C/B");
+  assertEquals(cOverB.primaryBass, "B_");
+  assertEquals(cOverB.isCounterBass, true);
+  assertEquals(cOverB.columnOffset, 1);
+
+  // Am/F#: root A (3), bass F# (6). Counter-bass F#_ in D col (2) is dist 1 vs fund F# dist 3
+  const amOverFsharp = solveStradellaChord("Am/F#");
+  assertEquals(amOverFsharp.primaryBass, "F#_");
+  assertEquals(amOverFsharp.isCounterBass, true);
+  assertEquals(amOverFsharp.columnOffset, 2);
+
+  // C/E: root C (0), bass E (4). Counter-bass E_ in C col (0) is dist 0 vs fund E dist 4
+  const cOverE = solveStradellaChord("C/E");
+  assertEquals(cOverE.primaryBass, "E_");
+  assertEquals(cOverE.isCounterBass, true);
+  assertEquals(cOverE.columnOffset, 0);
+
+  // F/A: root F (-1), bass A (3). Counter-bass A_ in F col (-1) is dist 0 vs fund A dist 4
+  const fOverA = solveStradellaChord("F/A");
+  assertEquals(fOverA.primaryBass, "A_");
+  assertEquals(fOverA.isCounterBass, true);
+  assertEquals(fOverA.columnOffset, -1);
 });

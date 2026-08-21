@@ -77,6 +77,32 @@ export const SHARP_SPELLINGS = [
 ];
 
 /**
+ * Normalize Unicode accidental symbols (♯, ♭) to standard ASCII (#, b)
+ */
+export function normalizeUnicodeAccidentals(str: string): string {
+  return str.replace(/♯/g, "#").replace(/♭/g, "b");
+}
+
+/**
+ * Normalize rare enharmonic roots to canonical spellings
+ * Cb -> B, Fb -> E, B# -> C, E# -> F
+ */
+export function normalizeRareRoot(root: string): string {
+  const clean = root.trim();
+  const normMap: Record<string, string> = {
+    "Cb": "B",
+    "Fb": "E",
+    "B#": "C",
+    "E#": "F",
+    "cb": "B",
+    "fb": "E",
+    "b#": "C",
+    "e#": "F",
+  };
+  return normMap[clean] ?? clean;
+}
+
+/**
  * Modulo 12 normalization
  */
 export function normalizePitchClass(pc: number): number {
@@ -91,16 +117,17 @@ export function normalizeCapoFret(fret: number): number {
 }
 
 /**
- * Get pitch class for a note string (e.g. "C#", "Bb")
+ * Get pitch class for a note string (e.g. "C#", "Bb", "B♭", "Cb")
  */
 export function getPitchClass(note: string): number {
-  const cleanNote = note.trim();
-  const pc = NOTE_TO_PITCH_CLASS[cleanNote];
+  const cleanNote = normalizeUnicodeAccidentals(note).trim();
+  const normNote = normalizeRareRoot(cleanNote);
+  const pc = NOTE_TO_PITCH_CLASS[normNote];
   if (pc !== undefined) {
     return pc;
   }
   // Try capitalizing first letter
-  const formatted = cleanNote.charAt(0).toUpperCase() + cleanNote.slice(1);
+  const formatted = normNote.charAt(0).toUpperCase() + normNote.slice(1);
   return NOTE_TO_PITCH_CLASS[formatted] ?? 0;
 }
 
@@ -121,7 +148,7 @@ export function transposePitchClass(
  * 3: Slash Bass note (/[A-G][#b]?)
  */
 const CHORD_REGEX =
-  /^([A-G][#b]?)(maj7|maj9|maj11|maj13|maj|M7|M9|min7|min9|min|m7b5|m7|m9|m11|m6|m|dim7|dim|aug7|aug|7sus4|sus4|sus2|sus|7b5|7#9|7b9|7|9|11|13|6\/9|6|add9|add2|add4|5|ø|°|\+)?(.*?)(\/([A-G][#b]?))?$/;
+  /^([A-G][#b]?)(maj7|maj9|maj11|maj13|maj|M7|M9|M13|M|min7|min9|min11|min13|min|m7b5|m7#5|m7|m9|m11|m13|m6(?:\/9)?|m|dim7|dim|aug7|aug|7sus4|7sus2|7sus|9sus4|9sus|sus4|sus2|sus|7b5|7#5|7b9|7#9|7#11|7b13|7|9|11|13|6\/9|6|add9|add2|add4|add11|add13|add#11|5|4|ø|°|\+|alt)?(.*?)(\/([A-G][#b]?))?$/i;
 
 /**
  * Detect chord quality from quality string and extension
@@ -130,73 +157,176 @@ export function classifyChordQuality(
   qualityStr: string,
   extra: string,
 ): ChordQuality {
-  const full = (qualityStr + extra).toLowerCase().trim();
+  const full = (qualityStr + extra).toLowerCase().trim().replace(/[\s_]+/g, "");
 
-  if (full.startsWith("m7b5") || full === "ø" || full.includes("halfdim")) {
+  // Half-diminished 7th (e.g. m7b5, m7(b5), min7b5, ø, halfdim)
+  if (
+    full.includes("m7b5") || full.includes("m7(b5)") || full.includes("min7b5") ||
+    full.includes("m7-5") || full.includes("m7(♭5)") || full.includes("-7b5") ||
+    full.includes("-7(b5)") || full === "ø" || full === "ø7" || full.includes("halfdim")
+  ) {
     return "halfDiminished7";
   }
-  if (full.startsWith("dim7") || full === "°7") {
+
+  // Diminished 7th
+  if (
+    full.startsWith("dim7") || full.startsWith("°7") || full.startsWith("o7") ||
+    full.startsWith("07")
+  ) {
     return "diminished7";
   }
+
+  // Diminished Triad
   if (
     full.startsWith("dim") || full === "°" || full.startsWith("o") ||
     full === "0"
   ) {
     return "diminished";
   }
-  if (full.startsWith("aug") || full.startsWith("+")) {
+
+  // Augmented / #5
+  if (
+    full.startsWith("aug") || full.startsWith("+") ||
+    full.includes("7#5") || full.includes("7(#5)") || full.includes("7(+5)") ||
+    full.includes("maj7#5") || full.includes("maj7(#5)") || full.includes("maj7(+5)")
+  ) {
     return "augmented";
   }
-  if (full.startsWith("maj9") || full.startsWith("m9") && full.includes("maj")) {
+
+  // Dominant 7 #11 (e.g. 7#11, 7(#11), dominant7#11, 7(♯11))
+  // But NOT maj7(#11) which is major7 with #11
+  if (
+    (full.includes("7#11") || full.includes("7(#11)") || full.includes("7(♯11)") ||
+      full.includes("7(+11)") || full.includes("dom7#11")) &&
+    !full.includes("maj") && !full.includes("m7") && !full.startsWith("m") &&
+    !full.startsWith("min")
+  ) {
+    return "sevenSharpEleven";
+  }
+
+  // Dominant 7 b9 or 13 b9 (e.g. 7b9, 7(b9), 7(♭9), 7(-9), 13b9, 13(b9), 13(♭9), 13(-9), dominant7b9)
+  if (
+    full.includes("7b9") || full.includes("7(b9)") || full.includes("7(♭9)") ||
+    full.includes("7(-9)") ||
+    full.includes("13b9") || full.includes("13(b9)") || full.includes("13(♭9)") ||
+    full.includes("13(-9)")
+  ) {
+    return "sevenFlatNine";
+  }
+
+  // Major 9th (e.g. maj9, maj7(9), M9, Δ9)
+  if (
+    full.startsWith("maj9") || full.startsWith("m9maj") || full.startsWith("maj7(9)") ||
+    full.startsWith("m7(maj9)") || full.startsWith("δ9") || full.startsWith("Δ9") ||
+    (full.startsWith("m9") && full.includes("maj"))
+  ) {
     return "major9";
   }
+
+  // Major 7th (e.g. maj7, maj7(#11), maj7(13), M7, Δ7, Δ, ma7)
   if (
-    full.startsWith("maj7") || full.startsWith("m7") && full.includes("maj") ||
-    full.startsWith("ma7") || full.startsWith("Δ")
+    full.startsWith("maj7") || full.startsWith("ma7") || full.startsWith("δ7") ||
+    full.startsWith("δ") || full.startsWith("Δ7") || full.startsWith("Δ") ||
+    full.startsWith("m7+") || full.startsWith("7m") || full.startsWith("7m(9)") ||
+    full.startsWith("m7(maj)") || (full.startsWith("m7") && full.includes("maj")) ||
+    (full.startsWith("m") && full.includes("maj7"))
   ) {
     return "major7";
   }
-  if (full.startsWith("m9") || full.startsWith("min9")) {
+
+  // 13th / Dominant 13 (e.g. 13, 13(#11), 13(b5), 13sus4, dom13)
+  if (
+    full.startsWith("13") || full.startsWith("dom13") || full.startsWith("dominant13")
+  ) {
+    return "dominant13";
+  }
+
+  // 6/9 chord
+  if (
+    full.startsWith("6/9") || full.startsWith("69") || full.startsWith("6(9)") ||
+    full.startsWith("6add9")
+  ) {
+    return "sixNine";
+  }
+
+  // Minor 9th
+  if (full.startsWith("m9") || full.startsWith("min9") || full.startsWith("-9")) {
     return "minor9";
   }
+
+  // Minor 7th
   if (
     full.startsWith("m7") || full.startsWith("min7") ||
     full.startsWith("-7")
   ) {
     return "minor7";
   }
+
+  // Minor 6th
   if (full.startsWith("m6") || full.startsWith("min6") || full.startsWith("-6")) {
     return "minorSix";
   }
+
+  // Minor triad
   if (
     full.startsWith("m") || full.startsWith("min") || full.startsWith("-")
   ) {
     return "minor";
   }
+
+  // Dominant 9th
   if (full.startsWith("9") || full.startsWith("dom9")) {
     return "dominant9";
   }
+
+  // Altered chord (e.g. 7#9, 7b5, 7(b5), 7(#9), 7(b13), 7b13, alt, 7alt, 7(♯9), 7(♭5), 7(♭13))
+  if (
+    full.startsWith("alt") || full.includes("7alt") || full.includes("#9") ||
+    full.includes("♯9") || full.includes("b9") || full.includes("♭9") ||
+    full.includes("b5") || full.includes("♭5") || full.includes("7b5") ||
+    full.includes("7♭5") || full.includes("7(b5)") || full.includes("7(♭5)") ||
+    full.includes("7(#9)") || full.includes("7(♯9)") || full.includes("b13") ||
+    full.includes("♭13") || full.includes("7(b13)") || full.includes("7(♭13)") ||
+    full.includes("7b13") || full.includes("7♭13") || full.includes("#11") ||
+    full.includes("♯11")
+  ) {
+    return "altered";
+  }
+
+  // Sus4
+  if (
+    full.startsWith("sus4") || full.startsWith("7sus4") || full.startsWith("9sus4") ||
+    full === "4" || full === "(4)" || full === "7(4)"
+  ) {
+    return "sus4";
+  }
+
+  // Sus2
+  if (full.startsWith("sus2") || full.startsWith("7sus2") || full === "sus") {
+    return "sus2";
+  }
+
+  // Dominant 7th
   if (full.startsWith("7") || full.startsWith("dom7")) {
     return "dominant7";
   }
-  if (full.startsWith("sus4") || full.startsWith("7sus4")) {
-    return "sus4";
-  }
-  if (full.startsWith("sus2")) {
-    return "sus2";
-  }
-  if (full.startsWith("add9") || full.startsWith("add2")) {
+
+  // Add9 / Add2 / Add4
+  if (
+    full.startsWith("add9") || full.startsWith("add2") || full.startsWith("add4") ||
+    full.startsWith("add")
+  ) {
     return "add9";
   }
+
+  // 6th
   if (full.startsWith("6")) {
     return "six";
   }
-  if (full.startsWith("alt") || full.includes("#9") || full.includes("b9")) {
-    return "altered";
-  }
+
+  // Major Triad fallback
   if (
-    full === "" || full === "maj" || full === "major" || full === "m" ||
-    full === "5"
+    full === "" || full === "maj" || full === "major" || full === "5" || full === "m"
   ) {
     return "major";
   }
@@ -208,24 +338,25 @@ export function classifyChordQuality(
  * Parse arbitrary chord string into structured ParsedChord
  */
 export function parseChord(rawChord: string): ParsedChord {
-  const trimmed = rawChord.trim();
+  const trimmed = normalizeUnicodeAccidentals(rawChord).trim();
   const match = trimmed.match(CHORD_REGEX);
 
   if (!match) {
-    // Fallback: check if starts with A-G
-    const rootMatch = trimmed.match(/^([A-G][#b]?)(.*)$/);
+    // Fallback 1: check if starts with A-G
+    const rootMatch = trimmed.match(/^([A-G][#b]?)(.*)$/i);
     if (rootMatch) {
-      const root = rootMatch[1];
+      const rawRoot = rootMatch[1];
+      const root = normalizeRareRoot(rawRoot);
       const rest = rootMatch[2];
       const slashIdx = rest.indexOf("/");
       let bassNote: string | undefined;
       let extension = rest;
       if (slashIdx !== -1) {
-        bassNote = rest.slice(slashIdx + 1).trim();
+        bassNote = normalizeRareRoot(rest.slice(slashIdx + 1).trim());
         extension = rest.slice(0, slashIdx).trim();
       }
       const quality = classifyChordQuality(extension, "");
-      return {
+      const res: ParsedChord = {
         raw: trimmed,
         root,
         quality,
@@ -233,6 +364,20 @@ export function parseChord(rawChord: string): ParsedChord {
         extension: extension || undefined,
         rootPitchClass: getPitchClass(root),
         bassPitchClass: bassNote ? getPitchClass(bassNote) : undefined,
+      };
+      res.raw = formatChord(res);
+      return res;
+    }
+
+    // Fallback 2: rootless jazz chord (e.g. 13b9, 7b9, 7#9, m7b5)
+    const quality = classifyChordQuality(trimmed, "");
+    if (quality !== "unknown") {
+      return {
+        raw: trimmed,
+        root: "",
+        quality,
+        extension: trimmed,
+        rootPitchClass: 0,
       };
     }
 
@@ -244,14 +389,16 @@ export function parseChord(rawChord: string): ParsedChord {
     };
   }
 
-  const root = match[1];
+  const rawRoot = match[1];
+  const root = normalizeRareRoot(rawRoot);
   const qualityStr = match[2] || "";
   const extraExt = match[3] || "";
-  const bassNote = match[5] || undefined;
+  const rawBass = match[5] || undefined;
+  const bassNote = rawBass ? normalizeRareRoot(rawBass) : undefined;
   const fullExt = (qualityStr + extraExt).trim();
   const quality = classifyChordQuality(qualityStr, extraExt);
 
-  return {
+  const res: ParsedChord = {
     raw: trimmed,
     root,
     quality,
@@ -260,6 +407,8 @@ export function parseChord(rawChord: string): ParsedChord {
     rootPitchClass: getPitchClass(root),
     bassPitchClass: bassNote ? getPitchClass(bassNote) : undefined,
   };
+  res.raw = formatChord(res);
+  return res;
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   getPitchClass,
   normalizeCapoFret,
   normalizePitchClass,
+  normalizeRareRoot,
   parseChord,
   SHARP_SPELLINGS,
   transposePitchClass,
@@ -151,14 +152,19 @@ export function transposeChord(
   const normFret = normalizeCapoFret(capoFret);
 
   if (normFret === 0) {
-    return {
+    const normRoot = normalizeRareRoot(parsed.root);
+    const normBass = parsed.bassNote ? normalizeRareRoot(parsed.bassNote) : undefined;
+    const result: ParsedChord = {
       ...parsed,
-      raw: formatChord(parsed),
+      root: normRoot,
+      bassNote: normBass,
       rootPitchClass: normalizePitchClass(parsed.rootPitchClass),
       bassPitchClass: parsed.bassPitchClass !== undefined
         ? normalizePitchClass(parsed.bassPitchClass)
         : undefined,
     };
+    result.raw = formatChord(result);
+    return result;
   }
 
   const soundingRootPc = transposePitchClass(parsed.rootPitchClass, normFret);

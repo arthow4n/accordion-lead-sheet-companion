@@ -53,6 +53,36 @@ const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> g gives 1-5-7-9)
     explanation: "Fundamental bass + major chord on 5th (1-5-7-9)",
   },
+  minor9: {
+    chordRow: "major",
+    chordPitchClassOffset: 3, // b3 above root (e.g. C -> eb)
+    explanation: "Fundamental bass + major chord on b3 (1-b3-5-b7)",
+  },
+  dominant13: {
+    chordRow: "minor",
+    chordPitchClassOffset: 7, // 5th above root (e.g. C -> gm gives 1-5-b7-9/13)
+    explanation: "Fundamental bass + minor chord on 5th (1-5-b7-9/13)",
+  },
+  sevenSharpEleven: {
+    chordRow: "diminished",
+    chordPitchClassOffset: 0, // root dim button (e.g. C -> cdim gives 1-b5/#11)
+    explanation: "Fundamental bass + diminished chord on root (1-b5/#11)",
+  },
+  sevenFlatNine: {
+    chordRow: "diminished",
+    chordPitchClassOffset: 1, // dim button half-step up (e.g. C -> dbdim gives 1-b9-3-5-b7)
+    explanation: "Fundamental bass + diminished chord half-step up (1-b9-3-5-b7)",
+  },
+  sixNine: {
+    chordRow: "major",
+    chordPitchClassOffset: 7, // 5th above root (e.g. C -> g gives 1-5-6-9)
+    explanation: "Fundamental bass + major chord on 5th (1-5-6-9)",
+  },
+  altered: {
+    chordRow: "diminished",
+    chordPitchClassOffset: 0, // root dim button (e.g. C -> cdim gives altered color)
+    explanation: "Fundamental bass + diminished chord on root (altered color 1-b5-#9)",
+  },
   sus4: {
     chordRow: "major",
     chordPitchClassOffset: 5, // 4th above root (e.g. C -> f gives F/C sus color)
@@ -109,11 +139,19 @@ export function solveCompoundChord(
       case 9:
         colDelta = 3;
         break;
+      case 1:
+        colDelta = -5;
+        break;
       default:
         colDelta = 0;
         break;
     }
-    const chordCol = rootCol + colDelta;
+    let chordCol = rootCol + colDelta;
+    if (chordCol < -6) {
+      chordCol += 12;
+    } else if (chordCol > 10) {
+      chordCol -= 12;
+    }
     chordBtn = createStradellaButton(rule.chordRow, chordCol);
     explanation = `${bassBtn.label} + ${chordBtn.label}: ${rule.explanation}`;
   } else {

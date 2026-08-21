@@ -41,11 +41,15 @@ export function solveSlashChord(
   }
 
   // Determine chord button
-  const chordRow = chord.quality === "minor"
+  const chordRow = (chord.quality === "minor" || chord.quality === "minor7" ||
+      chord.quality === "minor9" || chord.quality === "minorSix")
     ? "minor"
-    : chord.quality === "dominant7"
+    : (chord.quality === "dominant7" || chord.quality === "dominant9" ||
+        chord.quality === "dominant13" || chord.quality === "sevenSharpEleven" ||
+        chord.quality === "sevenFlatNine" || chord.quality === "altered")
     ? "seventh"
-    : chord.quality === "diminished" || chord.quality === "diminished7"
+    : (chord.quality === "diminished" || chord.quality === "diminished7" ||
+        chord.quality === "halfDiminished7")
     ? "diminished"
     : "major";
 
