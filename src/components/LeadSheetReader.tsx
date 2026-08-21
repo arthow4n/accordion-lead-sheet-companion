@@ -202,18 +202,20 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 <span>{capo > 0 ? "Capo ON" : "Capo OFF"}</span>
               </button>
 
-              {/* Reset to Recommended Default Capo */}
-              {capo !== defaultCapo && (
-                <button
-                  type="button"
-                  onClick={handleResetCapo}
-                  className="min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-lg bg-zinc-950 hover:bg-zinc-800 border border-zinc-700/80 text-amber-300 hover:text-amber-200 text-xs font-mono font-semibold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shadow-sm"
-                  title={`Reset capo to imported default: Capo ${defaultCapo}`}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset ({defaultCapo})</span>
-                </button>
-              )}
+              {/* Always-Visible Reset to Recommended Default Capo */}
+              <button
+                type="button"
+                onClick={handleResetCapo}
+                className={`min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 shadow-sm ${
+                  capo !== defaultCapo
+                    ? "bg-amber-950/40 border border-amber-600/70 text-amber-300 hover:bg-amber-900/50 hover:text-amber-200"
+                    : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                }`}
+                title={`Reset capo to imported default: Capo ${defaultCapo}`}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset ({defaultCapo})</span>
+              </button>
             </div>
 
             {/* Right: Key & Transposition Status */}

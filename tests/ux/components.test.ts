@@ -801,12 +801,13 @@ Deno.test("UX-13: Capo & Key Controller with Quick On/Off and Reset to Default C
     }),
   );
 
-  // 1. Controller bar elements
+  // 1. Controller bar elements - Reset button is always rendered without jumping
   assertEquals(readerHtml.includes("Capo 2"), true);
   assertEquals(readerHtml.includes("Capo ON"), true);
+  assertEquals(readerHtml.includes("Reset (2)"), true);
   assertEquals(readerHtml.includes("Key:"), true);
 
-  // 2. When capo is changed to 4, Reset button appears showing Reset (2)
+  // 2. When capo is changed to 4, Reset button remains visible with amber highlight
   const modifiedHtml = renderToStaticMarkup(
     React.createElement(LeadSheetReader, {
       song: song,
@@ -816,4 +817,5 @@ Deno.test("UX-13: Capo & Key Controller with Quick On/Off and Reset to Default C
     }),
   );
   assertEquals(modifiedHtml.includes("Reset (2)"), true);
+  assertEquals(modifiedHtml.includes("text-amber-300"), true);
 });
