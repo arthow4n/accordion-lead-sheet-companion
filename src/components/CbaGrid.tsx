@@ -95,14 +95,6 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                       ?.finger === 1
                 );
 
-                const isEntering = isPrimary && !isRoot &&
-                  Boolean(
-                    grip?.enteringCoords && grip.enteringCoords.length > 0 &&
-                      grip.enteringCoords.some((ec) =>
-                        ec.row === rowInfo.rowNumber && ec.column === col
-                      ),
-                  );
-
                 const isGhost = !isPrimary && !isAuxDuplicate &&
                   Boolean(
                     grip?.exitingCoords && grip.exitingCoords.length > 0 &&
@@ -116,9 +108,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                     key={`cba-btn-${rowInfo.rowNumber}-${col}`}
                     className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-mono transition-all select-none ${
                       isRoot
-                        ? "bg-white border-2 border-emerald-300 text-zinc-950 font-black shadow-[0_0_12px_rgba(255,255,255,0.9)] ring-2 ring-emerald-400/80 scale-110"
-                        : isEntering
-                        ? "bg-sky-400 border-2 border-sky-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(56,189,248,0.9)] ring-2 ring-sky-400/60 scale-105"
+                        ? "bg-amber-300 border-2 border-amber-100 text-zinc-950 font-black shadow-[0_0_12px_rgba(251,191,36,0.85)] ring-2 ring-amber-400/80 scale-110"
                         : isPrimary
                         ? "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105"
                         : isAuxDuplicate
@@ -128,13 +118,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                         : "bg-zinc-900/90 border border-zinc-800 text-zinc-500 hover:border-zinc-700"
                     }`}
                     title={`Row ${rowInfo.rowNumber}, Col ${col}: ${noteName}${
-                      isRoot
-                        ? " (Root)"
-                        : isEntering
-                        ? " (New Strike)"
-                        : isGhost
-                        ? " (Previous Chord Shadow)"
-                        : ""
+                      isRoot ? " (Root)" : isGhost ? " (Previous Chord Shadow)" : ""
                     }`}
                   >
                     {noteName}

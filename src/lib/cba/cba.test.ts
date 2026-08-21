@@ -207,7 +207,7 @@ Deno.test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscl
   }
 });
 
-Deno.test("CBA-16: Pearl-White Root Beacon tagging on 7th and extended chords", () => {
+Deno.test("CBA-16: Amber-Gold Root Beacon tagging on 7th and extended chords", () => {
   const extendedChords = ["G7", "Am7", "Cmaj7", "Bm7b5", "F#7"];
   for (const chord of extendedChords) {
     const grip = generateCanonicalRootGrip(chord, 5);

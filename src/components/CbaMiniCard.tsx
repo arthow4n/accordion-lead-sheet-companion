@@ -10,6 +10,7 @@ export interface CbaMiniCardProps {
   chord: ChordDetail | string;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
+  fontSizeClass?: string;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   chord,
   onSelectChord,
   active = false,
+  fontSizeClass = "text-base",
   className = "",
 }) => {
   const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
@@ -29,17 +31,18 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   const notes = grip.notes || [];
   const activeButtons: CbaButtonCoord[] = grip.buttonCoords || grip.buttons || [];
 
-  // Determine column range to display around active buttons (4 columns)
+  // Determine dynamic column range to display ALL active buttons (minimum 5 columns, with padding)
   const cols = activeButtons.map((b) => b.column);
-  const minCol = cols.length > 0 ? Math.max(1, Math.min(...cols)) : 3;
-  const displayCols = [minCol - 1, minCol, minCol + 1, minCol + 2];
+  const rawMinCol = cols.length > 0 ? Math.min(...cols) : 3;
+  const rawMaxCol = cols.length > 0 ? Math.max(...cols) : 6;
+  const startCol = Math.max(1, rawMinCol - 1);
+  const endCol = Math.min(12, Math.max(startCol + 4, rawMaxCol + 1));
+  const displayCols: number[] = [];
+  for (let c = startCol; c <= endCol; c++) {
+    displayCols.push(c);
+  }
 
   // 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger
-  // Row 5: Auxiliary 2 (Repeat of Row 2)
-  // Row 4: Auxiliary 1 (Repeat of Row 1)
-  // Row 3: Core (Bellows side)
-  // Row 2: Core (Middle)
-  // Row 1: Core (Edge)
   const rows = [
     { rowNum: 5, y: 6, xOffset: 12 },
     { rowNum: 4, y: 15, xOffset: 9 },
@@ -59,38 +62,93 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
     }
   };
 
+  // Font and Card Scaling Map
+  const scaleMap: Record<string, {
+    cardPad: string;
+    titleSize: string;
+    notesSize: string;
+    svgW: string;
+    svgH: string;
+    minW: string;
+  }> = {
+    "text-sm": {
+      cardPad: "p-1.5",
+      titleSize: "text-xs",
+      notesSize: "text-[9px]",
+      svgW: "w-[58px]",
+      svgH: "h-[44px]",
+      minW: "min-w-[74px]",
+    },
+    "text-base": {
+      cardPad: "p-2",
+      titleSize: "text-sm",
+      notesSize: "text-[10px]",
+      svgW: "w-[68px]",
+      svgH: "h-[50px]",
+      minW: "min-w-[84px]",
+    },
+    "text-lg": {
+      cardPad: "p-2.5",
+      titleSize: "text-base",
+      notesSize: "text-xs",
+      svgW: "w-[78px]",
+      svgH: "h-[58px]",
+      minW: "min-w-[96px]",
+    },
+    "text-xl": {
+      cardPad: "p-3",
+      titleSize: "text-lg",
+      notesSize: "text-sm",
+      svgW: "w-[90px]",
+      svgH: "h-[66px]",
+      minW: "min-w-[110px]",
+    },
+    "text-2xl": {
+      cardPad: "p-3.5",
+      titleSize: "text-xl",
+      notesSize: "text-base",
+      svgW: "w-[102px]",
+      svgH: "h-[74px]",
+      minW: "min-w-[126px]",
+    },
+  };
+  const currentScale = scaleMap[fontSizeClass] || scaleMap["text-base"];
+
+  const colSpacing = 9.5;
+  const svgWidth = 14 + (displayCols.length - 1) * colSpacing + 12;
+
   return (
     <button
       type="button"
       onClick={handleClick}
       title={`${chordName}: ${notes.join(" - ")} (5-Row CBA Grip)`}
-      className={`flex flex-col items-center justify-between p-1.5 rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
+      className={`flex flex-col items-center justify-between ${currentScale.cardPad} rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
         active
           ? "bg-emerald-950/90 border-emerald-400 shadow-md ring-1 ring-emerald-400"
           : "bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 hover:border-emerald-600/60"
-      } ${className}`}
-      style={{ minWidth: "66px" }}
+      } ${currentScale.minW} ${className}`}
     >
-      {/* Bold, Clear Chord Name Header + Flow Vector Pill */}
-      <div className="flex items-center gap-1 mb-1">
-        <span className="text-xs font-bold text-emerald-400 font-mono tracking-tight leading-none">
+      {/* Bold Chord Title + Note Spellings Subtitle */}
+      <div className="flex flex-col items-center justify-center gap-0.5 mb-1.5 w-full">
+        <span
+          className={`${currentScale.titleSize} font-black text-emerald-400 font-mono tracking-tight leading-none`}
+        >
           {chordName}
         </span>
-        {grip.flowVector && (
+        {notes.length > 0 && (
           <span
-            className="text-[9px] px-1 py-0.2 rounded bg-zinc-800/90 border border-zinc-700 text-sky-300 font-mono font-bold leading-none"
-            title={`Hand Flow Vector: ${grip.flowVector}`}
+            className={`${currentScale.notesSize} text-zinc-400 font-mono font-medium tracking-tight leading-none truncate max-w-full`}
           >
-            {grip.flowVector}
+            {notes.join(" · ")}
           </span>
         )}
       </div>
 
       {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes */}
-      <div className="bg-zinc-950/90 rounded-lg p-0.5 border border-zinc-800/80 shadow-inner flex items-center justify-center">
+      <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
         <svg
-          viewBox="0 0 54 48"
-          className="w-[52px] h-[46px] overflow-visible"
+          viewBox={`0 0 ${svgWidth} 48`}
+          className={`${currentScale.svgW} ${currentScale.svgH} overflow-visible`}
           aria-hidden="true"
         >
           {rows.map(({ rowNum, y, xOffset }) => {
@@ -110,23 +168,16 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                 return bEff === curEff && b.column === col;
               });
 
-              // High-Contrast Root Note Beacon (Finger 1)
+              // Soft Warm Amber-Gold Root Note Beacon (Finger 1)
               const isRoot = isDirectActive && (
                 (grip.rootButtonCoord && grip.rootButtonCoord.row === rowNum &&
                   grip.rootButtonCoord.column === col) ||
                 activeButtons.find((b) => b.row === rowNum && b.column === col)?.finger === 1
               );
 
-              // Dynamic Transition States: Entering (Sky Blue) vs Shared (Emerald)
-              const isEntering = isDirectActive && !isRoot &&
-                Boolean(
-                  grip.enteringCoords && grip.enteringCoords.length > 0 &&
-                    grip.enteringCoords.some((ec) => ec.row === rowNum && ec.column === col),
-                );
-
               const isLit = isDirectActive || isAuxDuplicate;
               const isPrimary = isDirectActive;
-              const x = xOffset + 5 + colIdx * 9.5;
+              const x = xOffset + 5 + colIdx * colSpacing;
 
               return (
                 <g key={`cba-dot-${rowNum}-${col}`}>
@@ -137,36 +188,32 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       cy={y}
                       r={isRoot ? 5.2 : 4.8}
                       fill="none"
-                      stroke={isRoot ? "#ffffff" : isEntering ? "#38bdf8" : "#34d399"}
-                      strokeWidth={isRoot ? 1.5 : 1.2}
-                      opacity={0.9}
+                      stroke={isRoot ? "#fde047" : "#34d399"}
+                      strokeWidth={isRoot ? 1.4 : 1.2}
+                      opacity={0.85}
                     />
                   )}
 
-                  {/* Button circle: Pearl-White for Root, Sky Blue for Entering, Emerald for Kept/Chord Tones */}
+                  {/* Button circle: Soft Amber-Gold for Root, Emerald for Chord Tones */}
                   <circle
                     cx={x}
                     cy={y}
                     r={isRoot ? 4.4 : isPrimary ? 4.2 : isAuxDuplicate ? 3.6 : 2.0}
                     fill={isRoot
-                      ? "#ffffff"
-                      : isEntering
-                      ? "#38bdf8"
+                      ? "#fde047"
                       : isPrimary
                       ? "#10b981"
                       : isAuxDuplicate
                       ? "#065f46"
                       : "#27272a"}
                     stroke={isRoot
-                      ? "#34d399"
-                      : isEntering
-                      ? "#7dd3fc"
+                      ? "#eab308"
                       : isPrimary
-                      ? "#6ee7b7"
+                      ? "#34d399"
                       : isAuxDuplicate
                       ? "#10b981"
                       : "#3f3f46"}
-                    strokeWidth={isLit ? (isRoot ? 1.0 : 0.75) : 0.4}
+                    strokeWidth={isLit ? (isRoot ? 1.1 : 0.8) : 0.4}
                   />
 
                   {/* Direct In-Button Note Initials on lit buttons */}
@@ -180,13 +227,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       fontWeight={isRoot ? "900" : "bold"}
                       fontFamily="monospace"
                       textAnchor="middle"
-                      fill={isRoot
-                        ? "#022c22"
-                        : isEntering
-                        ? "#082f49"
-                        : isPrimary
-                        ? "#042f2e"
-                        : "#a7f3d0"}
+                      fill={isRoot ? "#451a03" : isPrimary ? "#022c22" : "#a7f3d0"}
                       className="select-none pointer-events-none"
                     >
                       {noteName}

@@ -120,6 +120,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={segment.chord}
                 viewMode={viewMode}
                 onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
                 active={Boolean(
                   selectedChord &&
                     ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
@@ -150,6 +151,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={segment.chord}
                 viewMode={viewMode}
                 onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
                 active={Boolean(
                   selectedChord &&
                     ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
@@ -194,12 +196,13 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
 
           {/* If CBA mode and sectionChords exist, render 5-row mini-cards row */}
           {viewMode === "cba" && sectionChords && sectionChords.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-2 pt-1 overflow-x-auto">
               {sectionChords.map((chord, cIdx) => (
                 <CbaMiniCard
                   key={`sec-cba-${cIdx}`}
                   chord={chord}
                   onSelectChord={onSelectChord}
+                  fontSizeClass={fontSizeClass}
                   active={Boolean(
                     selectedChord &&
                       ((typeof chord === "string" && chord === selectedChord) ||

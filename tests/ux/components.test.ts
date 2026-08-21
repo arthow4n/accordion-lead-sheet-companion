@@ -22,6 +22,7 @@ import { LeadSheetReader } from "../../src/components/LeadSheetReader.tsx";
 import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
+import { CbaMiniCard } from "../../src/components/CbaMiniCard.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
 import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
 
@@ -818,4 +819,45 @@ Deno.test("UX-13: Capo & Key Controller with Quick On/Off and Reset to Default C
   );
   assertEquals(modifiedHtml.includes("Reset (2)"), true);
   assertEquals(modifiedHtml.includes("text-amber-300"), true);
+});
+
+Deno.test("UX-14: Font Size Scaling scales lyrics, ChordBadge, and CbaMiniCard dimensions", () => {
+  const chordDetail = enrichChord("F#7", 0);
+
+  // 1. Small vs Extra Large CbaMiniCard scaling
+  const miniCardSmall = renderToStaticMarkup(
+    React.createElement(CbaMiniCard, {
+      chord: chordDetail,
+      fontSizeClass: "text-sm",
+    }),
+  );
+  const miniCardLarge = renderToStaticMarkup(
+    React.createElement(CbaMiniCard, {
+      chord: chordDetail,
+      fontSizeClass: "text-xl",
+    }),
+  );
+  assertEquals(miniCardSmall.includes("min-w-[74px]"), true);
+  assertEquals(miniCardLarge.includes("min-w-[110px]"), true);
+  // Includes note subtitles (F#, A#, C#, E)
+  assertEquals(miniCardSmall.includes("F#"), true);
+  assertEquals(miniCardSmall.includes("A#"), true);
+  assertEquals(miniCardSmall.includes("C#"), true);
+  assertEquals(miniCardSmall.includes("E"), true);
+
+  // 2. ChordBadge scaling with fontSizeClass
+  const badgeSmall = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      fontSizeClass: "text-sm",
+    }),
+  );
+  const badgeLarge = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      fontSizeClass: "text-xl",
+    }),
+  );
+  assertEquals(badgeSmall.includes("min-h-6"), true);
+  assertEquals(badgeLarge.includes("min-h-8"), true);
 });

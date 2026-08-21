@@ -6,6 +6,7 @@ export interface ChordBadgeProps {
   viewMode?: ViewMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
+  fontSizeClass?: string;
   className?: string;
 }
 
@@ -14,11 +15,57 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   viewMode = "stradella",
   onSelectChord,
   active = false,
+  fontSizeClass = "text-base",
   className = "",
 }) => {
   if (!chord) {
     return <span className="inline-block h-6 min-w-[1.5rem]" aria-hidden="true" />;
   }
+
+  const badgeSizeMap: Record<string, {
+    badgeFont: string;
+    badgePad: string;
+    minH: string;
+    subFont: string;
+    dualMainFont: string;
+  }> = {
+    "text-sm": {
+      badgeFont: "text-xs",
+      badgePad: "px-1.5 py-0.5",
+      minH: "min-h-6",
+      subFont: "text-[8px]",
+      dualMainFont: "text-[10px]",
+    },
+    "text-base": {
+      badgeFont: "text-xs sm:text-sm",
+      badgePad: "px-2 py-0.5 sm:py-1",
+      minH: "min-h-6 sm:min-h-7",
+      subFont: "text-[9px]",
+      dualMainFont: "text-[11px]",
+    },
+    "text-lg": {
+      badgeFont: "text-sm sm:text-base",
+      badgePad: "px-2.5 py-1",
+      minH: "min-h-6 sm:min-h-7",
+      subFont: "text-[10px]",
+      dualMainFont: "text-xs",
+    },
+    "text-xl": {
+      badgeFont: "text-base sm:text-lg",
+      badgePad: "px-3 py-1.5",
+      minH: "min-h-6 sm:min-h-8",
+      subFont: "text-xs",
+      dualMainFont: "text-sm",
+    },
+    "text-2xl": {
+      badgeFont: "text-lg sm:text-xl",
+      badgePad: "px-3.5 py-2",
+      minH: "min-h-6 sm:min-h-9",
+      subFont: "text-sm",
+      dualMainFont: "text-base",
+    },
+  };
+  const currentBadgeSize = badgeSizeMap[fontSizeClass] || badgeSizeMap["text-base"];
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation so clicking chord badge does not trigger page turns or scroll gestures (UX-05)
@@ -49,7 +96,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       <button
         type="button"
         onClick={handleClick}
-        className={`relative before:absolute before:-inset-2.5 before:content-[''] min-h-6 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
+        className={`relative before:absolute before:-inset-2.5 before:content-[''] ${currentBadgeSize.minH} inline-flex items-center gap-1 ${currentBadgeSize.badgePad} rounded ${currentBadgeSize.badgeFont} font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
       >
         {chord}
       </button>
@@ -144,7 +191,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       type="button"
       onClick={handleClick}
       title={`${rawChordName} (Sounding: ${soundingChordName}) - Tap for button diagram`}
-      className={`relative before:absolute before:-inset-2.5 before:content-[''] min-h-6 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
+      className={`relative before:absolute before:-inset-2.5 before:content-[''] ${currentBadgeSize.minH} inline-flex items-center gap-1 ${currentBadgeSize.badgePad} rounded border ${currentBadgeSize.badgeFont} font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
     >
       {viewMode === "stradella" && (
         <span className="flex items-center gap-1">
@@ -166,7 +213,9 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
             ? (
               <span className="flex items-baseline gap-1">
                 <span className="font-bold text-sky-400">{soundingChordName}</span>
-                <span className="text-[9px] text-zinc-400 font-normal opacity-90">
+                <span
+                  className={`${currentBadgeSize.subFont} text-zinc-400 font-normal opacity-90`}
+                >
                   ({primaryBass}+{formattedChordBtn})
                 </span>
               </span>
@@ -189,8 +238,10 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
 
       {viewMode === "dual" && (
         <span className="flex flex-col items-start leading-none py-0.5">
-          <span className="text-[11px] font-bold text-zinc-100">{rawChordName}</span>
-          <span className="flex items-center gap-0.5 text-[9px] text-zinc-400">
+          <span className={`${currentBadgeSize.dualMainFont} font-bold text-zinc-100`}>
+            {rawChordName}
+          </span>
+          <span className={`flex items-center gap-0.5 ${currentBadgeSize.subFont} text-zinc-400`}>
             {isSlash
               ? (
                 <span className={isCounterBass ? "text-amber-400 font-bold" : "text-sky-400"}>

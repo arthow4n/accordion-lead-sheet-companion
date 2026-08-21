@@ -306,6 +306,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 key={`top-cba-${cIdx}`}
                 chord={chord}
                 onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
                 active={Boolean(
                   selectedChord &&
                     ((typeof chord === "string" && chord === selectedChord) ||
