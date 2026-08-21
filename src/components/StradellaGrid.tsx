@@ -13,16 +13,6 @@ export interface StradellaGridProps {
   className?: string;
 }
 
-interface ButtonItem {
-  rowName: string;
-  rowIndex: number;
-  label: string;
-  isCounterBass?: boolean;
-  isActive: boolean;
-  fingerLabel?: string;
-  isOutOfRange?: boolean;
-}
-
 export const StradellaGrid: React.FC<StradellaGridProps> = ({
   stradella,
   soundingChord,
@@ -32,193 +22,200 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   const targetCol = stradella?.columnOffset ?? 0;
   const isOutOfRange = stradella?.isOutOfRange ?? isColumnOutOfRange(targetCol, accordionSize);
 
-  // We display 3 columns: targetCol - 1, targetCol, targetCol + 1
-  const columns = [targetCol - 1, targetCol, targetCol + 1];
+  // Determine dynamic column span covering both bass and chord buttons (typically 4-6 columns)
+  const activeCols: number[] = [];
+  if (typeof stradella?.rootButton?.column === "number") {
+    activeCols.push(stradella.rootButton.column);
+  }
+  if (typeof stradella?.chordButton?.column === "number") {
+    activeCols.push(stradella.chordButton.column);
+  }
+  if (typeof stradella?.columnOffset === "number" && activeCols.length === 0) {
+    activeCols.push(stradella.columnOffset);
+  }
+  if (activeCols.length === 0) {
+    activeCols.push(0);
+  }
+
+  const minActiveCol = Math.min(...activeCols);
+  const maxActiveCol = Math.max(...activeCols);
+
+  // Ensure at least 4-5 columns are displayed for visual context
+  let startCol = minActiveCol - 1;
+  let endCol = maxActiveCol + 1;
+  if (endCol - startCol < 4) {
+    const needed = 4 - (endCol - startCol);
+    startCol -= Math.floor(needed / 2);
+    endCol = startCol + 4;
+  }
+
+  const columns: number[] = [];
+  for (let c = startCol; c <= endCol; c++) {
+    columns.push(c);
+  }
 
   const activeBassLabel = stradella?.primaryBass || soundingChord?.root || "";
   const activeChordLabel = stradella?.chordButton?.label?.toLowerCase() || "";
   const isCounterBassActive = Boolean(stradella?.isCounterBass || activeBassLabel.endsWith("_"));
 
-  // Extract fingers from stradella.fingering (e.g. "2 + 3" or "4 + 3" or "3")
-  const fingerParts = (stradella?.fingering || "4 + 3").split("+").map((s) => s.trim());
-  const bassFinger = fingerParts[0] || (isCounterBassActive ? "2" : "4");
-  const chordFinger = fingerParts[1] || (fingerParts.length === 1 ? fingerParts[0] : "3");
-
-  const rowLabels = [
-    { name: "Counter-Bass", key: "counter" },
-    { name: "Fundamental", key: "bass" },
-    { name: "Major (M)", key: "major" },
-    { name: "Minor (m)", key: "minor" },
-    { name: "7th (7)", key: "seventh" },
-    { name: "Dim (d)", key: "dim" },
+  const rows = [
+    { key: "counter", rowIndex: 0 },
+    { key: "bass", rowIndex: 1 },
+    { key: "major", rowIndex: 2 },
+    { key: "minor", rowIndex: 3 },
+    { key: "seventh", rowIndex: 4 },
+    { key: "dim", rowIndex: 5 },
   ];
 
   return (
     <div
-      className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-2 sm:p-2.5 ${className}`}
+      className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}
     >
-      {/* Header with Chord explanation */}
-      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-zinc-800">
-        <div>
-          <span className="text-[11px] sm:text-xs font-bold text-zinc-300 font-mono">
-            Stradella Voicing:
-          </span>
-          <span className="ml-1.5 sm:ml-2 text-[11px] sm:text-xs font-semibold text-emerald-400">
-            {stradella?.explanation || `${activeBassLabel} Bass + ${activeChordLabel || "Chord"}`}
-          </span>
-        </div>
-        {stradella?.fingering && (
-          <span className="px-1.5 sm:px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs font-mono font-bold">
-            Fingering: {stradella.fingering}
-          </span>
-        )}
+      {/* Clean Single-Line Recipe Header without Clutter */}
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800/80 font-mono">
+        <span className="text-sm sm:text-base font-bold text-blue-400">
+          {stradella?.explanation || `${activeBassLabel} Bass + ${activeChordLabel || "Chord"}`}
+        </span>
       </div>
 
       {/* Out of Range Warning */}
       {isOutOfRange && (
-        <div className="mb-1.5 px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-semibold flex items-center justify-between">
+        <div className="mb-2 px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-semibold flex items-center justify-between">
           <span>⚠️ Chord column {targetCol} is out of {accordionSize} standard range</span>
           <span className="text-[10px] text-amber-400">Transposition recommended</span>
         </div>
       )}
 
-      {/* 3-Column Visual Grid */}
-      <div className="overflow-x-auto pb-0.5">
-        <div className="min-w-[280px]">
-          {/* Column Headers */}
-          <div className="grid grid-cols-4 gap-1 sm:gap-1.5 mb-1 text-center text-[10px] font-mono font-semibold text-zinc-400">
-            <div className="text-left text-zinc-500 pl-1">Row</div>
-            {columns.map((col) => (
-              <div
-                key={`col-hdr-${col}`}
-                className={`py-0.5 rounded ${
-                  col === targetCol
-                    ? "bg-zinc-800 text-zinc-100 font-bold border border-zinc-700"
-                    : "text-zinc-500"
-                }`}
-              >
-                {getBassNoteForColumn(col)} Col ({col > 0 ? `+${col}` : col})
-              </div>
-            ))}
-          </div>
+      {/* Compact Stradella Circular Button Keyboard without Noisy Headers */}
+      <div className="overflow-x-auto pb-1 flex justify-center">
+        <div className="py-1 space-y-1.5">
+          {rows.map((rowInfo) => (
+            <div
+              key={`strad-row-${rowInfo.key}`}
+              className="flex items-center justify-center gap-1.5 sm:gap-2"
+            >
+              {columns.map((col) => {
+                const bassNote = getBassNoteForColumn(col);
+                const counterNote = getCounterBassNoteForColumn(col);
 
-          {/* Row Matrix */}
-          <div className="space-y-1 sm:space-y-1.5">
-            {rowLabels.map((rowInfo, rowIdx) => {
-              return (
-                <div key={rowInfo.key} className="grid grid-cols-4 gap-1 sm:gap-1.5 items-center">
-                  <div className="text-[10px] font-medium text-zinc-400 truncate pl-1">
-                    {rowInfo.name}
-                  </div>
+                let buttonLabel = "";
+                let isCounter = false;
+                let isActive = false;
 
-                  {columns.map((col) => {
-                    const bassNote = getBassNoteForColumn(col);
-                    const counterNote = getCounterBassNoteForColumn(col);
-                    const isTargetCol = col === targetCol;
-
-                    let buttonLabel = "";
-                    let isCounter = false;
-                    let isActive = false;
-                    let fingerText = "";
-
-                    if (rowIdx === 0) {
-                      // Counter-Bass
-                      buttonLabel = `${counterNote}_`;
-                      isCounter = true;
-                      if (
-                        isTargetCol &&
-                        isCounterBassActive &&
+                if (rowInfo.rowIndex === 0) {
+                  // Counter-Bass
+                  buttonLabel = `${counterNote}_`;
+                  isCounter = true;
+                  if (
+                    stradella?.rootButton
+                      ? stradella.rootButton.row === "counter-bass" &&
+                        stradella.rootButton.column === col
+                      : (isCounterBassActive && col === targetCol &&
                         activeBassLabel.toLowerCase().replace(/_/g, "") ===
-                          counterNote.toLowerCase()
-                      ) {
-                        isActive = true;
-                        fingerText = bassFinger;
-                      }
-                    } else if (rowIdx === 1) {
-                      // Fundamental Bass
-                      buttonLabel = bassNote;
-                      if (
-                        isTargetCol &&
-                        !isCounterBassActive &&
-                        activeBassLabel.toLowerCase() === bassNote.toLowerCase()
-                      ) {
-                        isActive = true;
-                        fingerText = bassFinger;
-                      }
-                    } else if (rowIdx === 2) {
-                      // Major Triad
-                      buttonLabel = bassNote.toLowerCase();
-                      if (
-                        isTargetCol &&
+                          counterNote.toLowerCase())
+                  ) {
+                    isActive = true;
+                  }
+                } else if (rowInfo.rowIndex === 1) {
+                  // Fundamental Bass
+                  buttonLabel = bassNote;
+                  if (
+                    stradella?.rootButton
+                      ? stradella.rootButton.row === "bass" && stradella.rootButton.column === col
+                      : (!isCounterBassActive && col === targetCol &&
+                        activeBassLabel.toLowerCase() === bassNote.toLowerCase())
+                  ) {
+                    isActive = true;
+                  }
+                } else if (rowInfo.rowIndex === 2) {
+                  // Major Triad
+                  buttonLabel = bassNote.toLowerCase();
+                  if (
+                    stradella?.chordButton
+                      ? (stradella.chordButton.row === "major" &&
+                        stradella.chordButton.column === col) ||
+                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                          col === stradella.chordButton.column)
+                      : (col === targetCol &&
                         (activeChordLabel === buttonLabel ||
                           activeChordLabel === `${bassNote.toLowerCase()}m` === false &&
-                            activeChordLabel === bassNote.toLowerCase())
-                      ) {
-                        isActive = true;
-                        fingerText = chordFinger;
-                      }
-                    } else if (rowIdx === 3) {
-                      // Minor Triad
-                      buttonLabel = `${bassNote.toLowerCase()}m`;
-                      if (isTargetCol && activeChordLabel === buttonLabel) {
-                        isActive = true;
-                        fingerText = chordFinger;
-                      }
-                    } else if (rowIdx === 4) {
-                      // 7th Chord
-                      buttonLabel = `${bassNote.toLowerCase()}7`;
-                      if (isTargetCol && activeChordLabel === buttonLabel) {
-                        isActive = true;
-                        fingerText = chordFinger;
-                      }
-                    } else if (rowIdx === 5) {
-                      // Diminished
-                      buttonLabel = `${bassNote.toLowerCase()}d`;
-                      if (
-                        isTargetCol &&
+                            activeChordLabel === bassNote.toLowerCase()))
+                  ) {
+                    isActive = true;
+                  }
+                } else if (rowInfo.rowIndex === 3) {
+                  // Minor Triad
+                  buttonLabel = `${bassNote.toLowerCase()}m`;
+                  if (
+                    stradella?.chordButton
+                      ? (stradella.chordButton.row === "minor" &&
+                        stradella.chordButton.column === col) ||
+                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                          col === stradella.chordButton.column)
+                      : (col === targetCol && activeChordLabel === buttonLabel)
+                  ) {
+                    isActive = true;
+                  }
+                } else if (rowInfo.rowIndex === 4) {
+                  // 7th Chord
+                  buttonLabel = `${bassNote.toLowerCase()}7`;
+                  if (
+                    stradella?.chordButton
+                      ? (stradella.chordButton.row === "seventh" &&
+                        stradella.chordButton.column === col) ||
+                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                          col === stradella.chordButton.column)
+                      : (col === targetCol && activeChordLabel === buttonLabel)
+                  ) {
+                    isActive = true;
+                  }
+                } else if (rowInfo.rowIndex === 5) {
+                  // Diminished
+                  buttonLabel = `${bassNote.toLowerCase()}d`;
+                  if (
+                    stradella?.chordButton
+                      ? (stradella.chordButton.row === "diminished" &&
+                        stradella.chordButton.column === col) ||
+                        (stradella.chordButton.label.toLowerCase() === buttonLabel &&
+                          col === stradella.chordButton.column) ||
+                        (stradella.chordButton.label.toLowerCase() ===
+                            `${bassNote.toLowerCase()}dim` && col === stradella.chordButton.column)
+                      : (col === targetCol &&
                         (activeChordLabel === buttonLabel ||
-                          activeChordLabel === `${bassNote.toLowerCase()}dim`)
-                      ) {
-                        isActive = true;
-                        fingerText = chordFinger;
-                      }
-                    }
+                          activeChordLabel === `${bassNote.toLowerCase()}dim`))
+                  ) {
+                    isActive = true;
+                  }
+                }
 
-                    // Button styling
-                    let btnClass = "bg-zinc-800/60 border-zinc-700/50 text-zinc-400";
-                    if (isActive) {
-                      if (isCounter) {
-                        btnClass =
-                          "bg-amber-500/30 border-amber-400 text-amber-200 shadow-md ring-2 ring-amber-400 font-bold";
-                      } else if (rowIdx === 1) {
-                        btnClass =
-                          "bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-md ring-2 ring-emerald-400 font-bold";
-                      } else {
-                        btnClass =
-                          "bg-blue-500/30 border-blue-400 text-blue-200 shadow-md ring-2 ring-blue-400 font-bold";
-                      }
-                    } else if (isTargetCol) {
-                      btnClass = "bg-zinc-800 border-zinc-600 text-zinc-300";
-                    }
+                // Distinct color scheme based on button type
+                let btnClass =
+                  "bg-zinc-900/90 border border-zinc-800 text-zinc-400 hover:border-zinc-700";
+                if (isActive) {
+                  if (isCounter) {
+                    btnClass =
+                      "bg-amber-400 border-2 border-amber-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(251,191,36,0.9)] ring-2 ring-amber-400/60 scale-105";
+                  } else if (rowInfo.rowIndex === 1) {
+                    btnClass =
+                      "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105";
+                  } else {
+                    btnClass =
+                      "bg-blue-500 border-2 border-blue-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(59,130,246,0.9)] ring-2 ring-blue-400/60 scale-105";
+                  }
+                }
 
-                    return (
-                      <div
-                        key={`cell-${rowInfo.key}-${col}`}
-                        className={`h-8 flex flex-col items-center justify-center rounded-lg border text-xs font-mono transition-all ${btnClass}`}
-                      >
-                        <span className="leading-tight">{buttonLabel}</span>
-                        {isActive && fingerText && (
-                          <span className="text-[9px] font-sans font-bold leading-none mt-0.5 opacity-90">
-                            [{fingerText}]
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+                return (
+                  <div
+                    key={`strad-btn-${rowInfo.key}-${col}`}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-mono select-none transition-all ${btnClass}`}
+                    title={`Row ${rowInfo.key}, Col ${col}: ${buttonLabel}`}
+                  >
+                    {buttonLabel}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
     </div>
