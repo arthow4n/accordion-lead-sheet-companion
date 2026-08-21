@@ -54,19 +54,21 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   ];
 
   return (
-    <div className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}>
+    <div
+      className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-2 sm:p-2.5 ${className}`}
+    >
       {/* Header with Chord explanation */}
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800">
+      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-zinc-800">
         <div>
-          <span className="text-xs font-bold text-zinc-300 font-mono">
+          <span className="text-[11px] sm:text-xs font-bold text-zinc-300 font-mono">
             Stradella Voicing:
           </span>
-          <span className="ml-2 text-xs font-semibold text-emerald-400">
+          <span className="ml-1.5 sm:ml-2 text-[11px] sm:text-xs font-semibold text-emerald-400">
             {stradella?.explanation || `${activeBassLabel} Bass + ${activeChordLabel || "Chord"}`}
           </span>
         </div>
         {stradella?.fingering && (
-          <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-xs font-mono font-bold">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs font-mono font-bold">
             Fingering: {stradella.fingering}
           </span>
         )}
@@ -74,17 +76,17 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
 
       {/* Out of Range Warning */}
       {isOutOfRange && (
-        <div className="mb-3 px-3 py-1.5 rounded-lg bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-semibold flex items-center justify-between">
+        <div className="mb-1.5 px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-semibold flex items-center justify-between">
           <span>⚠️ Chord column {targetCol} is out of {accordionSize} standard range</span>
           <span className="text-[10px] text-amber-400">Transposition recommended</span>
         </div>
       )}
 
       {/* 3-Column Visual Grid */}
-      <div className="overflow-x-auto pb-1">
+      <div className="overflow-x-auto pb-0.5">
         <div className="min-w-[280px]">
           {/* Column Headers */}
-          <div className="grid grid-cols-4 gap-1.5 mb-1.5 text-center text-[10px] font-mono font-semibold text-zinc-400">
+          <div className="grid grid-cols-4 gap-1 sm:gap-1.5 mb-1 text-center text-[10px] font-mono font-semibold text-zinc-400">
             <div className="text-left text-zinc-500 pl-1">Row</div>
             {columns.map((col) => (
               <div
@@ -101,10 +103,10 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
           </div>
 
           {/* Row Matrix */}
-          <div className="space-y-1.5">
+          <div className="space-y-1 sm:space-y-1.5">
             {rowLabels.map((rowInfo, rowIdx) => {
               return (
-                <div key={rowInfo.key} className="grid grid-cols-4 gap-1.5 items-center">
+                <div key={rowInfo.key} className="grid grid-cols-4 gap-1 sm:gap-1.5 items-center">
                   <div className="text-[10px] font-medium text-zinc-400 truncate pl-1">
                     {rowInfo.name}
                   </div>
@@ -202,7 +204,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                     return (
                       <div
                         key={`cell-${rowInfo.key}-${col}`}
-                        className={`h-9 flex flex-col items-center justify-center rounded-lg border text-xs font-mono transition-all ${btnClass}`}
+                        className={`h-8 flex flex-col items-center justify-center rounded-lg border text-xs font-mono transition-all ${btnClass}`}
                       >
                         <span className="leading-tight">{buttonLabel}</span>
                         {isActive && fingerText && (

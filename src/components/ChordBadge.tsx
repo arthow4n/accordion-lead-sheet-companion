@@ -30,15 +30,19 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
 
   // If chord is a plain string
   if (typeof chord === "string") {
+    const stringBadgeStyle = viewMode === "cba"
+      ? (active
+        ? "bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400"
+        : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/70 hover:border-emerald-500 text-emerald-400")
+      : (active
+        ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-400"
+        : "bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700");
+
     return (
       <button
         type="button"
         onClick={handleClick}
-        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${
-          active
-            ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-400"
-            : "bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700"
-        } ${className}`}
+        className={`relative before:absolute before:-inset-2.5 before:content-[''] inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
       >
         {chord}
       </button>
@@ -57,21 +61,28 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   const chordButton = chord.stradella?.chordButton?.label || "";
   const cbaFingering = chord.cba?.fingeringPattern || "";
 
-  // Styling based on counter-bass vs fundamental
-  const badgeStyle = isCounterBass
-    ? active
+  // Styling based on mode and counter-bass vs fundamental
+  let badgeStyle = "";
+  if (viewMode === "cba") {
+    badgeStyle = active
+      ? "bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400 font-bold"
+      : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/70 hover:border-emerald-500 text-emerald-400 font-semibold";
+  } else if (isCounterBass) {
+    badgeStyle = active
       ? "bg-amber-600 text-black border-amber-400 shadow-md ring-2 ring-amber-400 font-bold"
-      : "bg-amber-950/80 hover:bg-amber-900 border-amber-600/70 text-amber-300 font-semibold"
-    : active
-    ? "bg-blue-600 text-white border-blue-400 shadow-md ring-2 ring-blue-400 font-bold"
-    : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-100";
+      : "bg-amber-950/80 hover:bg-amber-900 border-amber-600/70 text-amber-300 font-semibold";
+  } else {
+    badgeStyle = active
+      ? "bg-blue-600 text-white border-blue-400 shadow-md ring-2 ring-blue-400 font-bold"
+      : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-100";
+  }
 
   return (
     <button
       type="button"
       onClick={handleClick}
       title={`${rawChordName} (Sounding: ${soundingChordName}) - Tap for button diagram`}
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
+      className={`relative before:absolute before:-inset-2.5 before:content-[''] inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
     >
       {viewMode === "stradella" && (
         <span className="flex items-center gap-1">
@@ -89,7 +100,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
 
       {viewMode === "cba" && (
         <span className="flex items-center gap-1">
-          <span className="text-rose-400 font-bold">{soundingChordName}</span>
+          <span className="text-emerald-400 font-bold">{soundingChordName}</span>
           {cbaFingering && <span className="text-[10px] text-zinc-300">[{cbaFingering}]</span>}
         </span>
       )}
