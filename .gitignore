@@ -145,3 +145,13 @@ vite.config.ts.timestamp-*
 # Autonomous Agent Scratch & Logs
 .agents/
 
+# UI Audit Visual Artifacts & Temporary Reports (Copyright Safety Guardrail)
+tests/ui-audit/screenshots/
+tests/ui-audit/screenshots/*
+tests/ui-audit/reports/
+tests/ui-audit/reports/*
+
+# Skills lock
+skills-lock.json
+
+
