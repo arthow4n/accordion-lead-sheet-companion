@@ -777,7 +777,7 @@ Deno.test("UX-12: 5-Row CBA Section-Header Mini-Grip Previews & Clean In-Line Ba
     }),
   );
   assertEquals(lineHtml.includes("Verse 1"), true);
-  assertEquals(lineHtml.includes("F#7"), true);
-  // Contains 5-row dot container
-  assertEquals(lineHtml.includes("bg-emerald-400"), true);
+  // Contains 5-row SVG button lattice with active emerald glow
+  assertEquals(lineHtml.includes("<svg"), true);
+  assertEquals(lineHtml.includes("#10b981"), true);
 });

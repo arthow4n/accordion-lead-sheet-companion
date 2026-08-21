@@ -1,6 +1,8 @@
 import React from "react";
-import type { ChordDetail } from "../types/index.ts";
+import type { CbaButtonCoord, ChordDetail, ParsedChord } from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
+import { generateCbaGrip } from "../lib/cba/grips.ts";
+import { parseChord } from "../lib/capo/transposition.ts";
 
 export interface CbaMiniCardProps {
   chord: ChordDetail | string;
@@ -16,26 +18,33 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   className = "",
 }) => {
   const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
+  const soundingChord: ParsedChord = chordDetail.soundingChord ||
+    chordDetail.originalChord ||
+    parseChord(typeof chord === "string" ? chord : "C");
 
-  const chordName = chordDetail.soundingChord?.raw ||
-    chordDetail.originalChord?.raw ||
-    (typeof chord === "string" ? chord : "Chord");
+  const chordName = soundingChord.raw || (typeof chord === "string" ? chord : "Chord");
+  const grip = chordDetail.cba || generateCbaGrip(soundingChord);
+  const notes = grip.notes || [];
+  const activeButtons: CbaButtonCoord[] = grip.buttonCoords || grip.buttons || [];
 
-  const notes = chordDetail.cba?.notes || [];
-  const activeButtons = chordDetail.cba?.buttonCoords || chordDetail.cba?.buttons || [];
-
-  // Determine active columns (relative span across 3 columns)
+  // Determine column range to display around active buttons (4 columns)
   const cols = activeButtons.map((b) => b.column);
-  const minCol = cols.length > 0 ? Math.min(...cols) : 3;
-  const displayCols = [minCol, minCol + 1, minCol + 2];
+  const minCol = cols.length > 0 ? Math.max(1, Math.min(...cols)) : 3;
+  const displayCols = [minCol - 1, minCol, minCol + 1, minCol + 2];
 
-  // 5 Rows in top-to-bottom visual order:
+  // 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger
   // Row 5: Auxiliary 2 (Repeat of Row 2)
   // Row 4: Auxiliary 1 (Repeat of Row 1)
   // Row 3: Core (Bellows side)
   // Row 2: Core (Middle)
   // Row 1: Core (Edge)
-  const rows = [5, 4, 3, 2, 1];
+  const rows = [
+    { rowNum: 5, y: 7, xOffset: 12 },
+    { rowNum: 4, y: 16, xOffset: 9 },
+    { rowNum: 3, y: 25, xOffset: 6 },
+    { rowNum: 2, y: 34, xOffset: 3 },
+    { rowNum: 1, y: 43, xOffset: 0 },
+  ];
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,12 +57,13 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
     <button
       type="button"
       onClick={handleClick}
-      title={`${chordName}: ${notes.join("-")} (5-Row CBA Grip)`}
-      className={`flex flex-col items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${
+      title={`${chordName}: ${notes.join(" - ")} (5-Row CBA Grip)`}
+      className={`flex flex-col items-center justify-between px-2 py-1.5 rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
         active
           ? "bg-emerald-950/90 border-emerald-400 shadow-md ring-1 ring-emerald-400"
-          : "bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 hover:border-emerald-700/60"
+          : "bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 hover:border-emerald-600/60"
       } ${className}`}
+      style={{ minWidth: "70px" }}
     >
       {/* Chord Name Header */}
       <span className="text-[11px] font-bold text-emerald-400 font-mono tracking-tight leading-none mb-0.5">
@@ -61,42 +71,61 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
       </span>
 
       {/* Notes summary */}
-      <span className="text-[8px] text-zinc-400 font-mono leading-none mb-1 truncate max-w-[54px]">
-        {notes.slice(0, 3).join(" ")}
+      <span className="text-[8px] text-zinc-400 font-mono leading-none mb-1 text-center whitespace-nowrap">
+        {notes.join(" ")}
       </span>
 
-      {/* 5-Row Mini Dot Grid */}
-      <div className="flex flex-col gap-0.5 p-1 bg-zinc-950/80 rounded border border-zinc-800/80">
-        {rows.map((rowNum) => {
-          // Normalize row for 5-row mapping (Row 4 mirrors Row 1, Row 5 mirrors Row 2)
-          const coreRowEquivalent = rowNum === 4 ? 1 : rowNum === 5 ? 2 : rowNum;
+      {/* Authentic Staggered 5-Row CBA Diagonal Lattice */}
+      <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
+        <svg
+          viewBox="0 0 54 50"
+          className="w-[50px] h-[46px] overflow-visible"
+          aria-hidden="true"
+        >
+          {rows.map(({ rowNum, y, xOffset }) => {
+            return displayCols.map((col, colIdx) => {
+              // Direct active button in primary grip
+              const isDirectActive = activeButtons.some(
+                (b) => b.row === rowNum && b.column === col,
+              );
 
-          return (
-            <div key={`mini-row-${rowNum}`} className="flex items-center gap-1 justify-center">
-              {displayCols.map((col) => {
-                // Check if button is active on this row & column (or its auxiliary equivalent)
-                const isDirectActive = activeButtons.some(
-                  (b) => b.row === rowNum && b.column === col,
-                );
-                const isCoreActive = activeButtons.some(
-                  (b) => b.row === coreRowEquivalent && b.column === col,
-                );
-                const isLit = isDirectActive || isCoreActive;
+              // Auxiliary duplicate on Row 4 (mirrors Row 1) or Row 5 (mirrors Row 2)
+              const coreRow = rowNum === 4 ? 1 : rowNum === 5 ? 2 : 0;
+              const isAuxDuplicate = coreRow > 0 &&
+                activeButtons.some((b) => b.row === coreRow && b.column === col);
 
-                return (
-                  <div
-                    key={`dot-${rowNum}-${col}`}
-                    className={`flex items-center justify-center transition-all ${
-                      isLit
-                        ? "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.9)]"
-                        : "w-1.5 h-1.5 rounded-full bg-zinc-800 border border-zinc-700/40"
-                    }`}
+              const isLit = isDirectActive || isAuxDuplicate;
+              const isPrimary = isDirectActive;
+              const x = xOffset + 4 + colIdx * 9.5;
+
+              return (
+                <g key={`cba-dot-${rowNum}-${col}`}>
+                  {/* Glowing ring for active primary buttons */}
+                  {isPrimary && (
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={4.2}
+                      fill="none"
+                      stroke="#34d399"
+                      strokeWidth={1.2}
+                      opacity={0.85}
+                    />
+                  )}
+                  {/* Button circle: all buttons have identical 3.0px radius */}
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={3.0}
+                    fill={isPrimary ? "#10b981" : isAuxDuplicate ? "#065f46" : "#27272a"}
+                    stroke={isPrimary ? "#6ee7b7" : isAuxDuplicate ? "#10b981" : "#3f3f46"}
+                    strokeWidth={isLit ? 0.75 : 0.5}
                   />
-                );
-              })}
-            </div>
-          );
-        })}
+                </g>
+              );
+            });
+          })}
+        </svg>
       </div>
     </button>
   );
