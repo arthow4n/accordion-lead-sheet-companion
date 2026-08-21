@@ -42,7 +42,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       <button
         type="button"
         onClick={handleClick}
-        className={`relative before:absolute before:-inset-2.5 before:content-[''] inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
+        className={`relative before:absolute before:-inset-3 before:-inset-2.5 before:content-[''] min-h-6 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
       >
         {chord}
       </button>
@@ -82,7 +82,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       type="button"
       onClick={handleClick}
       title={`${rawChordName} (Sounding: ${soundingChordName}) - Tap for button diagram`}
-      className={`relative before:absolute before:-inset-2.5 before:content-[''] inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
+      className={`relative before:absolute before:-inset-3 before:-inset-2.5 before:content-[''] min-h-6 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
     >
       {viewMode === "stradella" && (
         <span className="flex items-center gap-1">

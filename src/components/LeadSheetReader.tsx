@@ -36,7 +36,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   }, [song.lines, capo, song.originalKey]);
 
   return (
-    <div className={`flex flex-col max-w-2xl w-full mx-auto p-4 pb-36 text-zinc-100 ${className}`}>
+    <div
+      className={`flex flex-col max-w-2xl w-full mx-auto px-2 sm:px-4 py-4 pb-36 text-zinc-100 ${className}`}
+    >
       {/* Song Header */}
       <header className="mb-6 pb-3 border-b border-zinc-800/80">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-1">

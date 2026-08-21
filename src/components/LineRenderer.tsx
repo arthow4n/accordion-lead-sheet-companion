@@ -20,11 +20,11 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   // Support both LeadSheetLine objects and raw ChordLyricSegment[] arrays
   if (Array.isArray(line)) {
     return (
-      <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full">
+      <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
         {line.map((segment, idx) => (
           <div
             key={`seg-${idx}`}
-            className="inline-flex flex-col items-start min-w-fit flex-shrink-0"
+            className="inline-flex flex-col items-start max-w-full min-w-0"
             style={{ display: "inline-flex", flexDirection: "column" }}
           >
             <div className="min-h-[1.5rem] flex items-center mb-0.5">
@@ -43,7 +43,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
               />
             </div>
             <span
-              className={`lyric-syllable font-sans font-medium text-zinc-100 whitespace-pre ${fontSizeClass}`}
+              className={`lyric-syllable font-sans font-medium text-zinc-100 whitespace-pre whitespace-pre-wrap break-words max-w-full min-w-0 ${fontSizeClass}`}
             >
               {segment.lyric || (segment.chord ? "\u00A0" : "")}
             </span>
@@ -100,11 +100,11 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       }
 
       return (
-        <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full">
+        <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
           {segments.map((segment, idx) => (
             <div
               key={`seg-${idx}`}
-              className="inline-flex flex-col items-start min-w-fit flex-shrink-0"
+              className="inline-flex flex-col items-start max-w-full min-w-0"
               style={{ display: "inline-flex", flexDirection: "column" }}
             >
               <div className="min-h-[1.5rem] flex items-center mb-0.5">
@@ -123,7 +123,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 />
               </div>
               <span
-                className={`lyric-syllable font-sans font-medium text-zinc-100 whitespace-pre ${fontSizeClass}`}
+                className={`lyric-syllable font-sans font-medium text-zinc-100 whitespace-pre whitespace-pre-wrap break-words max-w-full min-w-0 ${fontSizeClass}`}
               >
                 {segment.lyric || (segment.chord ? "\u00A0" : "")}
               </span>
