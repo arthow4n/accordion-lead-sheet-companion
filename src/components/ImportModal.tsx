@@ -66,7 +66,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setIsLoadingUrl(true);
       setErrorMessage(null);
 
-      const endpoint = `/api/import?url=${encodeURIComponent(urlInput.trim())}`;
+      const apiBase = (typeof import.meta !== "undefined" &&
+        (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL) ||
+        (typeof globalThis !== "undefined" &&
+            (globalThis.location?.hostname === "localhost" ||
+              globalThis.location?.hostname === "127.0.0.1")
+          ? ""
+          : "https://accordion-lead-sheet-companion.arthow4n.deno.net");
+
+      const endpoint = `${apiBase}/api/import?url=${encodeURIComponent(urlInput.trim())}`;
       const res = await fetch(endpoint);
       const data: TabImportResponse = await res.json();
 
