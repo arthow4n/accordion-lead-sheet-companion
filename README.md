@@ -21,13 +21,15 @@ hands-free stage controls.
     `D/F# -> F#_`, `C/B -> B_` in `G` col, `Am/F# -> F#_` in `D` col).
   - Advanced compound chord voicings (`Cmaj7 -> C + em`, `Am7 -> A + c`, `Bm7b5 -> B + dm`,
     `C6 -> C + am`, `C9 -> C + gm`).
+  - Dynamic multi-column Circle of Fifths keyboard drawer with glowing high-contrast circular keys.
 - **🔘 CBA C-System Treble Engine (Right Hand):**
   - 3-row core and 5-row isomorphic button coordinate layout with standardized fingering
     recommendations (`1-2-4 / 2-3-5`).
-  - Voice leading engine minimizing hand-shift centroid deltas across chord changes.
-- **⚡ Live Capo Stepper & Enharmonics:**
-  - Dynamic `[ - ] Capo X [ + ]` stepper transposing written chords to sounding pitch in real-time
-    with key-signature-aware flat/sharp accidentals (`G + Capo 3 = Bb`, never `A#`).
+  - Compact section-header mini grip cards with note letters printed directly inside active buttons.
+  - Centered 5-row diagonal keyboard drawer with single-line recipe headers.
+- **⚡ Live Capo & Key Controller Bar:**
+  - Dedicated controller with quick `[ ⚡ Capo ON ]` / `[ Capo OFF ]` toggle, permanent
+    `[ ↺ Reset ]` button, and real-time sounding key calculation (`G + Capo 3 = Bb`, never `A#`).
 - **📱 Zero-Drift Segmented Mobile Layout:**
   - Renders atomic flex-column `ChordLyricSegment` blocks
     (`display: inline-flex; flex-direction: column;`) ensuring chords never drift over lyrics across
@@ -43,6 +45,7 @@ hands-free stage controls.
   - 1-tap clipboard paste with automatic capo detection and 2-line / ChordPro parser.
   - 100% offline capability via Service Worker precache and IndexedDB local persistence
     (`idb-keyval`).
+  - SSRF-hardened serverless scraper edge API (`api/import.ts`) with strict domain allowlisting.
 
 ---
 
@@ -55,7 +58,7 @@ hands-free stage controls.
 - **Offline & Storage:** [Vite PWA](https://vite-pwa-org.netlify.app/),
   [idb-keyval](https://github.com/jakearchibald/idb-keyval)
 - **Edge Scraper Proxy:** Deno Deploy serverless edge function (`api/import.ts`) with strict CORS
-  origin allowlisting.
+  origin and domain allowlisting.
 
 ---
 
@@ -74,7 +77,7 @@ deno --version
 # Start Vite development server (http://localhost:5173)
 deno task dev
 
-# Run all 101 automated unit, component, and UX test suites (offline / local)
+# Run all 182+ automated unit, component, and UX test suites (offline / local)
 deno task test
 
 # Run live external website scraper integration tests (on-demand opt-in)
