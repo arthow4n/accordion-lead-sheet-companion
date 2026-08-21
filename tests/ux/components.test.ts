@@ -670,7 +670,7 @@ Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click
   assertEquals(propagationStopped, true);
 });
 
-Deno.test("UX-08e: MiniGripDrawer clamps viewport screen occlusion to max-h-[35vh]", () => {
+Deno.test("UX-08e: MiniGripDrawer adopts natural responsive height", () => {
   const chordDetail = enrichChord("Cmaj7", 0);
   const html = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
@@ -684,8 +684,8 @@ Deno.test("UX-08e: MiniGripDrawer clamps viewport screen occlusion to max-h-[35v
   );
 
   assertExists(html);
-  // Strict screen occlusion limit
-  assertEquals(html.includes("max-h-[35vh]"), true);
+  // Natural responsive container
+  assertEquals(html.includes("max-h-[85vh]"), true);
   assertEquals(html.includes("overflow-y-auto"), true);
 });
 
