@@ -1,5 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
-import type React from "react";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   clearSongbook,
   deleteSong,
@@ -12,7 +13,13 @@ import {
 } from "../../src/lib/storage/songbook.ts";
 import { createPresetSongs } from "../../src/lib/storage/presets.ts";
 import { ChordBadge } from "../../src/components/ChordBadge.tsx";
-import { LineRenderer } from "../../src/components/LineRenderer.tsx";
+import {
+  isDenseMeasureLine,
+  LineRenderer,
+  TabStaffLine,
+} from "../../src/components/LineRenderer.tsx";
+import { LeadSheetReader } from "../../src/components/LeadSheetReader.tsx";
+import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
@@ -498,4 +505,166 @@ Deno.test("CbaGrid: Renders CBA C-System Treble buttons with active chord finger
 
   assertExists(grid);
   assertEquals(grid.type, "div");
+});
+
+// ============================================================================
+// UX-08: Milestone 3 Responsive Layout, Tab Staves & Reader Ergonomics Tests
+// ============================================================================
+
+Deno.test("UX-08a: TabStaffLine & LineRenderer renders collapsible ASCII tab staves with toggle button", () => {
+  const tabLine = {
+    type: "tab_staff" as const,
+    tabBlock: [
+      "e|---0-2-3---|",
+      "B|---1-0-1---|",
+      "G|---0-0-0---|",
+      "D|---2-0-2---|",
+      "A|---3-2-3---|",
+      "E|-----------|",
+    ],
+    rawText:
+      "e|---0-2-3---|\nB|---1-0-1---|\nG|---0-0-0---|\nD|---2-0-2---|\nA|---3-2-3---|\nE|-----------|",
+  };
+
+  // Render via renderToStaticMarkup
+  const html = renderToStaticMarkup(React.createElement(LineRenderer, { line: tabLine }));
+  assertExists(html);
+  assertEquals(html.includes("Guitar Tab Riffs"), true);
+  assertEquals(html.includes("[Hide]"), true);
+  assertEquals(html.includes("font-mono text-xs text-zinc-300 bg-zinc-900/80"), true);
+  assertEquals(html.includes("overflow-x-auto whitespace-pre leading-relaxed select-text"), true);
+  assertEquals(html.includes("e|---0-2-3---|"), true);
+  assertEquals(html.includes("E|-----------|"), true);
+
+  // Test collapsed state
+  const collapsedHtml = renderToStaticMarkup(
+    React.createElement(TabStaffLine, { line: tabLine, defaultExpanded: false }),
+  );
+  assertEquals(collapsedHtml.includes("Guitar Tab Riffs"), true);
+  assertEquals(collapsedHtml.includes("[Show]"), true);
+  assertEquals(collapsedHtml.includes("<pre"), false);
+});
+
+Deno.test("UX-08b: LineRenderer renders rhythmic grid gutters for dense measure lines without empty lyric boxes", () => {
+  const measureSegments = [
+    { lyric: "|" },
+    { chord: "Bb6", lyric: "" },
+    { chord: "C7", lyric: "" },
+    { lyric: "|" },
+    { chord: "F7", lyric: "" },
+    { chord: "Bb7", lyric: "" },
+    { lyric: "|" },
+  ];
+
+  assertEquals(isDenseMeasureLine(measureSegments), true);
+
+  const html = renderToStaticMarkup(
+    React.createElement(LineRenderer, {
+      line: {
+        type: "chord_lyric",
+        segments: measureSegments,
+      },
+      viewMode: "stradella",
+    }),
+  );
+
+  assertExists(html);
+  // Contains delimiter separators
+  assertEquals(html.includes("border-r border-zinc-700/60"), true);
+  assertEquals(html.includes("|"), true);
+  // Contains chords
+  assertEquals(html.includes("Bb"), true);
+  assertEquals(html.includes("C"), true);
+  // Does NOT render empty \u00A0 lyric syllable boxes underneath
+  assertEquals(html.includes("lyric-syllable"), false);
+});
+
+Deno.test("UX-08c: LineRenderer & LeadSheetReader preserves segmented column structure and zero-overflow wrapping", () => {
+  const song: LeadSheetSong = {
+    id: "song_test_wrapping",
+    title: "Wrapping Test Song",
+    capoFret: 0,
+    rawText: "[G]Take me home, [D]country roads, [Em]to the place [C]I belong",
+    lines: [
+      {
+        type: "chord_lyric",
+        segments: [
+          { chord: "G", lyric: "Take me home, " },
+          { chord: "D", lyric: "country roads, " },
+          { chord: "Em", lyric: "to the place " },
+          { chord: "C", lyric: "I belong" },
+        ],
+      },
+    ],
+    updatedAt: Date.now(),
+  };
+
+  const html = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song,
+      capo: 0,
+      viewMode: "stradella",
+    }),
+  );
+
+  assertExists(html);
+  // Enforces atomic inline-flex column container
+  assertEquals(html.includes("inline-flex"), true);
+  assertEquals(html.includes("flex-direction:column"), true);
+  // Syllables have overflow protection
+  assertEquals(html.includes("lyric-syllable"), true);
+  assertEquals(html.includes("break-words"), true);
+  assertEquals(html.includes("max-w-full"), true);
+  // Reader container limits max width and overflow
+  assertEquals(html.includes("max-w-2xl"), true);
+  assertEquals(html.includes("overflow-x-clip"), true);
+});
+
+Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click events", () => {
+  let clicked = false;
+  let propagationStopped = false;
+
+  const fakeEvent = {
+    stopPropagation: () => {
+      propagationStopped = true;
+    },
+  } as unknown as React.MouseEvent;
+
+  const badgeEl = ChordBadge({
+    chord: "Am7",
+    viewMode: "stradella",
+    onSelectChord: () => {
+      clicked = true;
+    },
+  }) as unknown as MockReactElement;
+
+  assertExists(badgeEl);
+  // Pseudo-element touch expansion classes
+  const cls = badgeEl.props.className || "";
+  assertEquals(cls.includes("before:absolute"), true);
+  assertEquals(cls.includes("before:-inset-2.5"), true);
+  assertEquals(cls.includes("min-h-6"), true);
+
+  badgeEl.props.onClick?.(fakeEvent);
+  assertEquals(clicked, true);
+  assertEquals(propagationStopped, true);
+});
+
+Deno.test("UX-08e: MiniGripDrawer clamps viewport screen occlusion to max-h-[35vh]", () => {
+  const chordDetail = enrichChord("Cmaj7", 0);
+  const html = renderToStaticMarkup(
+    React.createElement(MiniGripDrawer, {
+      isOpen: true,
+      onClose: () => {},
+      chord: chordDetail,
+      capo: 0,
+      viewMode: "stradella",
+      accordionSize: "120-bass",
+    }),
+  );
+
+  assertExists(html);
+  // Strict screen occlusion limit
+  assertEquals(html.includes("max-h-[35vh]"), true);
+  assertEquals(html.includes("overflow-y-auto"), true);
 });

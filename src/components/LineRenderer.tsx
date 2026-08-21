@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import type { ChordDetail, ChordLyricSegment, LeadSheetLine, ViewMode } from "../types/index.ts";
 import { ChordBadge } from "./ChordBadge.tsx";
+import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
 
 export interface LineRendererProps {
   line: LeadSheetLine | ChordLyricSegment[];
@@ -10,6 +11,76 @@ export interface LineRendererProps {
   fontSizeClass?: string;
 }
 
+export interface TabStaffLineProps {
+  line: LeadSheetLine;
+  defaultExpanded?: boolean;
+}
+
+/**
+ * Collapsible ASCII Tab Staves Container Component
+ */
+export const TabStaffLine: React.FC<TabStaffLineProps> = ({
+  line,
+  defaultExpanded = true,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  const tabContent = line.tabBlock && line.tabBlock.length > 0
+    ? line.tabBlock.join("\n")
+    : (line.rawText || "");
+
+  return (
+    <div className="py-1.5 my-1 max-w-full">
+      <div className="flex items-center justify-between mb-1.5">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-300 hover:text-white text-xs font-mono font-semibold transition-colors cursor-pointer select-none"
+          aria-expanded={isExpanded}
+        >
+          <span>🎸</span>
+          <span>Guitar Tab Riffs</span>
+          <span className="text-zinc-400 font-bold">
+            [{isExpanded ? "Hide" : "Show"}]
+          </span>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <pre className="font-mono text-xs text-zinc-300 bg-zinc-900/80 p-3 rounded-lg border border-zinc-800 overflow-x-auto whitespace-pre leading-relaxed select-text">
+          {tabContent}
+        </pre>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Helper to determine whether a line is a dense measure/instrumental line (no vocal lyrics).
+ */
+export function isDenseMeasureLine(segments: ChordLyricSegment[]): boolean {
+  if (!segments || segments.length === 0) return false;
+
+  let hasChordsOrDelimiters = false;
+
+  for (const seg of segments) {
+    if (seg.chord) {
+      hasChordsOrDelimiters = true;
+    }
+    const lyric = (seg.lyric || "").trim();
+    if (lyric) {
+      if (isMeasureDelimiter(lyric) || /^[|:/\s]+$/.test(lyric)) {
+        hasChordsOrDelimiters = true;
+      } else {
+        // Contains actual vocal lyrics, so this is a standard chord-lyric line
+        return false;
+      }
+    }
+  }
+
+  return hasChordsOrDelimiters;
+}
+
 export const LineRenderer: React.FC<LineRendererProps> = ({
   line,
   viewMode = "stradella",
@@ -17,11 +88,64 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   selectedChord,
   fontSizeClass = "text-base",
 }) => {
-  // Support both LeadSheetLine objects and raw ChordLyricSegment[] arrays
-  if (Array.isArray(line)) {
+  const renderDenseMeasureLine = (segments: ChordLyricSegment[]) => {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
+        {segments.map((segment, idx) => {
+          const lyricTrim = (segment.lyric || "").trim();
+          const isDelim = !segment.chord &&
+            (isMeasureDelimiter(lyricTrim) || /^[|:/\s]+$/.test(lyricTrim));
+
+          if (isDelim) {
+            return (
+              <div
+                key={`delim-${idx}`}
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-zinc-500 font-mono font-bold select-none border-r border-zinc-700/60 self-center text-sm"
+                aria-hidden="true"
+              >
+                {lyricTrim}
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={`seg-${idx}`}
+              className="inline-flex items-center gap-1.5 min-h-[1.75rem] min-w-0"
+            >
+              <ChordBadge
+                chord={segment.chord}
+                viewMode={viewMode}
+                onSelectChord={onSelectChord}
+                active={Boolean(
+                  selectedChord &&
+                    ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
+                      (typeof segment.chord === "object" &&
+                        typeof selectedChord === "object" &&
+                        segment.chord?.soundingChord?.raw ===
+                          (selectedChord as ChordDetail)?.soundingChord?.raw)),
+                )}
+              />
+              {lyricTrim &&
+                (isMeasureDelimiter(lyricTrim) || /^[|:/\s]+$/.test(lyricTrim)) && (
+                <span
+                  className="text-zinc-500 font-mono font-bold select-none border-r border-zinc-700/60 pr-1 text-sm"
+                  aria-hidden="true"
+                >
+                  {lyricTrim}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderStandardChordLyricLine = (segments: ChordLyricSegment[]) => {
     return (
       <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
-        {line.map((segment, idx) => (
+        {segments.map((segment, idx) => (
           <div
             key={`seg-${idx}`}
             className="inline-flex flex-col items-start max-w-full min-w-0"
@@ -51,6 +175,14 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
         ))}
       </div>
     );
+  };
+
+  // Support both LeadSheetLine objects and raw ChordLyricSegment[] arrays
+  if (Array.isArray(line)) {
+    if (isDenseMeasureLine(line)) {
+      return renderDenseMeasureLine(line);
+    }
+    return renderStandardChordLyricLine(line);
   }
 
   // Handle distinct line types
@@ -67,13 +199,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
     }
 
     case "tab_staff": {
-      return (
-        <div className="py-1 overflow-x-auto max-w-full">
-          <pre className="font-mono text-xs text-zinc-400 bg-zinc-900/60 p-2 rounded border border-zinc-800 overflow-x-auto">
-            {line.rawText}
-          </pre>
-        </div>
-      );
+      return <TabStaffLine line={line} />;
     }
 
     case "comment": {
@@ -99,38 +225,11 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
         );
       }
 
-      return (
-        <div className="flex flex-wrap items-end gap-x-1 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
-          {segments.map((segment, idx) => (
-            <div
-              key={`seg-${idx}`}
-              className="inline-flex flex-col items-start max-w-full min-w-0"
-              style={{ display: "inline-flex", flexDirection: "column" }}
-            >
-              <div className="min-h-[1.5rem] flex items-center mb-0.5">
-                <ChordBadge
-                  chord={segment.chord}
-                  viewMode={viewMode}
-                  onSelectChord={onSelectChord}
-                  active={Boolean(
-                    selectedChord &&
-                      ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
-                        (typeof segment.chord === "object" &&
-                          typeof selectedChord === "object" &&
-                          segment.chord?.soundingChord?.raw ===
-                            (selectedChord as ChordDetail)?.soundingChord?.raw)),
-                  )}
-                />
-              </div>
-              <span
-                className={`lyric-syllable font-sans font-medium text-zinc-100 whitespace-pre whitespace-pre-wrap break-words max-w-full min-w-0 ${fontSizeClass}`}
-              >
-                {segment.lyric || (segment.chord ? "\u00A0" : "")}
-              </span>
-            </div>
-          ))}
-        </div>
-      );
+      if (isDenseMeasureLine(segments)) {
+        return renderDenseMeasureLine(segments);
+      }
+
+      return renderStandardChordLyricLine(segments);
     }
   }
 };
