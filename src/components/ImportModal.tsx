@@ -15,7 +15,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onClose,
   onSaveSong,
 }) => {
-  const [activeTab, setActiveTab] = useState<"clipboard" | "url" | "manual">("clipboard");
+  const [activeTab, setActiveTab] = useState<"url" | "clipboard" | "manual">("url");
   const [rawText, setRawText] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
@@ -127,22 +127,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              setActiveTab("clipboard");
-              setErrorMessage(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === "clipboard"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Clipboard className="w-3.5 h-3.5" />
-            <span>1-Tap Paste</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
               setActiveTab("url");
               setErrorMessage(null);
             }}
@@ -154,6 +138,22 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           >
             <Globe className="w-3.5 h-3.5" />
             <span>Web URL</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("clipboard");
+              setErrorMessage(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "clipboard"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Clipboard className="w-3.5 h-3.5" />
+            <span>1-Tap Paste</span>
           </button>
 
           <button
@@ -175,6 +175,37 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
         {/* Tab Body */}
         <div className="p-4 flex-1 overflow-y-auto space-y-4">
+          {/* Web URL Tab */}
+          {activeTab === "url" && (
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-400">
+                Paste a tab URL from Ultimate Guitar, Chordie, E-Chords, or Cifra Club:
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleFetchUrl();
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="https://tabs.ultimate-guitar.com/tab/..."
+                  className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isLoadingUrl || !urlInput.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold text-xs transition-all cursor-pointer"
+                >
+                  {isLoadingUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Fetch"}
+                </button>
+              </form>
+            </div>
+          )}
+
           {/* 1-Tap Clipboard Tab */}
           {activeTab === "clipboard" && (
             <div className="flex flex-col items-center justify-center py-6 text-center space-y-3">
@@ -190,32 +221,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                 <Clipboard className="w-4 h-4" />
                 <span>Paste from Clipboard</span>
               </button>
-            </div>
-          )}
-
-          {/* Web URL Tab */}
-          {activeTab === "url" && (
-            <div className="space-y-3">
-              <p className="text-xs text-zinc-400">
-                Paste a tab URL from Ultimate-Guitar, Chordie, E-Chords, or Cifra Club:
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://www.chordie.com/chord.top/..."
-                  className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleFetchUrl}
-                  disabled={isLoadingUrl || !urlInput.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold text-xs transition-all cursor-pointer"
-                >
-                  {isLoadingUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Fetch"}
-                </button>
-              </div>
             </div>
           )}
 
