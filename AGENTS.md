@@ -60,6 +60,13 @@ The repository separates tests into two strictly isolated categories:
 - **Convention:** Do not modify `.github/workflows/` unless explicitly requested by the user, and
   verify token scope before committing workflow changes.
 
+### Automatic Commit & Push Policy:
+
+- After completing a task, feature, or bug fix (and successfully passing all 4 pre-push quality gate
+  checks), **always automatically commit and push to `origin/master`**.
+- This ensures clean git history and enables subsequent coding agent sessions or contributors to
+  seamlessly resume work from the latest verified state.
+
 ### Atomic Commits & Commit Messages:
 
 - Make small, atomic, modular commits for each distinct feature or fix.
