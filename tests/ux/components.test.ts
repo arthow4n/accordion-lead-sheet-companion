@@ -917,7 +917,7 @@ Deno.test("UX-16: Unified Context-Aware Dynamic Config Bar across ViewModes", ()
   assertEquals(lhHtml.includes("Groove:"), true);
   assertEquals(lhHtml.includes("Folk Boom-Chick"), true);
 
-  // 2. RH Mode: Renders Grip Mode buttons & Jam Fills toggle
+  // 2. RH Mode: Renders 3-Row, 5-Row, Voice-Led buttons & Jam Fills toggle
   const rhHtml = renderToStaticMarkup(
     React.createElement(LeadSheetReader, {
       song: song,
@@ -926,7 +926,8 @@ Deno.test("UX-16: Unified Context-Aware Dynamic Config Bar across ViewModes", ()
       onChangeCapo: () => {},
     }),
   );
-  assertEquals(rhHtml.includes("Root"), true);
+  assertEquals(rhHtml.includes("3-Row"), true);
+  assertEquals(rhHtml.includes("5-Row"), true);
   assertEquals(rhHtml.includes("Voice-Led"), true);
   assertEquals(rhHtml.includes("Fills"), true);
 

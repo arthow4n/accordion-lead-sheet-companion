@@ -60,6 +60,7 @@ export {
 
 export {
   findBestCoordinateCluster,
+  generateCanonicalRootGrip,
   generateCbaGrip,
   getChordNotes,
   getChordPitchClasses,

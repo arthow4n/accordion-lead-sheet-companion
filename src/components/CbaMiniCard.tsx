@@ -118,6 +118,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   const colSpacing = 9.5;
   const svgWidth = 14 + (displayCols.length - 1) * colSpacing + 12;
 
+  // Track entering (newly struck in transition) vs shared coordinates
+  const enteringSet = new Set(
+    (grip.enteringCoords || []).map((c) => `${c.row}-${c.column}`),
+  );
+
   return (
     <button
       type="button"
@@ -129,13 +134,20 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
           : "bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 hover:border-emerald-600/60"
       } ${currentScale.minW} ${className}`}
     >
-      {/* Bold Chord Title + Note Spellings Subtitle */}
+      {/* Bold Chord Title + Note Spellings Subtitle + Flow Vector */}
       <div className="flex flex-col items-center justify-center gap-0.5 mb-1.5 w-full">
-        <span
-          className={`${currentScale.titleSize} font-black text-emerald-400 font-mono tracking-tight leading-none`}
-        >
-          {chordName}
-        </span>
+        <div className="flex items-center gap-1">
+          <span
+            className={`${currentScale.titleSize} font-black text-emerald-400 font-mono tracking-tight leading-none`}
+          >
+            {chordName}
+          </span>
+          {grip.flowVector && grip.flowVector !== "●" && (
+            <span className="text-[10px] text-sky-400 font-mono font-bold">
+              {grip.flowVector}
+            </span>
+          )}
+        </div>
         {notes.length > 0 && (
           <span
             className={`${currentScale.notesSize} text-zinc-300 font-mono font-bold tracking-tight leading-snug text-center whitespace-nowrap`}
@@ -145,7 +157,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
         )}
       </div>
 
-      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes */}
+      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes (Zero Shadow Noise, Clean Flow Colors) */}
       <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
         <svg
           viewBox={`0 0 ${svgWidth} 48`}
@@ -158,26 +170,20 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
               const noteName = getNoteName(pc, preferFlats);
 
               // Direct active button in primary grip
-              const isDirectActive = activeButtons.some(
+              const isPrimary = activeButtons.some(
                 (b) => b.row === rowNum && b.column === col,
               );
 
-              // Two-way auxiliary duplicate highlighting
-              const isAuxDuplicate = !isDirectActive && activeButtons.some((b) => {
-                const bEff = ((b.row - 1) % 3) + 1;
-                const curEff = ((rowNum - 1) % 3) + 1;
-                return bEff === curEff && b.column === col;
-              });
-
               // Soft Warm Amber-Gold Root Note Beacon (Finger 1)
-              const isRoot = isDirectActive && (
+              const isRoot = isPrimary && (
                 (grip.rootButtonCoord && grip.rootButtonCoord.row === rowNum &&
                   grip.rootButtonCoord.column === col) ||
                 activeButtons.find((b) => b.row === rowNum && b.column === col)?.finger === 1
               );
 
-              const isLit = isDirectActive || isAuxDuplicate;
-              const isPrimary = isDirectActive;
+              // Check if button is an entering tone in the voice leading transition
+              const isEntering = isPrimary && !isRoot && enteringSet.has(`${rowNum}-${col}`);
+
               const x = xOffset + 5 + colIdx * colSpacing;
 
               return (
@@ -189,46 +195,44 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       cy={y}
                       r={isRoot ? 5.2 : 4.8}
                       fill="none"
-                      stroke={isRoot ? "#fde047" : "#34d399"}
+                      stroke={isRoot ? "#fde047" : isEntering ? "#38bdf8" : "#34d399"}
                       strokeWidth={isRoot ? 1.4 : 1.2}
-                      opacity={0.85}
+                      opacity={0.9}
                     />
                   )}
 
-                  {/* Button circle: Soft Amber-Gold for Root, Emerald for Chord Tones */}
+                  {/* Button circle: Amber for Root, Sky Blue for Entering, Emerald for Kept/Chord Tones */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isRoot ? 4.4 : isPrimary ? 4.2 : isAuxDuplicate ? 3.6 : 2.0}
+                    r={isRoot ? 4.4 : isPrimary ? 4.2 : 2.0}
                     fill={isRoot
                       ? "#fde047"
+                      : isEntering
+                      ? "#38bdf8"
                       : isPrimary
                       ? "#10b981"
-                      : isAuxDuplicate
-                      ? "#065f46"
                       : "#27272a"}
                     stroke={isRoot
                       ? "#eab308"
+                      : isEntering
+                      ? "#0284c7"
                       : isPrimary
                       ? "#34d399"
-                      : isAuxDuplicate
-                      ? "#10b981"
                       : "#3f3f46"}
-                    strokeWidth={isLit ? (isRoot ? 1.1 : 0.8) : 0.4}
+                    strokeWidth={isPrimary ? (isRoot ? 1.1 : 0.8) : 0.4}
                   />
 
-                  {/* Direct In-Button Note Initials on lit buttons */}
-                  {isLit && noteName && (
+                  {/* Direct In-Button Note Initials on active buttons */}
+                  {isPrimary && noteName && (
                     <text
                       x={x}
                       y={y + (noteName.length > 2 ? 0.9 : 1.1)}
-                      fontSize={isPrimary
-                        ? (noteName.length > 2 ? "2.6" : "3.2")
-                        : (noteName.length > 2 ? "2.3" : "2.7")}
+                      fontSize={noteName.length > 2 ? "2.6" : "3.2"}
                       fontWeight={isRoot ? "900" : "bold"}
                       fontFamily="monospace"
                       textAnchor="middle"
-                      fill={isRoot ? "#451a03" : isPrimary ? "#022c22" : "#a7f3d0"}
+                      fill={isRoot ? "#451a03" : isEntering ? "#082f49" : "#022c22"}
                       className="select-none pointer-events-none"
                     >
                       {noteName}

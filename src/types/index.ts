@@ -79,8 +79,6 @@ export interface CbaButtonCoord {
   finger: number; // 1-5
 }
 
-export type CbaGripMode = "root" | "voice_led";
-
 export interface CbaGrip {
   chord?: string;
   chordName?: string; // e.g. "Bb"
@@ -98,6 +96,8 @@ export interface CbaGrip {
   enteringCoords?: CbaButtonCoord[];
   exitingCoords?: CbaButtonCoord[];
 }
+
+export type CbaGripMode = "root_3row" | "root_5row" | "voice_led" | "root";
 
 export interface ChordDetail {
   originalChord: ParsedChord;

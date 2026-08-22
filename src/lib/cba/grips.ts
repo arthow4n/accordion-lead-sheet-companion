@@ -320,6 +320,7 @@ export function generateCbaGrip(
 export function generateCanonicalRootGrip(
   chordInput: string | ParsedChord,
   targetColumnCenter = 5,
+  rowTierMode: "3row" | "5row" = "5row",
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
   const rootPc = parsed.rootPitchClass;
@@ -340,6 +341,9 @@ export function generateCanonicalRootGrip(
     createCbaButtonCoord(rootPos.row, rootPos.column, chordNotes[0], 1),
   ];
 
+  const minRow = rowTierMode === "3row" ? 1 : baseRow;
+  const maxRow = rowTierMode === "3row" ? 3 : Math.min(5, baseRow + 2);
+
   for (let i = 1; i < chordNotes.length; i++) {
     const note = chordNotes[i];
     const pc = getPitchClass(note);
@@ -349,13 +353,13 @@ export function generateCanonicalRootGrip(
     let bestDist = Infinity;
 
     for (const pos of candidatePositions) {
-      if (pos.row < baseRow || pos.row > baseRow + 2) continue;
+      if (pos.row < minRow || pos.row > maxRow) continue;
       if (pos.column < rootPos.column - 2 || pos.column > rootPos.column + 2) continue;
 
       const currentCols = [...coords.map((c) => c.column), pos.column];
       const colSpan = Math.max(...currentCols) - Math.min(...currentCols);
       const dist = colSpan * 100 + Math.abs(pos.column - rootPos.column) * 10 +
-        (pos.row - rootPos.row) * 5;
+        Math.abs(pos.row - rootPos.row) * 5;
 
       if (dist < bestDist) {
         bestDist = dist;

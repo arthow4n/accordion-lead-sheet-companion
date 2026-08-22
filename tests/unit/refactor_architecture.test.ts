@@ -12,6 +12,7 @@ import {
   computeCbaJamFills,
   enrichSongLinesWithVoiceLeading,
   extractSectionChords,
+  generateCanonicalRootGrip,
   getCounterBassColumn,
   getGroovePresetList,
   getInitialSong,
@@ -138,13 +139,20 @@ Deno.test("REFACTOR-CBA-01: Section chords and voice leading extraction across s
 
 Deno.test("REFACTOR-CBA-02: Whole-song continuous voice leading enrichment and persistence", () => {
   if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
-  assertEquals(getLastPersistedCbaGripMode(), "root");
+  assertEquals(getLastPersistedCbaGripMode(), "root_5row");
 
   persistCbaGripMode("voice_led");
   assertEquals(getLastPersistedCbaGripMode(), "voice_led");
 
+  persistCbaGripMode("root_3row");
+  assertEquals(getLastPersistedCbaGripMode(), "root_3row");
+
+  persistCbaGripMode("root_5row");
+  assertEquals(getLastPersistedCbaGripMode(), "root_5row");
+
+  // Backward compatibility alias
   persistCbaGripMode("root");
-  assertEquals(getLastPersistedCbaGripMode(), "root");
+  assertEquals(getLastPersistedCbaGripMode(), "root_5row");
 
   const lines: LeadSheetLine[] = [
     {
@@ -179,6 +187,12 @@ Deno.test("REFACTOR-CBA-02: Whole-song continuous voice leading enrichment and p
     assertExists(secondChord.cba?.sharedCoords);
     assertExists(secondChord.cba?.flowVector);
   }
+
+  // 3-Row vs 5-Row Ergonomic Generation
+  const bm3Row = generateCanonicalRootGrip(parseChord("Bm"), 5, "3row");
+  const bm5Row = generateCanonicalRootGrip(parseChord("Bm"), 5, "5row");
+  assertEquals((bm3Row.buttons || []).every((b) => b.row <= 3), true);
+  assertEquals((bm5Row.buttons || []).some((b) => b.row >= 4), true); // Bm uses Row 4 (Aux 1) for F#
 });
 
 // ============================================================================

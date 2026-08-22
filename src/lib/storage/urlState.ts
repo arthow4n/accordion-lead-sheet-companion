@@ -235,29 +235,35 @@ export function getInitialSong(
 export const LAST_CBA_GRIP_MODE_STORAGE_KEY = "cbaGripMode";
 
 /**
- * Retrieves the last persisted CBA Grip Mode ("root" | "voice_led") from LocalStorage.
- * Defaults to "root" for maximum muscle memory consistency.
+ * Retrieves the last persisted CBA Grip Mode ("root_3row" | "root_5row" | "voice_led") from LocalStorage.
+ * Defaults to "root_5row" for optimal 5-row ergonomics.
  */
-export function getLastPersistedCbaGripMode(): "root" | "voice_led" {
-  if (typeof globalThis.localStorage === "undefined") return "root";
+export function getLastPersistedCbaGripMode(): "root_3row" | "root_5row" | "voice_led" {
+  if (typeof globalThis.localStorage === "undefined") return "root_5row";
   try {
     const val = globalThis.localStorage.getItem(LAST_CBA_GRIP_MODE_STORAGE_KEY);
-    if (val === "root" || val === "voice_led") {
+    if (val === "root_3row" || val === "root_5row" || val === "voice_led") {
       return val;
     }
-    return "root";
+    if (val === "root") {
+      return "root_5row";
+    }
+    return "root_5row";
   } catch (_err) {
-    return "root";
+    return "root_5row";
   }
 }
 
 /**
- * Persists the CBA Grip Mode ("root" | "voice_led") to LocalStorage and notifies listeners.
+ * Persists the CBA Grip Mode ("root_3row" | "root_5row" | "voice_led") to LocalStorage and notifies listeners.
  */
-export function persistCbaGripMode(mode: "root" | "voice_led"): void {
+export function persistCbaGripMode(
+  mode: "root_3row" | "root_5row" | "voice_led" | "root",
+): void {
   if (typeof globalThis.localStorage === "undefined") return;
   try {
-    globalThis.localStorage.setItem(LAST_CBA_GRIP_MODE_STORAGE_KEY, mode);
+    const normalized = mode === "root" ? "root_5row" : mode;
+    globalThis.localStorage.setItem(LAST_CBA_GRIP_MODE_STORAGE_KEY, normalized);
     globalThis.dispatchEvent(new Event("cbaGripModeChanged"));
   } catch (_err) {
     // Ignore quota or private browsing errors

@@ -53,8 +53,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     defaultCapo > 0 ? defaultCapo : (capo > 0 ? capo : 2),
   );
 
-  // User preference for CBA grip mode (default: "root")
-  const [cbaGripMode, setCbaGripMode] = useState<"root" | "voice_led">(() => {
+  // User preference for CBA grip mode (default: "root_5row")
+  const [cbaGripMode, setCbaGripMode] = useState<"root_3row" | "root_5row" | "voice_led">(() => {
     return getLastPersistedCbaGripMode();
   });
 
@@ -86,7 +86,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     }
   }, []);
 
-  const handleToggleGripMode = (mode: "root" | "voice_led") => {
+  const handleToggleGripMode = (mode: "root_3row" | "root_5row" | "voice_led") => {
     setCbaGripMode(mode);
     persistCbaGripMode(mode);
   };
@@ -295,22 +295,36 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-0.5 text-xs font-mono">
                     <button
                       type="button"
-                      onClick={() => handleToggleGripMode("root")}
-                      className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
-                        cbaGripMode === "root"
+                      onClick={() => handleToggleGripMode("root_3row")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        cbaGripMode === "root_3row"
                           ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
                           : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                       }`}
-                      title="Canonical Root Shapes (100% Consistent 1-2-4 Triangle Muscle Memory)"
-                      aria-pressed={cbaGripMode === "root"}
+                      title="3-Row Core Shapes (Strictly Rows 1-3 for 3-Row Accordions)"
+                      aria-pressed={cbaGripMode === "root_3row"}
                     >
                       <span>🪗</span>
-                      <span>Root</span>
+                      <span>3-Row</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleGripMode("root_5row")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        cbaGripMode === "root_5row"
+                          ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="5-Row Ergonomic Root Shapes (Isomorphic Tier 1-3, 2-4, 3-5)"
+                      aria-pressed={cbaGripMode === "root_5row"}
+                    >
+                      <span>🖐️</span>
+                      <span>5-Row</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleToggleGripMode("voice_led")}
-                      className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
                         cbaGripMode === "voice_led"
                           ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
                           : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -371,7 +385,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   <button
                     type="button"
                     onClick={() =>
-                      handleToggleGripMode(cbaGripMode === "root" ? "voice_led" : "root")}
+                      handleToggleGripMode(
+                        cbaGripMode === "voice_led" ? "root_5row" : "voice_led",
+                      )}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                       cbaGripMode === "voice_led"
                         ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300"
@@ -379,7 +395,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     }`}
                     title="Toggle CBA Voice Leading"
                   >
-                    {cbaGripMode === "voice_led" ? "🌊 Voice-Led" : "🪗 Root"}
+                    {cbaGripMode === "voice_led" ? "🌊 Voice-Led" : "🖐️ 5-Row"}
                   </button>
                 </div>
               )}
