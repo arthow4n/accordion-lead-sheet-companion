@@ -1,62 +1,59 @@
 import React from "react";
-import type { CbaButtonCoord, CbaGrip, CbaJamFillScale, ParsedChord } from "../types/index.ts";
-import { getNoteName } from "../lib/capo/enharmonics.ts";
+import type { CbaButtonCoord, CbaGrip, ParsedChord } from "../types/index.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
+import { parseChord } from "../lib/capo/transposition.ts";
+import { getNoteName } from "../lib/capo/enharmonics.ts";
 import { getPitchClassAt } from "../lib/cba/grid.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
 export interface CbaGridProps {
   cba?: CbaGrip;
-  soundingChord?: ParsedChord;
-  jamFillsEnabled?: boolean;
-  jamFillsScale?: CbaJamFillScale | null;
+  soundingChord?: ParsedChord | string;
   className?: string;
+  jamFillsEnabled?: boolean;
 }
+
+export const CBA_ROWS_5 = [
+  { rowNumber: 5, label: "Row 5 (Aux 2)", indentPx: 24 },
+  { rowNumber: 4, label: "Row 4 (Aux 1)", indentPx: 18 },
+  { rowNumber: 3, label: "Row 3", indentPx: 12 },
+  { rowNumber: 2, label: "Row 2", indentPx: 6 },
+  { rowNumber: 1, label: "Row 1", indentPx: 0 },
+];
 
 export const CbaGrid: React.FC<CbaGridProps> = ({
   cba,
   soundingChord,
-  jamFillsEnabled = false,
-  jamFillsScale,
   className = "",
+  jamFillsEnabled = false,
 }) => {
-  const chordName = cba?.chordName || cba?.chord || soundingChord?.raw || "Chord";
-  const grip = cba || (soundingChord ? generateCbaGrip(soundingChord) : null);
-  const notes = grip?.notes || [];
+  const parsedChord: ParsedChord = typeof soundingChord === "string"
+    ? parseChord(soundingChord)
+    : soundingChord || parseChord(cba?.chord || "C");
+
+  const grip: CbaGrip = cba || generateCbaGrip(parsedChord);
   const activeButtons: CbaButtonCoord[] = grip?.buttonCoords || grip?.buttons || [];
+  const chordName = parsedChord.raw || grip?.chord || "Chord";
+  const notes = grip?.notes || [];
 
-  // Compute Jam Fill scale if enabled
-  const activeJamFills = jamFillsEnabled
-    ? (jamFillsScale !== undefined ? jamFillsScale : computeCbaJamFills(soundingChord))
-    : null;
-
-  // Determine column range to display around active buttons (5 to 6 columns)
+  // Determine dynamic column range based on active buttons (minimum 5 columns)
   const cols = activeButtons.map((b) => b.column);
-  const minCol = cols.length > 0 ? Math.max(1, Math.min(...cols) - 1) : 2;
-  const maxCol = cols.length > 0 ? Math.max(minCol + 4, Math.max(...cols) + 1) : 7;
-
+  const minCol = cols.length > 0 ? Math.min(...cols) : 3;
+  const maxCol = cols.length > 0 ? Math.max(...cols) : 6;
+  const startCol = Math.max(1, minCol - 1);
+  const endCol = Math.min(12, Math.max(startCol + 4, maxCol + 1));
   const displayCols: number[] = [];
-  for (let c = minCol; c <= maxCol; c++) {
+  for (let c = startCol; c <= endCol; c++) {
     displayCols.push(c);
   }
 
-  // 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger:
-  // Row 5: Auxiliary 2 (Repeat of Row 2)
-  // Row 4: Auxiliary 1 (Repeat of Row 1)
-  // Row 3: Core (Bellows side)
-  // Row 2: Core (Middle)
-  // Row 1: Core (Edge)
-  const rows = [
-    { rowNumber: 5, indentPx: 36 },
-    { rowNumber: 4, indentPx: 27 },
-    { rowNumber: 3, indentPx: 18 },
-    { rowNumber: 2, indentPx: 9 },
-    { rowNumber: 1, indentPx: 0 },
-  ];
-
-  // Determine if note spelling should prefer flats
   const preferFlats = notes.some((n) => n.includes("b")) ||
-    Boolean(soundingChord?.root && soundingChord.root.includes("b"));
+    Boolean(parsedChord?.root && parsedChord.root.includes("b"));
+
+  const rows = CBA_ROWS_5;
+
+  // Compute Jam Fill scale for this chord if enabled
+  const activeJamFills = jamFillsEnabled ? computeCbaJamFills(parsedChord) : null;
 
   return (
     <div
@@ -73,11 +70,16 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
               [{notes.join(" - ")}]
             </span>
           )}
+          {grip.flowVector && grip.flowVector !== "●" && (
+            <span className="text-xs text-sky-400 font-bold">
+              {grip.flowVector}
+            </span>
+          )}
         </div>
 
         {/* Strategy D: Jam Fill Scale Header Tag */}
         {activeJamFills && (
-          <span className="px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/60 text-sky-300 text-[10px] sm:text-xs font-semibold">
+          <span className="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 text-[10px] sm:text-xs font-semibold">
             🎨 {activeJamFills.scaleName}: [{activeJamFills.notes.join(", ")}]
           </span>
         )}
@@ -107,6 +109,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                   return bEffectiveRow === currentEffectiveRow && b.column === col;
                 });
 
+                // Root Note Beacon (Finger 1)
                 const isRoot = isPrimary && (
                   (grip?.rootButtonCoord && grip.rootButtonCoord.row === rowInfo.rowNumber &&
                     grip.rootButtonCoord.column === col) ||
@@ -114,6 +117,16 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                       ?.finger === 1
                 );
 
+                // Entering Tone in voice leading transition
+                const isEntering = isPrimary && !isRoot &&
+                  Boolean(
+                    grip?.enteringCoords && grip.enteringCoords.length > 0 &&
+                      grip.enteringCoords.some((ec) =>
+                        ec.row === rowInfo.rowNumber && ec.column === col
+                      ),
+                  );
+
+                // Ghost releasing note from previous chord
                 const isGhost = !isPrimary && !isAuxDuplicate &&
                   Boolean(
                     grip?.exitingCoords && grip.exitingCoords.length > 0 &&
@@ -136,18 +149,21 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                 if (isRoot) {
                   btnClass =
                     "bg-amber-300 border-2 border-amber-100 text-zinc-950 font-black shadow-[0_0_12px_rgba(251,191,36,0.85)] ring-2 ring-amber-400/80 scale-110";
+                } else if (isEntering) {
+                  btnClass =
+                    "bg-sky-400 border-2 border-sky-100 text-zinc-950 font-black shadow-[0_0_10px_rgba(56,189,248,0.9)] ring-2 ring-sky-400/70 scale-105";
                 } else if (isPrimary) {
                   btnClass =
-                    "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105";
+                    "bg-emerald-400 border-2 border-emerald-100 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105";
                 } else if (isAuxDuplicate) {
                   btnClass =
-                    "bg-emerald-950/90 border border-emerald-600/80 text-emerald-300 font-bold shadow-sm";
+                    "bg-emerald-950/70 border border-dashed border-emerald-500/70 text-emerald-300 font-bold shadow-sm";
                 } else if (isFillNote) {
                   btnClass =
-                    "bg-sky-950/90 border-2 border-sky-400 text-sky-200 font-bold shadow-[0_0_8px_rgba(56,189,248,0.6)] ring-1 ring-sky-400/40";
+                    "bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 font-bold shadow-[0_0_8px_rgba(34,211,238,0.6)] ring-1 ring-cyan-400/40";
                 } else if (isGhost) {
                   btnClass =
-                    "bg-indigo-500/15 border border-dashed border-indigo-400/50 text-indigo-300/70 shadow-xs scale-95";
+                    "bg-indigo-950/40 border border-dashed border-indigo-400/50 text-indigo-300/70 shadow-xs scale-95";
                 }
 
                 return (
@@ -156,7 +172,13 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                     className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-mono transition-all select-none ${btnClass}`}
                     title={`Row ${rowInfo.rowNumber}, Col ${col}: ${noteName}${
                       isRoot
-                        ? " (Root)"
+                        ? " (Root Beacon)"
+                        : isEntering
+                        ? " (New Voice - Strike)"
+                        : isPrimary
+                        ? " (Kept Voice - Hold)"
+                        : isAuxDuplicate
+                        ? " (Auxiliary Duplicate)"
                         : isFillNote
                         ? ` (Fill Tone - ${activeJamFills?.scaleName})`
                         : isGhost

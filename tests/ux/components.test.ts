@@ -1021,3 +1021,34 @@ Deno.test("UX-18: UpdateToast renders floating pill and manual update check work
 
   assertEquals(readerHtml.includes("Check for Update"), true);
 });
+
+Deno.test("UX-19: Harmonized Color Scheme between CbaMiniCard and CbaGrid (Root Amber, Entering Blue, Kept Green)", () => {
+  const chordDetail = enrichChord("F#7", 0);
+  // Add transition metadata: second button is entering
+  if (chordDetail.cba && chordDetail.cba.buttonCoords && chordDetail.cba.buttonCoords.length > 1) {
+    chordDetail.cba.enteringCoords = [chordDetail.cba.buttonCoords[1]];
+  }
+
+  // 1. CbaMiniCard renders Root Amber, Entering Sky Blue, Kept Emerald
+  const miniCardHtml = renderToStaticMarkup(
+    React.createElement(CbaMiniCard, {
+      chord: chordDetail,
+    }),
+  );
+  assertEquals(miniCardHtml.includes("#fde047"), true); // Root Amber-Gold
+  assertEquals(miniCardHtml.includes("#38bdf8"), true); // Entering Sky Blue
+  assertEquals(miniCardHtml.includes("#10b981"), true); // Kept Emerald
+
+  // 2. CbaGrid renders matching Tailwind classes
+  const gridHtml = renderToStaticMarkup(
+    React.createElement(CbaGrid, {
+      cba: chordDetail.cba,
+      soundingChord: chordDetail.soundingChord,
+      jamFillsEnabled: true,
+    }),
+  );
+  assertEquals(gridHtml.includes("bg-amber-300"), true); // Root Amber-Gold
+  assertEquals(gridHtml.includes("bg-sky-400"), true); // Entering Sky Blue
+  assertEquals(gridHtml.includes("bg-emerald-400"), true); // Kept Emerald
+  assertEquals(gridHtml.includes("bg-cyan-950"), true); // Jam Fills Cyan-Teal
+});
