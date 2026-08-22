@@ -73,43 +73,43 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   }> = {
     "text-sm": {
       cardPad: "p-1.5",
-      titleSize: "text-xs",
-      notesSize: "text-[9px]",
-      svgW: "w-[58px]",
-      svgH: "h-[44px]",
-      minW: "min-w-[74px]",
+      titleSize: "text-sm",
+      notesSize: "text-[11px]",
+      svgW: "w-[62px]",
+      svgH: "h-[46px]",
+      minW: "min-w-[80px]",
     },
     "text-base": {
       cardPad: "p-2",
-      titleSize: "text-sm",
-      notesSize: "text-[10px]",
-      svgW: "w-[68px]",
-      svgH: "h-[50px]",
-      minW: "min-w-[84px]",
+      titleSize: "text-base",
+      notesSize: "text-xs",
+      svgW: "w-[72px]",
+      svgH: "h-[52px]",
+      minW: "min-w-[92px]",
     },
     "text-lg": {
       cardPad: "p-2.5",
-      titleSize: "text-base",
-      notesSize: "text-xs",
-      svgW: "w-[78px]",
-      svgH: "h-[58px]",
-      minW: "min-w-[96px]",
+      titleSize: "text-lg",
+      notesSize: "text-sm",
+      svgW: "w-[84px]",
+      svgH: "h-[60px]",
+      minW: "min-w-[106px]",
     },
     "text-xl": {
       cardPad: "p-3",
-      titleSize: "text-lg",
-      notesSize: "text-sm",
-      svgW: "w-[90px]",
-      svgH: "h-[66px]",
-      minW: "min-w-[110px]",
+      titleSize: "text-xl",
+      notesSize: "text-base",
+      svgW: "w-[96px]",
+      svgH: "h-[68px]",
+      minW: "min-w-[122px]",
     },
     "text-2xl": {
       cardPad: "p-3.5",
-      titleSize: "text-xl",
-      notesSize: "text-base",
-      svgW: "w-[102px]",
-      svgH: "h-[74px]",
-      minW: "min-w-[126px]",
+      titleSize: "text-2xl",
+      notesSize: "text-lg",
+      svgW: "w-[110px]",
+      svgH: "h-[78px]",
+      minW: "min-w-[138px]",
     },
   };
   const currentScale = scaleMap[fontSizeClass] || scaleMap["text-base"];
@@ -137,7 +137,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
         </span>
         {notes.length > 0 && (
           <span
-            className={`${currentScale.notesSize} text-zinc-400 font-mono font-medium tracking-tight leading-none truncate max-w-full`}
+            className={`${currentScale.notesSize} text-zinc-300 font-mono font-bold tracking-tight leading-snug text-center whitespace-nowrap`}
           >
             {notes.join(" · ")}
           </span>

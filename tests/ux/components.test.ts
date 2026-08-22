@@ -837,8 +837,8 @@ Deno.test("UX-14: Font Size Scaling scales lyrics, ChordBadge, and CbaMiniCard d
       fontSizeClass: "text-xl",
     }),
   );
-  assertEquals(miniCardSmall.includes("min-w-[74px]"), true);
-  assertEquals(miniCardLarge.includes("min-w-[110px]"), true);
+  assertEquals(miniCardSmall.includes("min-w-[80px]"), true);
+  assertEquals(miniCardLarge.includes("min-w-[122px]"), true);
   // Includes note subtitles (F#, A#, C#, E)
   assertEquals(miniCardSmall.includes("F#"), true);
   assertEquals(miniCardSmall.includes("A#"), true);
