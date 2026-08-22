@@ -270,6 +270,40 @@ export function persistCbaGripMode(
   }
 }
 
+export const LAST_CBA_DISPLAY_MODE_STORAGE_KEY = "cbaDisplayMode";
+
+/**
+ * Retrieves the last persisted CBA Display Mode ("badges" | "line_cards" | "micro_badges") from LocalStorage.
+ * Defaults to "line_cards" for optimal whole-song chord glanceability.
+ */
+export function getLastPersistedCbaDisplayMode(): "badges" | "line_cards" | "micro_badges" {
+  if (typeof globalThis.localStorage === "undefined") return "line_cards";
+  try {
+    const val = globalThis.localStorage.getItem(LAST_CBA_DISPLAY_MODE_STORAGE_KEY);
+    if (val === "badges" || val === "line_cards" || val === "micro_badges") {
+      return val;
+    }
+    return "line_cards";
+  } catch (_err) {
+    return "line_cards";
+  }
+}
+
+/**
+ * Persists the CBA Display Mode to LocalStorage and notifies listeners.
+ */
+export function persistCbaDisplayMode(
+  mode: "badges" | "line_cards" | "micro_badges",
+): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_CBA_DISPLAY_MODE_STORAGE_KEY, mode);
+    globalThis.dispatchEvent(new Event("cbaDisplayModeChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
+
 export const LAST_GROOVE_STORAGE_KEY = "accordion_groove";
 
 /**

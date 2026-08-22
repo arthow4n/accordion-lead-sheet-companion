@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import type { ChordDetail, ChordLyricSegment, LeadSheetLine, ViewMode } from "../types/index.ts";
+import type {
+  CbaDisplayMode,
+  ChordDetail,
+  ChordLyricSegment,
+  LeadSheetLine,
+  ViewMode,
+} from "../types/index.ts";
 import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
 import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
@@ -7,6 +13,7 @@ import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
 export interface LineRendererProps {
   line: LeadSheetLine | ChordLyricSegment[];
   viewMode?: ViewMode;
+  cbaDisplayMode?: CbaDisplayMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   fontSizeClass?: string;
@@ -85,14 +92,22 @@ export function isDenseMeasureLine(segments: ChordLyricSegment[]): boolean {
 export const LineRenderer: React.FC<LineRendererProps> = ({
   line,
   viewMode = "stradella",
+  cbaDisplayMode = "line_cards",
   onSelectChord,
   selectedChord,
   fontSizeClass = "text-base",
   sectionChords = [],
 }) => {
   const renderDenseMeasureLine = (segments: ChordLyricSegment[]) => {
-    return (
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 my-1 leading-relaxed max-w-full overflow-x-clip">
+    // Extract line-level chronological chords
+    const lineChords = segments
+      .filter((s): s is ChordLyricSegment & { chord: NonNullable<ChordLyricSegment["chord"]> } =>
+        Boolean(s.chord)
+      )
+      .map((s) => s.chord);
+
+    const content = (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 leading-relaxed max-w-full overflow-x-clip">
         {segments.map((segment, idx) => {
           const lyricTrim = (segment.lyric || "").trim();
           const isDelim = !segment.chord &&
@@ -118,6 +133,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
               <ChordBadge
                 chord={segment.chord}
                 viewMode={viewMode}
+                cbaDisplayMode={cbaDisplayMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -127,10 +143,39 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
         })}
       </div>
     );
+
+    // Only wrap when in CBA line_cards mode with valid chords
+    if (viewMode === "cba" && cbaDisplayMode === "line_cards" && lineChords.length > 0) {
+      return (
+        <div className="flex flex-col gap-1.5 my-1 max-w-full">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
+            {lineChords.map((chord, cIdx) => (
+              <CbaMiniCard
+                key={`measure-line-cba-${cIdx}`}
+                chord={chord}
+                onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
+                active={isChordActive(chord, selectedChord)}
+              />
+            ))}
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    return content;
   };
 
   const renderStandardChordLyricLine = (segments: ChordLyricSegment[]) => {
-    return (
+    // Extract line-level chronological chords
+    const lineChords = segments
+      .filter((s): s is ChordLyricSegment & { chord: NonNullable<ChordLyricSegment["chord"]> } =>
+        Boolean(s.chord)
+      )
+      .map((s) => s.chord);
+
+    const content = (
       <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 leading-normal max-w-full overflow-x-clip">
         {segments.map((segment, idx) => (
           <div
@@ -142,6 +187,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
               <ChordBadge
                 chord={segment.chord}
                 viewMode={viewMode}
+                cbaDisplayMode={cbaDisplayMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -156,6 +202,28 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
         ))}
       </div>
     );
+
+    // Only wrap when in CBA line_cards mode with valid chords
+    if (viewMode === "cba" && cbaDisplayMode === "line_cards" && lineChords.length > 0) {
+      return (
+        <div className="flex flex-col gap-1 my-1 max-w-full">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
+            {lineChords.map((chord, cIdx) => (
+              <CbaMiniCard
+                key={`line-cba-${cIdx}`}
+                chord={chord}
+                onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
+                active={isChordActive(chord, selectedChord)}
+              />
+            ))}
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    return content;
   };
 
   // Support both LeadSheetLine objects and raw ChordLyricSegment[] arrays

@@ -1052,3 +1052,43 @@ Deno.test("UX-19: Harmonized Color Scheme between CbaMiniCard and CbaGrid (Root 
   assertEquals(gridHtml.includes("bg-emerald-400"), true); // Kept Emerald
   assertEquals(gridHtml.includes("bg-cyan-950"), true); // Jam Fills Cyan-Teal
 });
+
+Deno.test("UX-20: 3-Way CBA Display Mode (Badges, Line Cards, Micro Grids)", () => {
+  const song = createPresetSongs()[0]; // Bella Ciao
+
+  // 1. Line Cards Mode: LineRenderer renders line-level chronological CbaMiniCards
+  const lineCardsHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "cba",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(lineCardsHtml.includes("Cards"), true);
+  assertEquals(lineCardsHtml.includes("Badges"), true);
+  assertEquals(lineCardsHtml.includes("Micro"), true);
+
+  // 2. Micro Badges Mode: ChordBadge embeds micro SVG dot grid
+  const chordDetail = enrichChord("Em", 0);
+  const microBadgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      viewMode: "cba",
+      cbaDisplayMode: "micro_badges",
+    }),
+  );
+  assertEquals(microBadgeHtml.includes('viewBox="0 0 28 18"'), true);
+  assertEquals(microBadgeHtml.includes("#fde047"), true); // Root amber dot in micro grid
+
+  // 3. Badges Only Mode: ChordBadge renders clean text without micro SVG
+  const badgesOnlyHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      viewMode: "cba",
+      cbaDisplayMode: "badges",
+    }),
+  );
+  assertEquals(badgesOnlyHtml.includes('viewBox="0 0 28 18"'), false);
+  assertEquals(badgesOnlyHtml.includes("Em"), true);
+});

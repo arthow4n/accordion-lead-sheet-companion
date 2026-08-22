@@ -1,11 +1,12 @@
 import React from "react";
-import type { ChordDetail, ViewMode } from "../types/index.ts";
+import type { CbaDisplayMode, ChordDetail, ViewMode } from "../types/index.ts";
 
 import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
 
 export interface ChordBadgeProps {
   chord?: string | ChordDetail;
   viewMode?: ViewMode;
+  cbaDisplayMode?: CbaDisplayMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   fontSizeClass?: string;
@@ -56,6 +57,14 @@ export const BADGE_SIZE_MAP: Record<string, {
   },
 };
 
+const CBA_MICRO_ROWS = [
+  { rowNum: 5, y: 2, xOffset: 3 },
+  { rowNum: 4, y: 5.5, xOffset: 2.25 },
+  { rowNum: 3, y: 9, xOffset: 1.5 },
+  { rowNum: 2, y: 12.5, xOffset: 0.75 },
+  { rowNum: 1, y: 16, xOffset: 0 },
+];
+
 /**
  * Checks whether a chord candidate is active / selected.
  */
@@ -91,6 +100,7 @@ export function isChordActive(
 export const ChordBadge: React.FC<ChordBadgeProps> = ({
   chord,
   viewMode = "stradella",
+  cbaDisplayMode = "line_cards",
   onSelectChord,
   active = false,
   fontSizeClass = "text-base",
@@ -202,6 +212,16 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     }
   }
 
+  // Micro Grid computation when cbaDisplayMode is "micro_badges"
+  const activeButtons = chord.cba?.buttonCoords || chord.cba?.buttons || [];
+  const cols = activeButtons.map((b) => b.column);
+  const minCol = cols.length > 0 ? Math.min(...cols) : 3;
+  const startCol = Math.max(1, minCol - 1);
+  const displayCols = [startCol, startCol + 1, startCol + 2, startCol + 3, startCol + 4];
+  const enteringSet = new Set(
+    (chord.cba?.enteringCoords || []).map((c) => `${c.row}-${c.column}`),
+  );
+
   return (
     <button
       type="button"
@@ -247,8 +267,65 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       )}
 
       {viewMode === "cba" && (
-        <span className="text-emerald-400 font-bold tracking-tight">
-          {soundingChordName}
+        <span className="flex items-center gap-1">
+          <span className="text-emerald-400 font-bold tracking-tight">
+            {soundingChordName}
+          </span>
+          {chord.cba?.flowVector && chord.cba.flowVector !== "●" && (
+            <span className="text-[10px] text-sky-400 font-bold">
+              {chord.cba.flowVector}
+            </span>
+          )}
+          {/* Micro 5-Row SVG Lattice when in micro_badges mode */}
+          {cbaDisplayMode === "micro_badges" && (
+            <svg
+              viewBox="0 0 28 18"
+              className="w-[26px] h-[15px] overflow-visible shrink-0 ml-0.5"
+              aria-hidden="true"
+            >
+              {CBA_MICRO_ROWS.map(({ rowNum, y, xOffset }) =>
+                displayCols.map((col, cIdx) => {
+                  const isPrimary = activeButtons.some(
+                    (b) => b.row === rowNum && b.column === col,
+                  );
+                  const isRoot = isPrimary && (
+                    (chord.cba?.rootButtonCoord &&
+                      chord.cba.rootButtonCoord.row === rowNum &&
+                      chord.cba.rootButtonCoord.column === col) ||
+                    activeButtons.find((b) => b.row === rowNum && b.column === col)
+                        ?.finger === 1
+                  );
+                  const isEntering = isPrimary && !isRoot &&
+                    enteringSet.has(`${rowNum}-${col}`);
+                  const x = xOffset + 2 + cIdx * 5;
+
+                  return (
+                    <circle
+                      key={`micro-${rowNum}-${col}`}
+                      cx={x}
+                      cy={y}
+                      r={isRoot ? 1.6 : isPrimary ? 1.4 : 0.6}
+                      fill={isRoot
+                        ? "#fde047"
+                        : isEntering
+                        ? "#38bdf8"
+                        : isPrimary
+                        ? "#10b981"
+                        : "#27272a"}
+                      stroke={isRoot
+                        ? "#eab308"
+                        : isEntering
+                        ? "#0284c7"
+                        : isPrimary
+                        ? "#34d399"
+                        : "none"}
+                      strokeWidth={isPrimary ? 0.4 : 0}
+                    />
+                  );
+                })
+              )}
+            </svg>
+          )}
         </span>
       )}
 
