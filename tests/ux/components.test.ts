@@ -1025,12 +1025,13 @@ Deno.test("UX-18: UpdateToast renders floating pill and manual update check work
 
 Deno.test("UX-19: Harmonized Color Scheme between CbaMiniCard and CbaGrid (Root Amber, Entering Blue, Kept Green)", () => {
   const chordDetail = enrichChord("F#7", 0);
-  // Add transition metadata: second button is entering
+  // Add transition metadata: second button is entering, plus an exiting ghost button
   if (chordDetail.cba && chordDetail.cba.buttonCoords && chordDetail.cba.buttonCoords.length > 1) {
     chordDetail.cba.enteringCoords = [chordDetail.cba.buttonCoords[1]];
+    chordDetail.cba.exitingCoords = [{ row: 1, column: 4, note: "C", finger: 1 }];
   }
 
-  // 1. CbaMiniCard renders Root Amber, Entering Sky Blue, Kept Emerald
+  // 1. CbaMiniCard renders Root Amber, Entering Sky Blue, Kept Emerald, and Ghost Indigo release anchors
   const miniCardHtml = renderToStaticMarkup(
     React.createElement(CbaMiniCard, {
       chord: chordDetail,
@@ -1039,6 +1040,8 @@ Deno.test("UX-19: Harmonized Color Scheme between CbaMiniCard and CbaGrid (Root 
   assertEquals(miniCardHtml.includes("#fde047"), true); // Root Amber-Gold
   assertEquals(miniCardHtml.includes("#38bdf8"), true); // Entering Sky Blue
   assertEquals(miniCardHtml.includes("#10b981"), true); // Kept Emerald
+  assertEquals(miniCardHtml.includes("#818cf8"), true); // Ghost Indigo release stroke
+  assertEquals(miniCardHtml.includes("stroke-dasharray"), true); // Ghost dashed outline
 
   // 2. CbaGrid renders matching Tailwind classes
   const gridHtml = renderToStaticMarkup(

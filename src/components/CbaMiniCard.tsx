@@ -90,9 +90,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   const grip = chordDetail.cba || generateCbaGrip(soundingChord);
   const notes = grip.notes || [];
   const activeButtons: CbaButtonCoord[] = grip.buttonCoords || grip.buttons || [];
+  const exitingButtons: CbaButtonCoord[] = grip.exitingCoords || [];
 
-  // Determine dynamic column range to display ALL active buttons (minimum 5 columns, with padding)
-  const cols = activeButtons.map((b) => b.column);
+  // Determine dynamic column range to display active AND ghost buttons (minimum 5 columns, with padding)
+  const allRelevantButtons = [...activeButtons, ...exitingButtons];
+  const cols = allRelevantButtons.map((b) => b.column);
   const rawMinCol = cols.length > 0 ? Math.min(...cols) : 3;
   const rawMaxCol = cols.length > 0 ? Math.max(...cols) : 6;
   const startCol = Math.max(1, rawMinCol - 1);
@@ -121,6 +123,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   // Track entering (newly struck in transition) vs shared coordinates
   const enteringSet = new Set(
     (grip.enteringCoords || []).map((c) => `${c.row}-${c.column}`),
+  );
+
+  // Track ghost (released voices from previous chord) coordinates
+  const exitingSet = new Set(
+    (grip.exitingCoords || []).map((c) => `${c.row}-${c.column}`),
   );
 
   return (
@@ -157,7 +164,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
         )}
       </div>
 
-      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes (Zero Shadow Noise, Clean Flow Colors) */}
+      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes & Ghost Release Anchors */}
       <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
         <svg
           viewBox={`0 0 ${svgWidth} 48`}
@@ -184,6 +191,9 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
               // Check if button is an entering tone in the voice leading transition
               const isEntering = isPrimary && !isRoot && enteringSet.has(`${rowNum}-${col}`);
 
+              // Check if button is a ghost tone released from the previous chord (Approach 1)
+              const isGhost = !isPrimary && exitingSet.has(`${rowNum}-${col}`);
+
               const x = xOffset + 5 + colIdx * colSpacing;
 
               return (
@@ -201,17 +211,19 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                     />
                   )}
 
-                  {/* Button circle: Amber for Root, Sky Blue for Entering, Emerald for Kept/Chord Tones */}
+                  {/* Button circle: Amber for Root, Sky Blue for Entering, Emerald for Kept, Ghost Indigo for Released */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isRoot ? 4.4 : isPrimary ? 4.2 : 2.0}
+                    r={isRoot ? 4.4 : isPrimary ? 4.2 : isGhost ? 3.8 : 2.0}
                     fill={isRoot
                       ? "#fde047"
                       : isEntering
                       ? "#38bdf8"
                       : isPrimary
                       ? "#10b981"
+                      : isGhost
+                      ? "rgba(49, 46, 129, 0.5)"
                       : "#27272a"}
                     stroke={isRoot
                       ? "#eab308"
@@ -219,11 +231,14 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       ? "#0284c7"
                       : isPrimary
                       ? "#34d399"
+                      : isGhost
+                      ? "#818cf8"
                       : "#3f3f46"}
-                    strokeWidth={isPrimary ? (isRoot ? 1.1 : 0.8) : 0.4}
+                    strokeWidth={isPrimary ? (isRoot ? 1.1 : 0.8) : isGhost ? 0.9 : 0.4}
+                    strokeDasharray={isGhost ? "1.5 1.5" : undefined}
                   />
 
-                  {/* Direct In-Button Note Initials on active buttons */}
+                  {/* Direct In-Button Note Initials on active buttons and ghost buttons */}
                   {isPrimary && noteName && (
                     <text
                       x={x}
@@ -233,6 +248,23 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       fontFamily="monospace"
                       textAnchor="middle"
                       fill={isRoot ? "#451a03" : isEntering ? "#082f49" : "#022c22"}
+                      className="select-none pointer-events-none"
+                    >
+                      {noteName}
+                    </text>
+                  )}
+
+                  {/* Faint note initials on ghost anchor buttons */}
+                  {isGhost && noteName && (
+                    <text
+                      x={x}
+                      y={y + (noteName.length > 2 ? 0.8 : 1.0)}
+                      fontSize={noteName.length > 2 ? "2.2" : "2.7"}
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      textAnchor="middle"
+                      fill="#c7d2fe"
+                      opacity={0.8}
                       className="select-none pointer-events-none"
                     >
                       {noteName}
