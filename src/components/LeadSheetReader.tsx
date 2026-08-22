@@ -9,7 +9,8 @@ import type {
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
-import { extractSectionChords } from "../lib/cba/sectionChords.ts";
+import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
+import { getLastPersistedCbaGripMode, persistCbaGripMode } from "../lib/storage/urlState.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { isChordActive } from "./ChordBadge.tsx";
@@ -44,28 +45,13 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
 
   // User preference for CBA grip mode (default: "root" for 100% muscle-memory consistency)
   const [cbaGripMode, setCbaGripMode] = useState<"root" | "voice_led">(() => {
-    try {
-      if (typeof globalThis.localStorage !== "undefined") {
-        return (globalThis.localStorage.getItem("cbaGripMode") as "root" | "voice_led") || "root";
-      }
-    } catch {
-      // ignore
-    }
-    return "root";
+    return getLastPersistedCbaGripMode();
   });
 
-  // Listen for preference changes from MiniGripDrawer
+  // Listen for preference changes
   React.useEffect(() => {
     const handler = () => {
-      try {
-        if (typeof globalThis.localStorage !== "undefined") {
-          const mode = (globalThis.localStorage.getItem("cbaGripMode") as "root" | "voice_led") ||
-            "root";
-          setCbaGripMode(mode);
-        }
-      } catch {
-        // ignore
-      }
+      setCbaGripMode(getLastPersistedCbaGripMode());
     };
     if (typeof globalThis.addEventListener === "function") {
       globalThis.addEventListener("cbaGripModeChanged", handler);
@@ -73,14 +59,20 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     }
   }, []);
 
+  const handleToggleGripMode = (mode: "root" | "voice_led") => {
+    setCbaGripMode(mode);
+    persistCbaGripMode(mode);
+  };
+
   // Calculate sounding key from written key and current capo
   const soundingKey = song.originalKey ? getSoundingKey(song.originalKey, capo) : "";
 
-  // Reactively re-enrich lines with current capo
+  // Reactively re-enrich lines with current capo and chronological whole-song voice leading
   const renderedLines = useMemo(() => {
     const rawLines = (song.lines || []) as LeadSheetLine[];
-    return enrichLeadSheetLines(rawLines, capo, song.originalKey);
-  }, [song.lines, capo, song.originalKey]);
+    const enriched = enrichLeadSheetLines(rawLines, capo, song.originalKey);
+    return enrichSongLinesWithVoiceLeading(enriched, cbaGripMode);
+  }, [song.lines, capo, song.originalKey, cbaGripMode]);
 
   // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
@@ -221,6 +213,45 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             </div>
           </div>
         )}
+
+        {/* Dedicated RH CBA Voice Leading / Root Grip Mode Bar (Own Row for Mobile Responsiveness) */}
+        <div className="mt-2.5 p-2 sm:p-2.5 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-inner">
+          <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-300">
+            <span>🔘</span>
+            <span className="font-bold text-zinc-200">RH CBA Grip Mode:</span>
+          </div>
+
+          <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-1 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => handleToggleGripMode("root")}
+              className={`min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 ${
+                cbaGripMode === "root"
+                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+              }`}
+              title="Canonical Root Shapes (100% Consistent 1-2-4 Triangle Muscle Memory)"
+              aria-pressed={cbaGripMode === "root"}
+            >
+              <span>🪗</span>
+              <span>Root Shapes</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleGripMode("voice_led")}
+              className={`min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 ${
+                cbaGripMode === "voice_led"
+                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+              }`}
+              title="Smooth Voice Leading (Whole-Song Continuous Flow with Minimal Hand Shifts)"
+              aria-pressed={cbaGripMode === "voice_led"}
+            >
+              <span>🌊</span>
+              <span>Smooth Voice Leading</span>
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* Fallback 5-Row Grips preview if song has no section headers */}
@@ -243,8 +274,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
         </div>
       )}
 
-      {/* Song Lines */}
-      <div className="space-y-4">
+      {/* Lead Sheet Main Content */}
+      <main className="space-y-1">
         {renderedLines.map((line, idx) => (
           <LineRenderer
             key={`line-${idx}`}
@@ -256,21 +287,24 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             sectionChords={sectionChordsMap.get(idx)}
           />
         ))}
-      </div>
+      </main>
 
-      {/* Footer with Commit Hash */}
-      <footer className="mt-12 pt-4 pb-4 border-t border-zinc-900 flex items-center justify-center gap-1.5 text-[11px] text-zinc-600 font-mono">
-        <span>Accordion Companion</span>
-        <span>•</span>
-        <a
-          href={COMMIT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-zinc-500 hover:text-blue-400 hover:underline transition-colors"
-          title={`View commit ${COMMIT_HASH} on GitHub`}
-        >
-          {COMMIT_HASH}
-        </a>
+      {/* Commit Hash & Build Info Footer */}
+      <footer className="mt-8 pt-4 border-t border-zinc-850 flex items-center justify-between text-[11px] font-mono text-zinc-400 select-none">
+        <span>Accordion Lead Sheet Companion</span>
+        {COMMIT_URL && COMMIT_HASH !== "dev"
+          ? (
+            <a
+              href={COMMIT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 underline underline-offset-2 transition-colors cursor-pointer"
+              title={`View commit ${COMMIT_HASH} on GitHub`}
+            >
+              build: {COMMIT_HASH}
+            </a>
+          )
+          : <span>build: {COMMIT_HASH}</span>}
       </footer>
     </div>
   );

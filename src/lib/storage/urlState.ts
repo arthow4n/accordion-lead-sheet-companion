@@ -231,3 +231,35 @@ export function getInitialSong(
   // 3. Fallback: First song in available list
   return availableSongs[0];
 }
+
+export const LAST_CBA_GRIP_MODE_STORAGE_KEY = "cbaGripMode";
+
+/**
+ * Retrieves the last persisted CBA Grip Mode ("root" | "voice_led") from LocalStorage.
+ * Defaults to "root" for maximum muscle memory consistency.
+ */
+export function getLastPersistedCbaGripMode(): "root" | "voice_led" {
+  if (typeof globalThis.localStorage === "undefined") return "root";
+  try {
+    const val = globalThis.localStorage.getItem(LAST_CBA_GRIP_MODE_STORAGE_KEY);
+    if (val === "root" || val === "voice_led") {
+      return val;
+    }
+    return "root";
+  } catch (_err) {
+    return "root";
+  }
+}
+
+/**
+ * Persists the CBA Grip Mode ("root" | "voice_led") to LocalStorage and notifies listeners.
+ */
+export function persistCbaGripMode(mode: "root" | "voice_led"): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_CBA_GRIP_MODE_STORAGE_KEY, mode);
+    globalThis.dispatchEvent(new Event("cbaGripModeChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}

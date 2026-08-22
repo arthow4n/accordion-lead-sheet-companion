@@ -900,3 +900,40 @@ Deno.test("UX-15: View Mode URL query param & LocalStorage persistence", () => {
 
   globalThis.localStorage.removeItem(testKey);
 });
+
+Deno.test("UX-16: Global RH CBA Grip Mode Controller (Root Shapes vs Smooth Voice Leading)", () => {
+  const song = createPresetSongs()[0];
+
+  // 1. Reader renders dedicated RH CBA Grip Mode row
+  const readerHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "cba",
+    }),
+  );
+
+  assertEquals(readerHtml.includes("RH CBA Grip Mode:"), true);
+  assertEquals(readerHtml.includes("Root Shapes"), true);
+  assertEquals(readerHtml.includes("Smooth Voice Leading"), true);
+
+  // 2. MiniGripDrawer renders without redundant local grip switch
+  const chordDetail = enrichChord("Am", 0);
+  const drawerHtml = renderToStaticMarkup(
+    React.createElement(MiniGripDrawer, {
+      isOpen: true,
+      onClose: () => {},
+      chord: chordDetail,
+      capo: 0,
+      viewMode: "cba",
+    }),
+  );
+
+  assertEquals(drawerHtml.includes("Right Hand CBA C-System Treble"), true);
+  // Drawer does not contain local switch buttons
+  assertEquals(
+    drawerHtml.includes("aria-pressed"),
+    false,
+    "MiniGripDrawer should not contain internal grip mode toggles",
+  );
+});

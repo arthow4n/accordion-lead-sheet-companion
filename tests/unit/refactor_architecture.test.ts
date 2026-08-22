@@ -9,12 +9,15 @@ import {
   COMPOUND_QUALITIES,
   COMPOUND_RULES,
   computeCbaCentroid,
+  enrichSongLinesWithVoiceLeading,
   extractSectionChords,
   getCounterBassColumn,
   getInitialSong,
   getInitialViewMode,
+  getLastPersistedCbaGripMode,
   getSongFromUrl,
   getViewModeFromUrl,
+  persistCbaGripMode,
   solveCompoundChord,
 } from "../../src/lib/index.ts";
 import { isChordActive } from "../../src/components/ChordBadge.tsx";
@@ -119,6 +122,51 @@ Deno.test("REFACTOR-CBA-01: Section chords and voice leading extraction across s
   const voiceLedResult = extractSectionChords(lines, "voice_led");
   assertExists(voiceLedResult.sectionChordsMap.get(0));
   assertEquals(voiceLedResult.sectionChordsMap.get(0)?.length, 2);
+});
+
+Deno.test("REFACTOR-CBA-02: Whole-song continuous voice leading enrichment and persistence", () => {
+  if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
+  assertEquals(getLastPersistedCbaGripMode(), "root");
+
+  persistCbaGripMode("voice_led");
+  assertEquals(getLastPersistedCbaGripMode(), "voice_led");
+
+  persistCbaGripMode("root");
+  assertEquals(getLastPersistedCbaGripMode(), "root");
+
+  const lines: LeadSheetLine[] = [
+    {
+      type: "chord_lyric",
+      segments: [
+        { chord: enrichChord("C", 0), lyric: "I " },
+        { chord: enrichChord("Am", 0), lyric: "see " },
+      ],
+    },
+    {
+      type: "chord_lyric",
+      segments: [
+        { chord: enrichChord("Dm", 0), lyric: "trees " },
+        { chord: enrichChord("G7", 0), lyric: "of green" },
+      ],
+    },
+  ];
+
+  const voiceLedLines = enrichSongLinesWithVoiceLeading(lines, "voice_led");
+  assertEquals(voiceLedLines.length, 2);
+  const firstChord = voiceLedLines[0].segments?.[0]?.chord;
+  const secondChord = voiceLedLines[0].segments?.[1]?.chord;
+  const thirdChord = voiceLedLines[1].segments?.[0]?.chord;
+
+  assertExists(firstChord);
+  assertExists(secondChord);
+  assertExists(thirdChord);
+
+  if (typeof firstChord !== "string" && typeof secondChord !== "string") {
+    assertExists(secondChord.cba);
+    // C to Am shares common tones C and E
+    assertExists(secondChord.cba?.sharedCoords);
+    assertExists(secondChord.cba?.flowVector);
+  }
 });
 
 // ============================================================================

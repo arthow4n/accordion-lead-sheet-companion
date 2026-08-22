@@ -13,6 +13,51 @@ export interface SectionChordsResult {
 }
 
 /**
+ * Enriches all chord segments across the entire song in strict chronological order
+ * with continuous CBA voice leading transitions and diff highlights.
+ */
+export function enrichSongLinesWithVoiceLeading(
+  lines: LeadSheetLine[],
+  cbaGripMode: "root" | "voice_led" = "root",
+): LeadSheetLine[] {
+  let prevGrip: CbaGrip | undefined = undefined;
+
+  return lines.map((line) => {
+    if (!line.segments || line.segments.length === 0) return line;
+
+    const enrichedSegments = line.segments.map((seg) => {
+      if (!seg.chord) return seg;
+
+      if (typeof seg.chord === "string") {
+        return seg;
+      }
+
+      const sounding = seg.chord.soundingChord || seg.chord.originalChord;
+      if (!sounding) return seg;
+
+      const grip = cbaGripMode === "root"
+        ? computeCbaTransition(generateCanonicalRootGrip(sounding), prevGrip)
+        : optimizeVoiceLeading(sounding, prevGrip);
+
+      prevGrip = grip;
+
+      return {
+        ...seg,
+        chord: {
+          ...seg.chord,
+          cba: grip,
+        },
+      };
+    });
+
+    return {
+      ...line,
+      segments: enrichedSegments,
+    };
+  });
+}
+
+/**
  * Extracts unique chords per section header and for the overall song,
  * computing CBA grips and transition deltas according to the active grip mode.
  */

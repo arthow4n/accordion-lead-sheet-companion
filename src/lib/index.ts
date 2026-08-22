@@ -62,7 +62,7 @@ export {
 } from "./cba/grips.ts";
 
 export { computeCbaTransition, optimizeVoiceLeading } from "./cba/voiceLeading.ts";
-export { extractSectionChords } from "./cba/sectionChords.ts";
+export { enrichSongLinesWithVoiceLeading, extractSectionChords } from "./cba/sectionChords.ts";
 
 // 4. Parser & Tokenizer Engine
 export {
@@ -110,12 +110,15 @@ export {
 export {
   getInitialSong,
   getInitialViewMode,
+  getLastPersistedCbaGripMode,
   getLastPersistedSongId,
   getLastPersistedViewMode,
   getSongFromUrl,
   getViewModeFromUrl,
+  LAST_CBA_GRIP_MODE_STORAGE_KEY,
   LAST_SONG_STORAGE_KEY,
   LAST_VIEW_STORAGE_KEY,
+  persistCbaGripMode,
   persistLastSongId,
   persistLastViewMode,
   updateAppUrl,
