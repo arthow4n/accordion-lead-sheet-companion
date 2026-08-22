@@ -45,17 +45,15 @@ function getViewModeFromUrl(): ViewMode | undefined {
   if (typeof globalThis.location === "undefined") return undefined;
   try {
     const params = new URLSearchParams(globalThis.location.search);
-    const viewParam = params.get("view") ||
-      params.get("tab") ||
-      params.get("mode");
-    if (!viewParam) return undefined;
-    const normalized = viewParam.trim().toLowerCase();
-    if (normalized === "cba" || normalized === "rh" || normalized === "right") return "cba";
-    if (normalized === "stradella" || normalized === "lh" || normalized === "left") {
-      return "stradella";
+    const viewParam = params.get("view");
+    if (
+      viewParam === "stradella" ||
+      viewParam === "cba" ||
+      viewParam === "guitar" ||
+      viewParam === "dual"
+    ) {
+      return viewParam;
     }
-    if (normalized === "guitar" || normalized === "gtr") return "guitar";
-    if (normalized === "dual" || normalized === "both") return "dual";
     return undefined;
   } catch (_err) {
     return undefined;

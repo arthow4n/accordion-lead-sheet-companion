@@ -870,26 +870,26 @@ Deno.test("UX-15: View Mode URL query param & LocalStorage persistence", () => {
   const storedView = globalThis.localStorage.getItem(testKey);
   assertEquals(storedView, "cba");
 
-  // 2. URL search param resolution with alias support
+  // 2. Canonical URL search param resolution
   const testParams = [
-    { param: "view=rh", expected: "cba" },
     { param: "view=cba", expected: "cba" },
-    { param: "view=lh", expected: "stradella" },
     { param: "view=stradella", expected: "stradella" },
-    { param: "view=gtr", expected: "guitar" },
     { param: "view=guitar", expected: "guitar" },
     { param: "view=dual", expected: "dual" },
+    { param: "view=invalid", expected: undefined },
   ];
 
   for (const { param, expected } of testParams) {
     const params = new URLSearchParams(param);
-    const viewParam = params.get("view")?.toLowerCase();
-    let resolved = "stradella";
-    if (viewParam === "cba" || viewParam === "rh" || viewParam === "right") resolved = "cba";
-    else if (viewParam === "stradella" || viewParam === "lh" || viewParam === "left") {
-      resolved = "stradella";
-    } else if (viewParam === "guitar" || viewParam === "gtr") resolved = "guitar";
-    else if (viewParam === "dual" || viewParam === "both") resolved = "dual";
+    const viewParam = params.get("view");
+    const resolved = (
+        viewParam === "stradella" ||
+        viewParam === "cba" ||
+        viewParam === "guitar" ||
+        viewParam === "dual"
+      )
+      ? viewParam
+      : undefined;
     assertEquals(resolved, expected);
   }
 
