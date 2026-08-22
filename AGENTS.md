@@ -121,6 +121,10 @@ When modifying music theory engines (`src/lib/`):
    - Maintain 1 unified, responsive container (`LeadSheetReader.tsx`) with Universal Capo/Key
      stepper on the left and View-Mode-tailored controls (LH Groove, RH 3-Way Grip/Fills, Guitar
      chords) on the right to prevent multi-row toolbar stacking on mobile viewports.
+9. **Stradella Alternating Bass Geometry Standard (`src/lib/stradella/grooves.ts`):**
+   - The alternating 5th bass button is strictly positioned at **Circle of Fifths Column $+1$**
+     clockwise relative to the root bass button, and must be clamped to the physical column
+     boundaries of the active accordion size (48, 72, 96, 120 bass).
 
 ---
 
@@ -134,6 +138,14 @@ When modifying music theory engines (`src/lib/`):
   - Frontend: GitHub Pages via `.github/workflows/deploy.yml` with `denoland/setup-deno@v2`.
   - Backend Scraper: Deno Deploy via `console.deno.com` targeting `api/import.ts` with strict CORS
     allowlist (`https://arthow4n.github.io` and `http://localhost:*`).
+- **Multi-Component Reactive Storage & Events (`src/lib/storage/urlState.ts`):**
+  - Every LocalStorage preference helper must dispatch a matching
+    `globalThis.dispatchEvent(new Event("..."))` on write, and React components listening to
+    preferences must subscribe in `useEffect` and clean up on unmount.
+- **Non-Breaking Preference Migrations:**
+  - When expanding or renaming preference enums in `src/lib/storage/`, always provide
+    backward-compatible fallback normalization in getter functions (e.g. mapping legacy `"root"`
+    $\rightarrow$ `"root_5row"`) to prevent runtime crashes or state corruption for returning users.
 - **PWA Lifecycle & Updates:** All Service Worker update events must hook into
   `src/lib/pwa/updateChecker.ts`, render the floating `<UpdateToast />` above the auto-scroll bar,
   and provide the manual update check trigger in the lead sheet footer.
