@@ -41,16 +41,89 @@ function getSongFromUrl(availableSongs: LeadSheetSong[]): LeadSheetSong | undefi
   }
 }
 
-function updateSongUrl(song: LeadSheetSong) {
+function getViewModeFromUrl(): ViewMode | undefined {
+  if (typeof globalThis.location === "undefined") return undefined;
+  try {
+    const params = new URLSearchParams(globalThis.location.search);
+    const viewParam = params.get("view") ||
+      params.get("tab") ||
+      params.get("mode");
+    if (!viewParam) return undefined;
+    const normalized = viewParam.trim().toLowerCase();
+    if (normalized === "cba" || normalized === "rh" || normalized === "right") return "cba";
+    if (normalized === "stradella" || normalized === "lh" || normalized === "left") {
+      return "stradella";
+    }
+    if (normalized === "guitar" || normalized === "gtr") return "guitar";
+    if (normalized === "dual" || normalized === "both") return "dual";
+    return undefined;
+  } catch (_err) {
+    return undefined;
+  }
+}
+
+const LAST_VIEW_STORAGE_KEY = "accordion_companion_last_view_mode";
+
+function getLastPersistedViewMode(): ViewMode | null {
+  if (typeof globalThis.localStorage === "undefined") return null;
+  try {
+    const val = globalThis.localStorage.getItem(LAST_VIEW_STORAGE_KEY);
+    if (val === "stradella" || val === "cba" || val === "guitar" || val === "dual") {
+      return val as ViewMode;
+    }
+    return null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function persistLastViewMode(viewMode: ViewMode) {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_VIEW_STORAGE_KEY, viewMode);
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
+
+function getInitialViewMode(initialSong?: LeadSheetSong): ViewMode {
+  // 1. Highest Priority: Explicit URL query param (?view=... / ?tab=...)
+  const fromUrl = getViewModeFromUrl();
+  if (fromUrl) {
+    persistLastViewMode(fromUrl);
+    return fromUrl;
+  }
+
+  // 2. Second Priority: Last persisted view mode in localStorage
+  const fromStorage = getLastPersistedViewMode();
+  if (fromStorage) {
+    return fromStorage;
+  }
+
+  // 3. Third Priority: Song default view mode
+  if (initialSong?.viewMode) {
+    return initialSong.viewMode;
+  }
+
+  // 4. Default: Stradella LH
+  return "stradella";
+}
+
+function updateAppUrl(song?: LeadSheetSong, viewMode?: ViewMode) {
   if (typeof globalThis.location === "undefined" || typeof globalThis.history === "undefined") {
     return;
   }
   try {
     const url = new URL(globalThis.location.href);
-    if (song.id) {
+    if (song?.id) {
       url.searchParams.set("song", song.id);
     } else {
       url.searchParams.delete("song");
+    }
+    if (viewMode) {
+      url.searchParams.set("view", viewMode);
+    } else {
+      url.searchParams.delete("view");
     }
     globalThis.history.replaceState(null, "", url.toString());
   } catch (err) {
@@ -106,10 +179,11 @@ function getInitialSong(availableSongs: LeadSheetSong[]): LeadSheetSong {
 
 export default function App(): React.JSX.Element {
   const initialSong = getInitialSong(PRESET_SONGS);
+  const initialViewMode = getInitialViewMode(initialSong);
   const [songs, setSongs] = useState<LeadSheetSong[]>(PRESET_SONGS);
   const [currentSong, setCurrentSong] = useState<LeadSheetSong>(initialSong);
   const [capo, setCapo] = useState<number>(initialSong?.capoFret ?? initialSong?.capo ?? 0);
-  const [viewMode, setViewMode] = useState<ViewMode>(initialSong?.viewMode ?? "stradella");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [fontSizeClass, setFontSizeClass] = useState<string>("text-base");
   const [accordionSize] = useState<AccordionSize>("120-bass");
   const [activeChord, setActiveChord] = useState<ChordDetail | string | null>(null);
@@ -139,12 +213,18 @@ export default function App(): React.JSX.Element {
         const loaded = await initPresets();
         if (loaded && loaded.length > 0) {
           setSongs(loaded);
-          const resolved = getInitialSong(loaded);
-          if (resolved) {
-            setCurrentSong(resolved);
-            setCapo(resolved.capoFret ?? resolved.capo ?? 0);
-            if (resolved.viewMode) setViewMode(resolved.viewMode);
-          }
+          const fromUrl = getSongFromUrl(loaded);
+          const fromStorageId = getLastPersistedSongId();
+          const fromStorage = fromStorageId
+            ? loaded.find((s) => s.id === fromStorageId)
+            : undefined;
+          const target = fromUrl || fromStorage || loaded[0];
+          setCurrentSong(target);
+          setCapo(target.capoFret ?? target.capo ?? 0);
+          const urlView = getViewModeFromUrl();
+          const storageView = getLastPersistedViewMode();
+          const resolvedView = urlView || storageView || target.viewMode || "stradella";
+          setViewMode(resolvedView);
         }
       } catch (err) {
         console.warn("Failed to load IndexedDB songbook:", err);
@@ -153,38 +233,52 @@ export default function App(): React.JSX.Element {
     loadSongbook();
   }, []);
 
-  // Synchronize URL and persistence with active song
+  // Synchronize URL and persistence with active song and view mode
   useEffect(() => {
     if (currentSong?.id) {
-      updateSongUrl(currentSong);
+      updateAppUrl(currentSong, viewMode);
       persistLastSongId(currentSong.id);
+      persistLastViewMode(viewMode);
     }
-  }, [currentSong?.id]);
+  }, [currentSong?.id, viewMode]);
 
   // Handle browser Back/Forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      const target = getSongFromUrl(songs);
-      if (target && target.id !== currentSong.id) {
-        setCurrentSong(target);
-        setCapo(target.capoFret ?? target.capo ?? 0);
-        if (target.viewMode) setViewMode(target.viewMode);
-        persistLastSongId(target.id);
+      const targetSong = getSongFromUrl(songs);
+      const targetView = getViewModeFromUrl();
+      if (targetSong && targetSong.id !== currentSong.id) {
+        setCurrentSong(targetSong);
+        setCapo(targetSong.capoFret ?? targetSong.capo ?? 0);
+        persistLastSongId(targetSong.id);
+      }
+      if (targetView && targetView !== viewMode) {
+        setViewMode(targetView);
+        persistLastViewMode(targetView);
       }
     };
     if (typeof globalThis.addEventListener !== "undefined") {
       globalThis.addEventListener("popstate", handlePopState);
       return () => globalThis.removeEventListener("popstate", handlePopState);
     }
-  }, [songs, currentSong.id]);
+  }, [songs, currentSong.id, viewMode]);
+
+  const handleChangeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    persistLastViewMode(mode);
+    updateAppUrl(currentSong, mode);
+  };
 
   const handleSelectSong = (song: LeadSheetSong) => {
     setCurrentSong(song);
     setCapo(song.capoFret ?? song.capo ?? 0);
-    if (song.viewMode) {
+    if (song.viewMode && !getViewModeFromUrl()) {
       setViewMode(song.viewMode);
+      persistLastViewMode(song.viewMode);
+      updateAppUrl(song, song.viewMode);
+    } else {
+      updateAppUrl(song, viewMode);
     }
-    updateSongUrl(song);
     persistLastSongId(song.id);
     autoScroll.stop();
     autoScroll.scrollToTop();
@@ -244,7 +338,7 @@ export default function App(): React.JSX.Element {
         capo={capo}
         onChangeCapo={setCapo}
         viewMode={viewMode}
-        onChangeViewMode={setViewMode}
+        onChangeViewMode={handleChangeViewMode}
         originalKey={currentSong?.originalKey}
         soundingKey={currentSong?.soundingKey}
         onOpenSongbook={() => setIsSongbookOpen(true)}

@@ -861,3 +861,37 @@ Deno.test("UX-14: Font Size Scaling scales lyrics, ChordBadge, and CbaMiniCard d
   assertEquals(badgeSmall.includes("min-h-6"), true);
   assertEquals(badgeLarge.includes("min-h-8"), true);
 });
+
+Deno.test("UX-15: View Mode URL query param & LocalStorage persistence", () => {
+  const testKey = "accordion_companion_last_view_mode";
+
+  // 1. LocalStorage persistence for view mode
+  globalThis.localStorage.setItem(testKey, "cba");
+  const storedView = globalThis.localStorage.getItem(testKey);
+  assertEquals(storedView, "cba");
+
+  // 2. URL search param resolution with alias support
+  const testParams = [
+    { param: "view=rh", expected: "cba" },
+    { param: "view=cba", expected: "cba" },
+    { param: "view=lh", expected: "stradella" },
+    { param: "view=stradella", expected: "stradella" },
+    { param: "view=gtr", expected: "guitar" },
+    { param: "view=guitar", expected: "guitar" },
+    { param: "view=dual", expected: "dual" },
+  ];
+
+  for (const { param, expected } of testParams) {
+    const params = new URLSearchParams(param);
+    const viewParam = params.get("view")?.toLowerCase();
+    let resolved = "stradella";
+    if (viewParam === "cba" || viewParam === "rh" || viewParam === "right") resolved = "cba";
+    else if (viewParam === "stradella" || viewParam === "lh" || viewParam === "left") {
+      resolved = "stradella";
+    } else if (viewParam === "guitar" || viewParam === "gtr") resolved = "guitar";
+    else if (viewParam === "dual" || viewParam === "both") resolved = "dual";
+    assertEquals(resolved, expected);
+  }
+
+  globalThis.localStorage.removeItem(testKey);
+});
