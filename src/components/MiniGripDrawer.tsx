@@ -1,9 +1,13 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import type { AccordionSize, ChordDetail, StradellaGrooveType, ViewMode } from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
-import { getLastPersistedGroove, getLastPersistedJamFills } from "../lib/storage/urlState.ts";
+import {
+  getLastPersistedGroove,
+  getLastPersistedJamFills,
+  persistJamFills,
+} from "../lib/storage/urlState.ts";
 import { StradellaGrid } from "./StradellaGrid.tsx";
 import { CbaGrid } from "./CbaGrid.tsx";
 
@@ -56,6 +60,13 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
 
   const handleContentClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+  };
+
+  const handleToggleJamFills = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !jamFills;
+    setJamFills(next);
+    persistJamFills(next);
   };
 
   return (
@@ -130,6 +141,26 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
                   <span>🔘</span>
                   <span>Right Hand CBA C-System Treble</span>
                 </div>
+
+                {/* Jam Fills Toggle */}
+                <button
+                  type="button"
+                  onClick={handleToggleJamFills}
+                  className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 shadow-sm ${
+                    jamFills
+                      ? "bg-cyan-950/90 border border-cyan-500/80 text-cyan-300 ring-1 ring-cyan-400/50 shadow-cyan-900/30"
+                      : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                  }`}
+                  title={jamFills
+                    ? "Jam Fills ON (Displaying Pentatonic/Blues scale buttons on CBA grid)"
+                    : "Jam Fills OFF"}
+                  aria-pressed={jamFills}
+                >
+                  <Sparkles
+                    className={`w-3.5 h-3.5 ${jamFills ? "text-cyan-400 fill-current" : ""}`}
+                  />
+                  <span>Fills</span>
+                </button>
               </div>
               <CbaGrid
                 cba={chordDetail.cba ||

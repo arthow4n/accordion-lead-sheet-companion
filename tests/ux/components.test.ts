@@ -930,7 +930,7 @@ Deno.test("UX-16: Unified Context-Aware Dynamic Config Bar across ViewModes", ()
   assertEquals(rhHtml.includes("3-Row"), true);
   assertEquals(rhHtml.includes("5-Row"), true);
   assertEquals(rhHtml.includes("Voice-Led"), true);
-  assertEquals(rhHtml.includes("Fills"), true);
+  assertEquals(rhHtml.includes("Cards"), true);
 
   // 3. Guitar Mode: Renders Original Chords badge
   const gtrHtml = renderToStaticMarkup(
@@ -982,7 +982,7 @@ Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Dra
   assertEquals(cbaHtml.includes("Minor Blues Pentatonic"), true);
   assertEquals(cbaHtml.includes("Fill Tone"), true);
 
-  // 3. MiniGripDrawer renders cleanly with grids
+  // 3. MiniGripDrawer renders cleanly with grids and Jam Fills button in CBA mode
   const drawerHtml = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
       isOpen: true,
@@ -993,7 +993,18 @@ Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Dra
     }),
   );
   assertEquals(drawerHtml.includes("Left Hand Stradella Bass"), true);
-  assertEquals(drawerHtml.includes("Folk Boom-Chick (4/4)"), true);
+
+  const cbaDrawerHtml = renderToStaticMarkup(
+    React.createElement(MiniGripDrawer, {
+      isOpen: true,
+      onClose: () => {},
+      chord: chordDetail,
+      capo: 0,
+      viewMode: "cba",
+    }),
+  );
+  assertEquals(cbaDrawerHtml.includes("Right Hand CBA C-System Treble"), true);
+  assertEquals(cbaDrawerHtml.includes("Fills"), true);
 });
 
 Deno.test("UX-18: UpdateToast renders floating pill and manual update check works in footer", () => {
