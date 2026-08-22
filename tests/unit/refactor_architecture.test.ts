@@ -16,11 +16,13 @@ import {
   getGroovePresetList,
   getInitialSong,
   getInitialViewMode,
+  getIsUpdateAvailable,
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
   getSongFromUrl,
   getViewModeFromUrl,
+  initUpdateChecker,
   isJamFillButton,
   persistCbaGripMode,
   persistGroove,
@@ -343,4 +345,21 @@ Deno.test("REFACTOR-FILLS-01: computeCbaJamFills generates minor/major blues sca
   assertEquals(getLastPersistedJamFills(), false);
   persistJamFills(true);
   assertEquals(getLastPersistedJamFills(), true);
+});
+
+// ============================================================================
+// 8. PWA Service Worker Update Controller
+// ============================================================================
+
+Deno.test("REFACTOR-PWA-01: initUpdateChecker and getIsUpdateAvailable lifecycle handles listeners gracefully", () => {
+  let updateFired = false;
+  const cleanup = initUpdateChecker(() => {
+    updateFired = true;
+  });
+
+  assertEquals(typeof cleanup, "function");
+  assertEquals(typeof getIsUpdateAvailable(), "boolean");
+
+  cleanup();
+  assertEquals(updateFired, false);
 });

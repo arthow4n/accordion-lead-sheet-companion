@@ -23,6 +23,7 @@ import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
 import { CbaMiniCard } from "../../src/components/CbaMiniCard.tsx";
+import { UpdateToast } from "../../src/components/UpdateToast.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
 import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
 
@@ -991,4 +992,31 @@ Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Dra
   );
   assertEquals(drawerHtml.includes("Left Hand Stradella Bass"), true);
   assertEquals(drawerHtml.includes("Folk Boom-Chick (4/4)"), true);
+});
+
+Deno.test("UX-18: UpdateToast renders floating pill and manual update check works in footer", () => {
+  // 1. UpdateToast forceShow renders correctly
+  const toastHtml = renderToStaticMarkup(
+    React.createElement(UpdateToast, {
+      forceShow: true,
+      onUpdate: () => {},
+    }),
+  );
+
+  assertEquals(toastHtml.includes("New Update Ready!"), true);
+  assertEquals(toastHtml.includes("Update 🚀"), true);
+  assertEquals(toastHtml.includes("Reload and Apply Update"), true);
+
+  // 2. LeadSheetReader renders Check for Update button in footer
+  const song = createPresetSongs()[0];
+  const readerHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "stradella",
+      onChangeCapo: () => {},
+    }),
+  );
+
+  assertEquals(readerHtml.includes("Check for Update"), true);
 });

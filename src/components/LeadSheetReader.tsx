@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ExternalLink, Music, RotateCcw, Sparkles, Zap } from "lucide-react";
+import { ExternalLink, Music, RefreshCw, RotateCcw, Sparkles, Zap } from "lucide-react";
 import type {
   AccordionSize,
   ChordDetail,
@@ -20,6 +20,7 @@ import {
   persistJamFills,
 } from "../lib/storage/urlState.ts";
 import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
+import { checkForAppUpdate } from "../lib/pwa/updateChecker.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { isChordActive } from "./ChordBadge.tsx";
@@ -133,6 +134,22 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       if (defaultCapo > 0) {
         setLastNonZeroCapo(defaultCapo);
       }
+    }
+  };
+
+  // Manual update check feedback status
+  const [checkStatus, setCheckStatus] = useState<"idle" | "checking" | "up_to_date" | "ready">(
+    "idle",
+  );
+
+  const handleManualUpdateCheck = async () => {
+    setCheckStatus("checking");
+    const res = await checkForAppUpdate();
+    if (res.hasUpdate) {
+      setCheckStatus("ready");
+    } else {
+      setCheckStatus("up_to_date");
+      setTimeout(() => setCheckStatus("idle"), 3000);
     }
   };
 
@@ -407,21 +424,44 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       </main>
 
       {/* Commit Hash & Build Info Footer */}
-      <footer className="mt-8 pt-4 border-t border-zinc-850 flex items-center justify-between text-[11px] font-mono text-zinc-400 select-none">
+      <footer className="mt-8 pt-4 border-t border-zinc-850 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-400 select-none">
         <span>Accordion Lead Sheet Companion</span>
-        {COMMIT_URL && COMMIT_HASH !== "dev"
-          ? (
-            <a
-              href={COMMIT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-300 underline underline-offset-2 transition-colors cursor-pointer"
-              title={`View commit ${COMMIT_HASH} on GitHub`}
-            >
-              build: {COMMIT_HASH}
-            </a>
-          )
-          : <span>build: {COMMIT_HASH}</span>}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleManualUpdateCheck}
+            className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1 text-[10px]"
+            title="Check for PWA updates immediately"
+          >
+            <RefreshCw
+              className={`w-3 h-3 ${
+                checkStatus === "checking" ? "animate-spin text-blue-400" : ""
+              }`}
+            />
+            <span>
+              {checkStatus === "checking"
+                ? "Checking..."
+                : checkStatus === "up_to_date"
+                ? "✓ Up to date"
+                : checkStatus === "ready"
+                ? "🚀 Update Ready!"
+                : "Check for Update"}
+            </span>
+          </button>
+          {COMMIT_URL && COMMIT_HASH !== "dev"
+            ? (
+              <a
+                href={COMMIT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-zinc-300 underline underline-offset-2 transition-colors cursor-pointer"
+                title={`View commit ${COMMIT_HASH} on GitHub`}
+              >
+                build: {COMMIT_HASH}
+              </a>
+            )
+            : <span>build: {COMMIT_HASH}</span>}
+        </div>
       </footer>
     </div>
   );

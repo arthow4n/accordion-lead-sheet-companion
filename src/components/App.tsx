@@ -18,6 +18,7 @@ import { MiniGripDrawer } from "./MiniGripDrawer.tsx";
 import { SongbookDrawer } from "./SongbookDrawer.tsx";
 import { AutoScrollFooter } from "./AutoScrollFooter.tsx";
 import { ImportModal } from "./ImportModal.tsx";
+import { UpdateToast } from "./UpdateToast.tsx";
 
 import {
   getInitialSong,
@@ -275,6 +276,9 @@ export default function App(): React.JSX.Element {
         onClose={() => setIsImportOpen(false)}
         onSaveSong={handleSaveImportedSong}
       />
+
+      {/* Floating PWA Update Ready Toast */}
+      <UpdateToast />
     </div>
   );
 }

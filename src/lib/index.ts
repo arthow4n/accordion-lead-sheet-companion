@@ -135,3 +135,11 @@ export {
   persistLastViewMode,
   updateAppUrl,
 } from "./storage/urlState.ts";
+
+// 6. PWA Lifecycle & Update Controller
+export {
+  applyAppUpdate,
+  checkForAppUpdate,
+  getIsUpdateAvailable,
+  initUpdateChecker,
+} from "./pwa/updateChecker.ts";
