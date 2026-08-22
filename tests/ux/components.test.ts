@@ -23,6 +23,7 @@ import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
 import { CbaMiniCard } from "../../src/components/CbaMiniCard.tsx";
+import { StradellaMiniCard } from "../../src/components/StradellaMiniCard.tsx";
 import { UpdateToast } from "../../src/components/UpdateToast.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
 import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
@@ -1091,4 +1092,43 @@ Deno.test("UX-20: 3-Way CBA Display Mode (Badges, Line Cards, Micro Grids)", () 
   );
   assertEquals(badgesOnlyHtml.includes('viewBox="0 0 28 18"'), false);
   assertEquals(badgesOnlyHtml.includes("Em"), true);
+});
+
+Deno.test("UX-21: 3-Way Stradella Display Mode (Badges, Line Cards, Micro Grids)", () => {
+  const song = createPresetSongs()[0]; // Bella Ciao
+  const chordDetail = enrichChord("Am", 0);
+
+  // 1. StradellaMiniCard renders Circle of Fifths SVG matrix
+  const miniCardHtml = renderToStaticMarkup(
+    React.createElement(StradellaMiniCard, {
+      chord: chordDetail,
+    }),
+  );
+  assertEquals(miniCardHtml.includes("Am"), true);
+  assertEquals(miniCardHtml.includes("<svg"), true);
+  assertEquals(miniCardHtml.includes("#10b981"), true); // Fundamental bass Emerald
+
+  // 2. Stradella Micro Badges Mode: ChordBadge embeds micro Stradella 3-column SVG
+  const microBadgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      viewMode: "stradella",
+      stradellaDisplayMode: "micro_badges",
+    }),
+  );
+  assertEquals(microBadgeHtml.includes('viewBox="0 0 20 18"'), true);
+
+  // 3. Stradella Line Cards Mode in LeadSheetReader renders controls
+  const readerHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "stradella",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(readerHtml.includes("Groove:"), true);
+  assertEquals(readerHtml.includes("Badges"), true);
+  assertEquals(readerHtml.includes("Cards"), true);
+  assertEquals(readerHtml.includes("Micro"), true);
 });

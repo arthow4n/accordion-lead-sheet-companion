@@ -122,6 +122,7 @@ export {
   getLastPersistedGroove,
   getLastPersistedJamFills,
   getLastPersistedSongId,
+  getLastPersistedStradellaDisplayMode,
   getLastPersistedViewMode,
   getSongFromUrl,
   getViewModeFromUrl,
@@ -130,6 +131,7 @@ export {
   LAST_GROOVE_STORAGE_KEY,
   LAST_JAM_FILLS_STORAGE_KEY,
   LAST_SONG_STORAGE_KEY,
+  LAST_STRADELLA_DISPLAY_MODE_STORAGE_KEY,
   LAST_VIEW_STORAGE_KEY,
   persistCbaDisplayMode,
   persistCbaGripMode,
@@ -137,6 +139,7 @@ export {
   persistJamFills,
   persistLastSongId,
   persistLastViewMode,
+  persistStradellaDisplayMode,
   updateAppUrl,
 } from "./storage/urlState.ts";
 

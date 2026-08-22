@@ -304,6 +304,40 @@ export function persistCbaDisplayMode(
   }
 }
 
+export const LAST_STRADELLA_DISPLAY_MODE_STORAGE_KEY = "stradellaDisplayMode";
+
+/**
+ * Retrieves the last persisted Stradella Display Mode ("badges" | "line_cards" | "micro_badges") from LocalStorage.
+ * Defaults to "badges" (clean) or "line_cards".
+ */
+export function getLastPersistedStradellaDisplayMode(): "badges" | "line_cards" | "micro_badges" {
+  if (typeof globalThis.localStorage === "undefined") return "badges";
+  try {
+    const val = globalThis.localStorage.getItem(LAST_STRADELLA_DISPLAY_MODE_STORAGE_KEY);
+    if (val === "badges" || val === "line_cards" || val === "micro_badges") {
+      return val;
+    }
+    return "badges";
+  } catch (_err) {
+    return "badges";
+  }
+}
+
+/**
+ * Persists the Stradella Display Mode to LocalStorage and notifies listeners.
+ */
+export function persistStradellaDisplayMode(
+  mode: "badges" | "line_cards" | "micro_badges",
+): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_STRADELLA_DISPLAY_MODE_STORAGE_KEY, mode);
+    globalThis.dispatchEvent(new Event("stradellaDisplayModeChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
+
 export const LAST_GROOVE_STORAGE_KEY = "accordion_groove";
 
 /**

@@ -6,6 +6,7 @@ import type {
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
+  StradellaDisplayMode,
   StradellaGrooveType,
   ViewMode,
 } from "../types/index.ts";
@@ -17,10 +18,12 @@ import {
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
+  getLastPersistedStradellaDisplayMode,
   persistCbaDisplayMode,
   persistCbaGripMode,
   persistGroove,
   persistJamFills,
+  persistStradellaDisplayMode,
 } from "../lib/storage/urlState.ts";
 import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
 import { checkForAppUpdate } from "../lib/pwa/updateChecker.ts";
@@ -66,6 +69,11 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     return getLastPersistedCbaDisplayMode();
   });
 
+  // User preference for Stradella display mode (default: "badges")
+  const [stradellaDisplayMode, setStradellaDisplayMode] = useState<StradellaDisplayMode>(() => {
+    return getLastPersistedStradellaDisplayMode();
+  });
+
   // User preference for Stradella groove (default: "boom_chick")
   const [groove, setGroove] = useState<StradellaGrooveType>(() => {
     return getLastPersistedGroove();
@@ -79,21 +87,29 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   // Listen for preference changes from other components
   React.useEffect(() => {
     const handleGrip = () => setCbaGripMode(getLastPersistedCbaGripMode());
-    const handleDisplay = () => setCbaDisplayMode(getLastPersistedCbaDisplayMode());
+    const handleCbaDisplay = () => setCbaDisplayMode(getLastPersistedCbaDisplayMode());
+    const handleStradDisplay = () =>
+      setStradellaDisplayMode(getLastPersistedStradellaDisplayMode());
     const handleGroove = () => setGroove(getLastPersistedGroove());
     const handleJamFills = () => setJamFills(getLastPersistedJamFills());
 
     if (typeof globalThis.addEventListener === "function") {
       globalThis.addEventListener("cbaGripModeChanged", handleGrip);
-      globalThis.addEventListener("cbaDisplayModeChanged", handleDisplay);
+      globalThis.addEventListener("cbaDisplayModeChanged", handleCbaCbaDisplaySafe);
+      globalThis.addEventListener("stradellaDisplayModeChanged", handleStradDisplay);
       globalThis.addEventListener("grooveChanged", handleGroove);
       globalThis.addEventListener("jamFillsChanged", handleJamFills);
       return () => {
         globalThis.removeEventListener("cbaGripModeChanged", handleGrip);
-        globalThis.removeEventListener("cbaDisplayModeChanged", handleDisplay);
+        globalThis.removeEventListener("cbaDisplayModeChanged", handleCbaCbaDisplaySafe);
+        globalThis.removeEventListener("stradellaDisplayModeChanged", handleStradDisplay);
         globalThis.removeEventListener("grooveChanged", handleGroove);
         globalThis.removeEventListener("jamFillsChanged", handleJamFills);
       };
+    }
+
+    function handleCbaCbaDisplaySafe() {
+      handleCbaDisplay();
     }
   }, []);
 
@@ -105,6 +121,11 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   const handleToggleDisplayMode = (mode: CbaDisplayMode) => {
     setCbaDisplayMode(mode);
     persistCbaDisplayMode(mode);
+  };
+
+  const handleToggleStradellaDisplayMode = (mode: StradellaDisplayMode) => {
+    setStradellaDisplayMode(mode);
+    persistStradellaDisplayMode(mode);
   };
 
   const handleSelectGroove = (newGroove: StradellaGrooveType) => {
@@ -296,23 +317,71 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
 
             {/* Context-Aware Right Controls (Dynamic by View Mode) */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* 1. Stradella LH View Mode: Groove Selector */}
+              {/* 1. Stradella LH View Mode: Groove Selector + 3-Way Display Mode */}
               {viewMode === "stradella" && (
-                <div className="flex items-center bg-zinc-950 rounded-lg border border-zinc-800 px-2 py-0.5 text-xs font-mono">
-                  <Music className="w-3.5 h-3.5 text-blue-400 mr-1.5 shrink-0" />
-                  <span className="text-zinc-400 font-bold mr-1">Groove:</span>
-                  <select
-                    value={groove}
-                    onChange={(e) => handleSelectGroove(e.target.value as StradellaGrooveType)}
-                    className="bg-transparent text-xs font-bold text-blue-300 hover:text-white cursor-pointer focus:outline-none py-1"
-                    aria-label="Select Stradella Accompaniment Groove"
-                  >
-                    {STRADELLA_GROOVES.map((g) => (
-                      <option key={g.id} value={g.id} className="bg-zinc-900 text-zinc-100">
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center bg-zinc-950 rounded-lg border border-zinc-800 px-2 py-0.5 text-xs font-mono">
+                    <Music className="w-3.5 h-3.5 text-blue-400 mr-1.5 shrink-0" />
+                    <span className="text-zinc-400 font-bold mr-1">Groove:</span>
+                    <select
+                      value={groove}
+                      onChange={(e) => handleSelectGroove(e.target.value as StradellaGrooveType)}
+                      className="bg-transparent text-xs font-bold text-blue-300 hover:text-white cursor-pointer focus:outline-none py-1"
+                      aria-label="Select Stradella Accompaniment Groove"
+                    >
+                      {STRADELLA_GROOVES.map((g) => (
+                        <option key={g.id} value={g.id} className="bg-zinc-900 text-zinc-100">
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Display Mode 3-Way Segmented Control: Badges, Line Cards, Micro Grids */}
+                  <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-0.5 text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStradellaDisplayMode("badges")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        stradellaDisplayMode === "badges"
+                          ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="Badges Only (Minimal, inline text badges only)"
+                      aria-pressed={stradellaDisplayMode === "badges"}
+                    >
+                      <span>🏷️</span>
+                      <span>Badges</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStradellaDisplayMode("line_cards")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        stradellaDisplayMode === "line_cards"
+                          ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="Line Cards (Chronological Stradella MiniCards strip above each lyric line)"
+                      aria-pressed={stradellaDisplayMode === "line_cards"}
+                    >
+                      <span>📋</span>
+                      <span>Cards</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStradellaDisplayMode("micro_badges")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2 sm:px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        stradellaDisplayMode === "micro_badges"
+                          ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="Micro Grids (3-column Stradella button matrix embedded inside badges)"
+                      aria-pressed={stradellaDisplayMode === "micro_badges"}
+                    >
+                      <span>🔲</span>
+                      <span>Micro</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -507,6 +576,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             line={line}
             viewMode={viewMode}
             cbaDisplayMode={cbaDisplayMode}
+            stradellaDisplayMode={stradellaDisplayMode}
             onSelectChord={onSelectChord}
             selectedChord={selectedChord}
             fontSizeClass={fontSizeClass}

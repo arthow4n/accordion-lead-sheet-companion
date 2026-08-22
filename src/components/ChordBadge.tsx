@@ -1,5 +1,10 @@
 import React from "react";
-import type { CbaDisplayMode, ChordDetail, ViewMode } from "../types/index.ts";
+import type {
+  CbaDisplayMode,
+  ChordDetail,
+  StradellaDisplayMode,
+  ViewMode,
+} from "../types/index.ts";
 
 import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
 
@@ -7,6 +12,7 @@ export interface ChordBadgeProps {
   chord?: string | ChordDetail;
   viewMode?: ViewMode;
   cbaDisplayMode?: CbaDisplayMode;
+  stradellaDisplayMode?: StradellaDisplayMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   fontSizeClass?: string;
@@ -65,6 +71,14 @@ const CBA_MICRO_ROWS = [
   { rowNum: 1, y: 16, xOffset: 0 },
 ];
 
+const STRADELLA_MICRO_ROWS = [
+  { rowKey: "counter", y: 2, xOffset: 0 },
+  { rowKey: "bass", y: 5.5, xOffset: 1 },
+  { rowKey: "major", y: 9, xOffset: 2 },
+  { rowKey: "minor", y: 12.5, xOffset: 3 },
+  { rowKey: "seventh", y: 16, xOffset: 4 },
+];
+
 /**
  * Checks whether a chord candidate is active / selected.
  */
@@ -101,6 +115,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   chord,
   viewMode = "stradella",
   cbaDisplayMode = "line_cards",
+  stradellaDisplayMode = "badges",
   onSelectChord,
   active = false,
   fontSizeClass = "text-base",
@@ -222,6 +237,10 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     (chord.cba?.enteringCoords || []).map((c) => `${c.row}-${c.column}`),
   );
 
+  // Micro Grid computation when stradellaDisplayMode is "micro_badges"
+  const stradTargetCol = chord.stradella?.rootButton?.column ?? chord.stradella?.columnOffset ?? 0;
+  const stradDisplayCols = [stradTargetCol - 1, stradTargetCol, stradTargetCol + 1];
+
   return (
     <button
       type="button"
@@ -257,6 +276,96 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               </span>
             )
             : <span className="font-bold text-sky-400">{soundingChordName}</span>}
+
+          {/* Micro 3-Column Stradella SVG Grid when in micro_badges mode */}
+          {stradellaDisplayMode === "micro_badges" && (
+            <svg
+              viewBox="0 0 20 18"
+              className="w-[20px] h-[15px] overflow-visible shrink-0 ml-0.5"
+              aria-hidden="true"
+            >
+              {STRADELLA_MICRO_ROWS.map((rowInfo) =>
+                stradDisplayCols.map((col, cIdx) => {
+                  let isStradActive = false;
+                  let isStradCounter = false;
+                  let isStradBass = false;
+
+                  if (rowInfo.rowKey === "counter") {
+                    if (
+                      chord.stradella?.rootButton
+                        ? chord.stradella.rootButton.row === "counter-bass" &&
+                          chord.stradella.rootButton.column === col
+                        : isCounterBass && col === stradTargetCol
+                    ) {
+                      isStradActive = true;
+                      isStradCounter = true;
+                    }
+                  } else if (rowInfo.rowKey === "bass") {
+                    if (
+                      chord.stradella?.rootButton
+                        ? chord.stradella.rootButton.row === "bass" &&
+                          chord.stradella.rootButton.column === col
+                        : !isCounterBass && col === stradTargetCol
+                    ) {
+                      isStradActive = true;
+                      isStradBass = true;
+                    }
+                  } else if (rowInfo.rowKey === "major") {
+                    if (
+                      chord.stradella?.chordButton &&
+                      chord.stradella.chordButton.row === "major" &&
+                      chord.stradella.chordButton.column === col
+                    ) {
+                      isStradActive = true;
+                    }
+                  } else if (rowInfo.rowKey === "minor") {
+                    if (
+                      chord.stradella?.chordButton &&
+                      chord.stradella.chordButton.row === "minor" &&
+                      chord.stradella.chordButton.column === col
+                    ) {
+                      isStradActive = true;
+                    }
+                  } else if (rowInfo.rowKey === "seventh") {
+                    if (
+                      chord.stradella?.chordButton &&
+                      chord.stradella.chordButton.row === "seventh" &&
+                      chord.stradella.chordButton.column === col
+                    ) {
+                      isStradActive = true;
+                    }
+                  }
+
+                  const x = 2 + rowInfo.xOffset + cIdx * 5.5;
+                  const y = rowInfo.y;
+
+                  return (
+                    <circle
+                      key={`strad-micro-${rowInfo.rowKey}-${col}`}
+                      cx={x}
+                      cy={y}
+                      r={isStradActive ? 1.5 : 0.6}
+                      fill={isStradCounter
+                        ? "#fde047"
+                        : isStradBass
+                        ? "#10b981"
+                        : isStradActive
+                        ? "#38bdf8"
+                        : "#27272a"}
+                      stroke={isStradCounter
+                        ? "#eab308"
+                        : isStradBass
+                        ? "#34d399"
+                        : isStradActive
+                        ? "#0284c7"
+                        : "none"}
+                      strokeWidth={isStradActive ? 0.4 : 0}
+                    />
+                  );
+                })
+              )}
+            </svg>
+          )}
         </span>
       )}
 

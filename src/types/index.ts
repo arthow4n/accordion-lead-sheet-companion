@@ -99,6 +99,7 @@ export interface CbaGrip {
 
 export type CbaGripMode = "root_3row" | "root_5row" | "voice_led" | "root";
 export type CbaDisplayMode = "badges" | "line_cards" | "micro_badges";
+export type StradellaDisplayMode = "badges" | "line_cards" | "micro_badges";
 
 export interface ChordDetail {
   originalChord: ParsedChord;

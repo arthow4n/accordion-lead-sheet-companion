@@ -4,16 +4,19 @@ import type {
   ChordDetail,
   ChordLyricSegment,
   LeadSheetLine,
+  StradellaDisplayMode,
   ViewMode,
 } from "../types/index.ts";
 import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
+import { StradellaMiniCard } from "./StradellaMiniCard.tsx";
 import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
 
 export interface LineRendererProps {
   line: LeadSheetLine | ChordLyricSegment[];
   viewMode?: ViewMode;
   cbaDisplayMode?: CbaDisplayMode;
+  stradellaDisplayMode?: StradellaDisplayMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   fontSizeClass?: string;
@@ -93,6 +96,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   line,
   viewMode = "stradella",
   cbaDisplayMode = "line_cards",
+  stradellaDisplayMode = "badges",
   onSelectChord,
   selectedChord,
   fontSizeClass = "text-base",
@@ -134,6 +138,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={segment.chord}
                 viewMode={viewMode}
                 cbaDisplayMode={cbaDisplayMode}
+                stradellaDisplayMode={stradellaDisplayMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -144,7 +149,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       </div>
     );
 
-    // Only wrap when in CBA line_cards mode with valid chords
+    // Line-level mini-cards for CBA
     if (viewMode === "cba" && cbaDisplayMode === "line_cards" && lineChords.length > 0) {
       return (
         <div className="flex flex-col gap-1.5 my-1 max-w-full">
@@ -152,6 +157,29 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
             {lineChords.map((chord, cIdx) => (
               <CbaMiniCard
                 key={`measure-line-cba-${cIdx}`}
+                chord={chord}
+                onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
+                active={isChordActive(chord, selectedChord)}
+              />
+            ))}
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    // Line-level mini-cards for Stradella LH
+    if (
+      viewMode === "stradella" && stradellaDisplayMode === "line_cards" &&
+      lineChords.length > 0
+    ) {
+      return (
+        <div className="flex flex-col gap-1.5 my-1 max-w-full">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
+            {lineChords.map((chord, cIdx) => (
+              <StradellaMiniCard
+                key={`measure-line-strad-${cIdx}`}
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
@@ -188,6 +216,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={segment.chord}
                 viewMode={viewMode}
                 cbaDisplayMode={cbaDisplayMode}
+                stradellaDisplayMode={stradellaDisplayMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -203,7 +232,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       </div>
     );
 
-    // Only wrap when in CBA line_cards mode with valid chords
+    // Line-level mini-cards for CBA
     if (viewMode === "cba" && cbaDisplayMode === "line_cards" && lineChords.length > 0) {
       return (
         <div className="flex flex-col gap-1 my-1 max-w-full">
@@ -211,6 +240,29 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
             {lineChords.map((chord, cIdx) => (
               <CbaMiniCard
                 key={`line-cba-${cIdx}`}
+                chord={chord}
+                onSelectChord={onSelectChord}
+                fontSizeClass={fontSizeClass}
+                active={isChordActive(chord, selectedChord)}
+              />
+            ))}
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    // Line-level mini-cards for Stradella LH
+    if (
+      viewMode === "stradella" && stradellaDisplayMode === "line_cards" &&
+      lineChords.length > 0
+    ) {
+      return (
+        <div className="flex flex-col gap-1 my-1 max-w-full">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
+            {lineChords.map((chord, cIdx) => (
+              <StradellaMiniCard
+                key={`line-strad-${cIdx}`}
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
