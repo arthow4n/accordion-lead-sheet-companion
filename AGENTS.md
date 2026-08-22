@@ -104,6 +104,23 @@ When modifying music theory engines (`src/lib/`):
      accidental page scrolling.
    - Screen Wake Lock must listen to `document.visibilitychange` and automatically re-acquire the
      lock when returning to the app.
+6. **Subagent Mathematical Validation:**
+   - Prior to implementing or refactoring core music theory or keyboard geometry engines
+     (`src/lib/`), agents should formulate the mathematical model and invoke a specialized domain
+     subagent to review the logic across all 12 chromatic keys and chord qualities.
+7. **Unified Semantic Color Hierarchy (CBA Grids & MiniCards):**
+   - 🌟 **Amber-Gold (`#fde047` / `bg-amber-300`)**: Root Note Beacon (Finger 1).
+   - 🔷 **Sky Blue (`#38bdf8` / `bg-sky-400`)**: Entering New Voice in transition.
+   - 🟢 **Emerald Green (`#10b981` / `bg-emerald-400`)**: Kept / Common Voice held stationary.
+   - 🎨 **Cyan-Teal (`bg-cyan-950 text-cyan-200`)**: Jam Fill scale tones (distinct from chord
+     tones).
+   - **MiniCards vs. Drawer Rule:** MiniCards must remain strictly noise-free (no auxiliary
+     duplicate shadows), while the Drawer preserves dashed auxiliary rings for pedagogical
+     reference.
+8. **Context-Aware Dynamic Config Bar (Zero Mobile Bloat):**
+   - Maintain 1 unified, responsive container (`LeadSheetReader.tsx`) with Universal Capo/Key
+     stepper on the left and View-Mode-tailored controls (LH Groove, RH 3-Way Grip/Fills, Guitar
+     chords) on the right to prevent multi-row toolbar stacking on mobile viewports.
 
 ---
 
@@ -117,6 +134,9 @@ When modifying music theory engines (`src/lib/`):
   - Frontend: GitHub Pages via `.github/workflows/deploy.yml` with `denoland/setup-deno@v2`.
   - Backend Scraper: Deno Deploy via `console.deno.com` targeting `api/import.ts` with strict CORS
     allowlist (`https://arthow4n.github.io` and `http://localhost:*`).
+- **PWA Lifecycle & Updates:** All Service Worker update events must hook into
+  `src/lib/pwa/updateChecker.ts`, render the floating `<UpdateToast />` above the auto-scroll bar,
+  and provide the manual update check trigger in the lead sheet footer.
 
 ---
 
