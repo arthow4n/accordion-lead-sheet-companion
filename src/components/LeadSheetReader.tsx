@@ -1,16 +1,25 @@
 import React, { useMemo, useState } from "react";
-import { ExternalLink, RotateCcw, Zap } from "lucide-react";
+import { ExternalLink, Music, RotateCcw, Sparkles, Zap } from "lucide-react";
 import type {
   AccordionSize,
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
+  StradellaGrooveType,
   ViewMode,
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
-import { getLastPersistedCbaGripMode, persistCbaGripMode } from "../lib/storage/urlState.ts";
+import {
+  getLastPersistedCbaGripMode,
+  getLastPersistedGroove,
+  getLastPersistedJamFills,
+  persistCbaGripMode,
+  persistGroove,
+  persistJamFills,
+} from "../lib/storage/urlState.ts";
+import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { isChordActive } from "./ChordBadge.tsx";
@@ -43,25 +52,53 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     defaultCapo > 0 ? defaultCapo : (capo > 0 ? capo : 2),
   );
 
-  // User preference for CBA grip mode (default: "root" for 100% muscle-memory consistency)
+  // User preference for CBA grip mode (default: "root")
   const [cbaGripMode, setCbaGripMode] = useState<"root" | "voice_led">(() => {
     return getLastPersistedCbaGripMode();
   });
 
-  // Listen for preference changes
+  // User preference for Stradella groove (default: "boom_chick")
+  const [groove, setGroove] = useState<StradellaGrooveType>(() => {
+    return getLastPersistedGroove();
+  });
+
+  // User preference for Jam Fills scale overlay (default: false)
+  const [jamFills, setJamFills] = useState<boolean>(() => {
+    return getLastPersistedJamFills();
+  });
+
+  // Listen for preference changes from other components
   React.useEffect(() => {
-    const handler = () => {
-      setCbaGripMode(getLastPersistedCbaGripMode());
-    };
+    const handleGrip = () => setCbaGripMode(getLastPersistedCbaGripMode());
+    const handleGroove = () => setGroove(getLastPersistedGroove());
+    const handleJamFills = () => setJamFills(getLastPersistedJamFills());
+
     if (typeof globalThis.addEventListener === "function") {
-      globalThis.addEventListener("cbaGripModeChanged", handler);
-      return () => globalThis.removeEventListener("cbaGripModeChanged", handler);
+      globalThis.addEventListener("cbaGripModeChanged", handleGrip);
+      globalThis.addEventListener("grooveChanged", handleGroove);
+      globalThis.addEventListener("jamFillsChanged", handleJamFills);
+      return () => {
+        globalThis.removeEventListener("cbaGripModeChanged", handleGrip);
+        globalThis.removeEventListener("grooveChanged", handleGroove);
+        globalThis.removeEventListener("jamFillsChanged", handleJamFills);
+      };
     }
   }, []);
 
   const handleToggleGripMode = (mode: "root" | "voice_led") => {
     setCbaGripMode(mode);
     persistCbaGripMode(mode);
+  };
+
+  const handleSelectGroove = (newGroove: StradellaGrooveType) => {
+    setGroove(newGroove);
+    persistGroove(newGroove);
+  };
+
+  const handleToggleJamFills = () => {
+    const next = !jamFills;
+    setJamFills(next);
+    persistJamFills(next);
   };
 
   // Calculate sounding key from written key and current capo
@@ -137,10 +174,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
           )}
         </div>
 
-        {/* Dedicated Capo & Key Controller Bar */}
+        {/* Unified Context-Aware Dynamic Config Bar (Approach 1) */}
         {onChangeCapo && (
           <div className="mt-3 p-2 sm:p-2.5 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-inner">
-            {/* Left: Capo Stepper & Toggles */}
+            {/* Universal Left Section: Capo Stepper & Toggles */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {/* Stepper with Large Touch Targets */}
               <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800">
@@ -198,12 +235,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset ({defaultCapo})</span>
               </button>
-            </div>
 
-            {/* Right: Key & Transposition Status */}
-            <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-400">
+              {/* Key Status */}
               {song.originalKey && (
-                <span className="px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300">
+                <span className="px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-300">
                   Key: <span className="font-bold text-zinc-100">{song.originalKey}</span>
                   {capo > 0 && soundingKey && soundingKey !== song.originalKey && (
                     <span className="text-blue-400 font-bold ml-1.5">➔ {soundingKey}</span>
@@ -211,47 +246,129 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Context-Aware Right Section (Morphed by active ViewMode) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* 1. Stradella LH View Mode: Strategy C Groove Selector */}
+              {viewMode === "stradella" && (
+                <div className="flex items-center bg-zinc-950 rounded-lg p-1 border border-zinc-800 gap-1 text-xs font-mono">
+                  <div className="flex items-center gap-1 px-1.5 text-zinc-400 text-[11px]">
+                    <Music className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="hidden sm:inline font-semibold">Groove:</span>
+                  </div>
+                  <select
+                    value={groove}
+                    onChange={(e) => handleSelectGroove(e.target.value as StradellaGrooveType)}
+                    className="bg-zinc-900 border border-zinc-700/80 rounded-md px-2 py-1 text-xs font-bold text-blue-300 hover:text-white cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    aria-label="Select Stradella Accompaniment Groove"
+                  >
+                    {STRADELLA_GROOVES.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} ({g.timeSignature})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* 2. CBA RH View Mode: Grip Mode + Strategy D Jam Fills Toggle */}
+              {viewMode === "cba" && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Grip Mode Toggle */}
+                  <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-0.5 text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleGripMode("root")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        cbaGripMode === "root"
+                          ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="Canonical Root Shapes (100% Consistent 1-2-4 Triangle Muscle Memory)"
+                      aria-pressed={cbaGripMode === "root"}
+                    >
+                      <span>🪗</span>
+                      <span>Root</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleGripMode("voice_led")}
+                      className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1 ${
+                        cbaGripMode === "voice_led"
+                          ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                      }`}
+                      title="Smooth Voice Leading (Whole-Song Continuous Flow with Minimal Hand Shifts)"
+                      aria-pressed={cbaGripMode === "voice_led"}
+                    >
+                      <span>🌊</span>
+                      <span>Voice-Led</span>
+                    </button>
+                  </div>
+
+                  {/* Jam Fills Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleJamFills}
+                    className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 shadow-sm ${
+                      jamFills
+                        ? "bg-sky-950/90 border border-sky-500/80 text-sky-300 ring-1 ring-sky-400/50 shadow-sky-900/30"
+                        : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                    }`}
+                    title={jamFills
+                      ? "Jam Fills ON (Displaying Pentatonic/Blues scale buttons on CBA grid)"
+                      : "Jam Fills OFF"}
+                    aria-pressed={jamFills}
+                  >
+                    <Sparkles
+                      className={`w-3.5 h-3.5 ${jamFills ? "text-sky-400 fill-current" : ""}`}
+                    />
+                    <span>Fills</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 3. Guitar View Mode: Original Chords Indicator */}
+              {viewMode === "guitar" && (
+                <div className="px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-amber-400 font-semibold flex items-center gap-1">
+                  <span>🎸</span>
+                  <span>Original Chords</span>
+                </div>
+              )}
+
+              {/* 4. Dual View Mode: Compact Combined Controls */}
+              {viewMode === "dual" && (
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={groove}
+                    onChange={(e) => handleSelectGroove(e.target.value as StradellaGrooveType)}
+                    className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs font-bold text-blue-300 hover:text-white cursor-pointer"
+                    aria-label="Select Stradella Groove"
+                  >
+                    {STRADELLA_GROOVES.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        🥁 {g.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleGripMode(cbaGripMode === "root" ? "voice_led" : "root")}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                      cbaGripMode === "voice_led"
+                        ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300"
+                        : "bg-zinc-950 border border-zinc-800 text-zinc-400"
+                    }`}
+                    title="Toggle CBA Voice Leading"
+                  >
+                    {cbaGripMode === "voice_led" ? "🌊 Voice-Led" : "🪗 Root"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
-
-        {/* Dedicated RH CBA Voice Leading / Root Grip Mode Bar (Own Row for Mobile Responsiveness) */}
-        <div className="mt-2.5 p-2 sm:p-2.5 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-inner">
-          <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-300">
-            <span>🔘</span>
-            <span className="font-bold text-zinc-200">RH CBA Grip Mode:</span>
-          </div>
-
-          <div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-1 text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => handleToggleGripMode("root")}
-              className={`min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 ${
-                cbaGripMode === "root"
-                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-              title="Canonical Root Shapes (100% Consistent 1-2-4 Triangle Muscle Memory)"
-              aria-pressed={cbaGripMode === "root"}
-            >
-              <span>🪗</span>
-              <span>Root Shapes</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleGripMode("voice_led")}
-              className={`min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 ${
-                cbaGripMode === "voice_led"
-                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-              title="Smooth Voice Leading (Whole-Song Continuous Flow with Minimal Hand Shifts)"
-              aria-pressed={cbaGripMode === "voice_led"}
-            >
-              <span>🌊</span>
-              <span>Smooth Voice Leading</span>
-            </button>
-          </div>
-        </div>
       </header>
 
       {/* Fallback 5-Row Grips preview if song has no section headers */}

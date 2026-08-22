@@ -1,24 +1,34 @@
 import React from "react";
-import type { CbaButtonCoord, CbaGrip, ParsedChord } from "../types/index.ts";
+import type { CbaButtonCoord, CbaGrip, CbaJamFillScale, ParsedChord } from "../types/index.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
 export interface CbaGridProps {
   cba?: CbaGrip;
   soundingChord?: ParsedChord;
+  jamFillsEnabled?: boolean;
+  jamFillsScale?: CbaJamFillScale | null;
   className?: string;
 }
 
 export const CbaGrid: React.FC<CbaGridProps> = ({
   cba,
   soundingChord,
+  jamFillsEnabled = false,
+  jamFillsScale,
   className = "",
 }) => {
   const chordName = cba?.chordName || cba?.chord || soundingChord?.raw || "Chord";
   const grip = cba || (soundingChord ? generateCbaGrip(soundingChord) : null);
   const notes = grip?.notes || [];
   const activeButtons: CbaButtonCoord[] = grip?.buttonCoords || grip?.buttons || [];
+
+  // Compute Jam Fill scale if enabled
+  const activeJamFills = jamFillsEnabled
+    ? (jamFillsScale !== undefined ? jamFillsScale : computeCbaJamFills(soundingChord))
+    : null;
 
   // Determine column range to display around active buttons (5 to 6 columns)
   const cols = activeButtons.map((b) => b.column);
@@ -53,13 +63,22 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
       className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}
     >
       {/* Chord and Pitches in its own dedicated line */}
-      <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-800/80 font-mono">
-        <span className="text-sm sm:text-base font-bold text-emerald-400">
-          {chordName}
-        </span>
-        {notes.length > 0 && (
-          <span className="text-xs text-zinc-300 font-medium">
-            [{notes.join(" - ")}]
+      <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 mb-2 border-b border-zinc-800/80 font-mono">
+        <div className="flex items-center gap-2">
+          <span className="text-sm sm:text-base font-bold text-emerald-400">
+            {chordName}
+          </span>
+          {notes.length > 0 && (
+            <span className="text-xs text-zinc-300 font-medium">
+              [{notes.join(" - ")}]
+            </span>
+          )}
+        </div>
+
+        {/* Strategy D: Jam Fill Scale Header Tag */}
+        {activeJamFills && (
+          <span className="px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/60 text-sky-300 text-[10px] sm:text-xs font-semibold">
+            🎨 {activeJamFills.scaleName}: [{activeJamFills.notes.join(", ")}]
           </span>
         )}
       </div>
@@ -103,22 +122,46 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                       ),
                   );
 
+                // Check for Jam Fill scale tone
+                const isFillNote = Boolean(
+                  !isPrimary &&
+                    !isAuxDuplicate &&
+                    activeJamFills &&
+                    activeJamFills.pitchClasses.includes(pc),
+                );
+
+                let btnClass =
+                  "bg-zinc-900/90 border border-zinc-800 text-zinc-500 hover:border-zinc-700";
+
+                if (isRoot) {
+                  btnClass =
+                    "bg-amber-300 border-2 border-amber-100 text-zinc-950 font-black shadow-[0_0_12px_rgba(251,191,36,0.85)] ring-2 ring-amber-400/80 scale-110";
+                } else if (isPrimary) {
+                  btnClass =
+                    "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105";
+                } else if (isAuxDuplicate) {
+                  btnClass =
+                    "bg-emerald-950/90 border border-emerald-600/80 text-emerald-300 font-bold shadow-sm";
+                } else if (isFillNote) {
+                  btnClass =
+                    "bg-sky-950/90 border-2 border-sky-400 text-sky-200 font-bold shadow-[0_0_8px_rgba(56,189,248,0.6)] ring-1 ring-sky-400/40";
+                } else if (isGhost) {
+                  btnClass =
+                    "bg-indigo-500/15 border border-dashed border-indigo-400/50 text-indigo-300/70 shadow-xs scale-95";
+                }
+
                 return (
                   <div
                     key={`cba-btn-${rowInfo.rowNumber}-${col}`}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-mono transition-all select-none ${
-                      isRoot
-                        ? "bg-amber-300 border-2 border-amber-100 text-zinc-950 font-black shadow-[0_0_12px_rgba(251,191,36,0.85)] ring-2 ring-amber-400/80 scale-110"
-                        : isPrimary
-                        ? "bg-emerald-400 border-2 border-emerald-200 text-zinc-950 font-black shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/60 scale-105"
-                        : isAuxDuplicate
-                        ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-300 font-bold shadow-sm"
-                        : isGhost
-                        ? "bg-indigo-500/15 border border-dashed border-indigo-400/50 text-indigo-300/70 shadow-xs scale-95"
-                        : "bg-zinc-900/90 border border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                    }`}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-mono transition-all select-none ${btnClass}`}
                     title={`Row ${rowInfo.rowNumber}, Col ${col}: ${noteName}${
-                      isRoot ? " (Root)" : isGhost ? " (Previous Chord Shadow)" : ""
+                      isRoot
+                        ? " (Root)"
+                        : isFillNote
+                        ? ` (Fill Tone - ${activeJamFills?.scaleName})`
+                        : isGhost
+                        ? " (Previous Chord Shadow)"
+                        : ""
                     }`}
                   >
                     {noteName}

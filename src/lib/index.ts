@@ -43,6 +43,11 @@ export {
 export { solveSlashChord } from "./stradella/slash.ts";
 export { COMPOUND_QUALITIES, COMPOUND_RULES, solveCompoundChord } from "./stradella/compound.ts";
 export { solveStradellaChord } from "./stradella/solver.ts";
+export {
+  getGroovePresetList,
+  solveStradellaGroove,
+  STRADELLA_GROOVES,
+} from "./stradella/grooves.ts";
 
 // 3. CBA C-System Treble Engine
 export {
@@ -63,6 +68,7 @@ export {
 
 export { computeCbaTransition, optimizeVoiceLeading } from "./cba/voiceLeading.ts";
 export { enrichSongLinesWithVoiceLeading, extractSectionChords } from "./cba/sectionChords.ts";
+export { computeCbaJamFills, isJamFillButton } from "./cba/jamFills.ts";
 
 // 4. Parser & Tokenizer Engine
 export {
@@ -111,14 +117,20 @@ export {
   getInitialSong,
   getInitialViewMode,
   getLastPersistedCbaGripMode,
+  getLastPersistedGroove,
+  getLastPersistedJamFills,
   getLastPersistedSongId,
   getLastPersistedViewMode,
   getSongFromUrl,
   getViewModeFromUrl,
   LAST_CBA_GRIP_MODE_STORAGE_KEY,
+  LAST_GROOVE_STORAGE_KEY,
+  LAST_JAM_FILLS_STORAGE_KEY,
   LAST_SONG_STORAGE_KEY,
   LAST_VIEW_STORAGE_KEY,
   persistCbaGripMode,
+  persistGroove,
+  persistJamFills,
   persistLastSongId,
   persistLastViewMode,
   updateAppUrl,

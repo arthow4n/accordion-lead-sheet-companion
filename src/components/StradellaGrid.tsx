@@ -1,15 +1,24 @@
 import React, { useLayoutEffect, useRef } from "react";
-import type { AccordionSize, ParsedChord, StradellaVoicing } from "../types/index.ts";
+import type {
+  AccordionSize,
+  ParsedChord,
+  StradellaGroovePattern,
+  StradellaGrooveType,
+  StradellaVoicing,
+} from "../types/index.ts";
 import {
   getBassNoteForColumn,
   getCounterBassNoteForColumn,
   isColumnOutOfRange,
 } from "../lib/stradella/layout.ts";
+import { solveStradellaGroove } from "../lib/stradella/grooves.ts";
 
 export interface StradellaGridProps {
   stradella?: StradellaVoicing;
   soundingChord?: ParsedChord;
   accordionSize?: AccordionSize;
+  grooveType?: StradellaGrooveType;
+  groovePattern?: StradellaGroovePattern | null;
   className?: string;
 }
 
@@ -17,6 +26,8 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   stradella,
   soundingChord,
   accordionSize = "120-bass",
+  grooveType = "boom_chick",
+  groovePattern,
   className = "",
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +35,11 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
 
   const targetCol = stradella?.columnOffset ?? 0;
   const isOutOfRange = stradella?.isOutOfRange ?? isColumnOutOfRange(targetCol, accordionSize);
+
+  // Compute active groove pattern if not provided
+  const activeGroove = groovePattern !== undefined
+    ? groovePattern
+    : solveStradellaGroove(soundingChord, stradella, grooveType, accordionSize);
 
   // Active buttons tracking
   const activeCols: number[] = [];
@@ -55,12 +71,6 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   const isCounterBassActive = Boolean(stradella?.isCounterBass || activeBassLabel.endsWith("_"));
 
   // 6 Stradella rows in authentic physical diagonal stagger (top-left to bottom-right)
-  // Row 0: Counter-Bass (offset 0px)
-  // Row 1: Fundamental Bass (offset +6px)
-  // Row 2: Major Triad (offset +12px)
-  // Row 3: Minor Triad (offset +18px)
-  // Row 4: 7th (offset +24px)
-  // Row 5: Diminished (offset +30px)
   const rows = [
     { key: "counter", rowIndex: 0, xOffset: 0 },
     { key: "bass", rowIndex: 1, xOffset: 6 },
@@ -98,6 +108,35 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
         <div className="mb-2 px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-600/70 text-amber-300 text-xs font-semibold flex items-center justify-between">
           <span>⚠️ Chord column {targetCol} is out of {accordionSize} standard range</span>
           <span className="text-[10px] text-amber-400">Transposition recommended</span>
+        </div>
+      )}
+
+      {/* Strategy C: Visual Rhythmic Pulse Ribbon */}
+      {activeGroove && activeGroove.steps.length > 0 && (
+        <div className="mb-2 p-1.5 bg-zinc-950/90 rounded-lg border border-zinc-800 flex flex-wrap items-center justify-between gap-1.5 text-[11px] font-mono">
+          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+            🥁 {activeGroove.name} ({activeGroove.timeSignature}):
+          </span>
+          <div className="flex items-center gap-1 shrink-0 overflow-x-auto">
+            {activeGroove.steps.map((step, sIdx) => (
+              <div
+                key={`pulse-${sIdx}`}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                  step.type === "bass"
+                    ? "bg-emerald-950 border border-emerald-500/60 text-emerald-300"
+                    : step.type === "alt_bass"
+                    ? "bg-cyan-950 border border-cyan-500/60 text-cyan-300 ring-1 ring-cyan-400/50"
+                    : step.type === "chord"
+                    ? "bg-blue-950 border border-blue-500/60 text-blue-300"
+                    : "bg-zinc-900 border border-zinc-800 text-zinc-400"
+                }`}
+                title={`Beat ${step.beat}: ${step.label} (${step.buttonName})`}
+              >
+                <span className="opacity-70">{step.beat}:</span>
+                <span>{step.buttonName}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -211,6 +250,14 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 }
 
+                // Check for Alternating Bass highlight
+                const isAltBass = Boolean(
+                  !isActive &&
+                    activeGroove?.altBassButton &&
+                    rowInfo.rowIndex === 1 &&
+                    col === activeGroove.altBassButton.column,
+                );
+
                 // Distinct color scheme based on button type
                 let btnClass =
                   "bg-zinc-900/90 border border-zinc-800 text-zinc-400 hover:border-zinc-700";
@@ -225,6 +272,9 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                     btnClass =
                       "bg-blue-500 border-2 border-blue-200 text-white font-black shadow-[0_0_10px_rgba(59,130,246,0.9)] ring-2 ring-blue-400/60 scale-105";
                   }
+                } else if (isAltBass) {
+                  btnClass =
+                    "bg-cyan-950/80 border-2 border-dashed border-cyan-400 text-cyan-200 font-bold shadow-[0_0_8px_rgba(6,182,212,0.6)]";
                 }
 
                 // Use the active button or center column as the anchor for auto-centering
@@ -235,7 +285,9 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                     key={`strad-btn-${rowInfo.key}-${col}`}
                     ref={isAnchor && activeAnchorRef ? activeAnchorRef : undefined}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-mono select-none shrink-0 transition-all ${btnClass}`}
-                    title={`Col ${col}: ${buttonLabel}`}
+                    title={isAltBass
+                      ? `5th Alt Bass (Col ${col}: ${buttonLabel})`
+                      : `Col ${col}: ${buttonLabel}`}
                   >
                     {buttonLabel}
                   </div>

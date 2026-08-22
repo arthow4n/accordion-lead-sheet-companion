@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { X } from "lucide-react";
-import type { AccordionSize, ChordDetail, ViewMode } from "../types/index.ts";
+import type { AccordionSize, ChordDetail, StradellaGrooveType, ViewMode } from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
+import { getLastPersistedGroove, getLastPersistedJamFills } from "../lib/storage/urlState.ts";
 import { StradellaGrid } from "./StradellaGrid.tsx";
 import { CbaGrid } from "./CbaGrid.tsx";
 
@@ -23,6 +24,22 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
   viewMode = "stradella",
   accordionSize = "120-bass",
 }) => {
+  const [groove, setGroove] = useState<StradellaGrooveType>(() => getLastPersistedGroove());
+  const [jamFills, setJamFills] = useState<boolean>(() => getLastPersistedJamFills());
+
+  React.useEffect(() => {
+    const handleGroove = () => setGroove(getLastPersistedGroove());
+    const handleJamFills = () => setJamFills(getLastPersistedJamFills());
+    if (typeof globalThis.addEventListener === "function") {
+      globalThis.addEventListener("grooveChanged", handleGroove);
+      globalThis.addEventListener("jamFillsChanged", handleJamFills);
+      return () => {
+        globalThis.removeEventListener("grooveChanged", handleGroove);
+        globalThis.removeEventListener("jamFillsChanged", handleJamFills);
+      };
+    }
+  }, []);
+
   if (!isOpen || !chord) return null;
 
   // If chord is a plain string, enrich it with current capo
@@ -100,6 +117,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
                 stradella={chordDetail.stradella}
                 soundingChord={chordDetail.soundingChord}
                 accordionSize={accordionSize}
+                grooveType={groove}
               />
             </div>
           )}
@@ -119,6 +137,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
                     ? generateCanonicalRootGrip(chordDetail.soundingChord)
                     : undefined)}
                 soundingChord={chordDetail.soundingChord}
+                jamFillsEnabled={jamFills}
               />
             </div>
           )}

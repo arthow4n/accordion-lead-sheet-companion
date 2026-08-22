@@ -901,39 +901,94 @@ Deno.test("UX-15: View Mode URL query param & LocalStorage persistence", () => {
   globalThis.localStorage.removeItem(testKey);
 });
 
-Deno.test("UX-16: Global RH CBA Grip Mode Controller (Root Shapes vs Smooth Voice Leading)", () => {
+Deno.test("UX-16: Unified Context-Aware Dynamic Config Bar across ViewModes", () => {
   const song = createPresetSongs()[0];
 
-  // 1. Reader renders dedicated RH CBA Grip Mode row
-  const readerHtml = renderToStaticMarkup(
+  // 1. LH Mode: Renders Groove dropdown
+  const lhHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "stradella",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(lhHtml.includes("Groove:"), true);
+  assertEquals(lhHtml.includes("Folk Boom-Chick"), true);
+
+  // 2. RH Mode: Renders Grip Mode buttons & Jam Fills toggle
+  const rhHtml = renderToStaticMarkup(
     React.createElement(LeadSheetReader, {
       song: song,
       capo: 0,
       viewMode: "cba",
+      onChangeCapo: () => {},
     }),
   );
+  assertEquals(rhHtml.includes("Root"), true);
+  assertEquals(rhHtml.includes("Voice-Led"), true);
+  assertEquals(rhHtml.includes("Fills"), true);
 
-  assertEquals(readerHtml.includes("RH CBA Grip Mode:"), true);
-  assertEquals(readerHtml.includes("Root Shapes"), true);
-  assertEquals(readerHtml.includes("Smooth Voice Leading"), true);
+  // 3. Guitar Mode: Renders Original Chords badge
+  const gtrHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "guitar",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(gtrHtml.includes("Original Chords"), true);
 
-  // 2. MiniGripDrawer renders without redundant local grip switch
+  // 4. Dual Mode: Renders combined compact pills
+  const dualHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "dual",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(dualHtml.includes("Folk Boom-Chick"), true);
+});
+
+Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Drawer", () => {
   const chordDetail = enrichChord("Am", 0);
+
+  // 1. StradellaGrid renders 4-beat pulse ribbon for Boom-Chick
+  const stradellaHtml = renderToStaticMarkup(
+    React.createElement(StradellaGrid, {
+      stradella: chordDetail.stradella,
+      soundingChord: chordDetail.soundingChord,
+      grooveType: "boom_chick",
+    }),
+  );
+  assertEquals(stradellaHtml.includes("Folk Boom-Chick (4/4)"), true);
+  assertEquals(stradellaHtml.includes("1:"), true);
+  assertEquals(stradellaHtml.includes("3:"), true); // Alt bass beat 3
+  assertEquals(stradellaHtml.includes("5th Alt Bass"), true);
+
+  // 2. CbaGrid renders Jam Fill scale overlay
+  const cbaHtml = renderToStaticMarkup(
+    React.createElement(CbaGrid, {
+      cba: chordDetail.cba,
+      soundingChord: chordDetail.soundingChord,
+      jamFillsEnabled: true,
+    }),
+  );
+  assertEquals(cbaHtml.includes("Minor Blues Pentatonic"), true);
+  assertEquals(cbaHtml.includes("Fill Tone"), true);
+
+  // 3. MiniGripDrawer renders cleanly with grids
   const drawerHtml = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
       isOpen: true,
       onClose: () => {},
       chord: chordDetail,
       capo: 0,
-      viewMode: "cba",
+      viewMode: "stradella",
     }),
   );
-
-  assertEquals(drawerHtml.includes("Right Hand CBA C-System Treble"), true);
-  // Drawer does not contain local switch buttons
-  assertEquals(
-    drawerHtml.includes("aria-pressed"),
-    false,
-    "MiniGripDrawer should not contain internal grip mode toggles",
-  );
+  assertEquals(drawerHtml.includes("Left Hand Stradella Bass"), true);
+  assertEquals(drawerHtml.includes("Folk Boom-Chick (4/4)"), true);
 });

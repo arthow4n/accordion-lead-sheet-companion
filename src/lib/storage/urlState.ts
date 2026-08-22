@@ -263,3 +263,76 @@ export function persistCbaGripMode(mode: "root" | "voice_led"): void {
     // Ignore quota or private browsing errors
   }
 }
+
+export const LAST_GROOVE_STORAGE_KEY = "accordion_groove";
+
+/**
+ * Retrieves the last persisted Stradella Groove mode from LocalStorage.
+ * Defaults to "boom_chick".
+ */
+export function getLastPersistedGroove():
+  | "boom_chick"
+  | "offbeat_chop"
+  | "waltz"
+  | "six_eight"
+  | "none" {
+  if (typeof globalThis.localStorage === "undefined") return "boom_chick";
+  try {
+    const val = globalThis.localStorage.getItem(LAST_GROOVE_STORAGE_KEY);
+    if (
+      val === "boom_chick" ||
+      val === "offbeat_chop" ||
+      val === "waltz" ||
+      val === "six_eight" ||
+      val === "none"
+    ) {
+      return val;
+    }
+    return "boom_chick";
+  } catch (_err) {
+    return "boom_chick";
+  }
+}
+
+/**
+ * Persists the Stradella Groove mode to LocalStorage and notifies listeners.
+ */
+export function persistGroove(
+  groove: "boom_chick" | "offbeat_chop" | "waltz" | "six_eight" | "none",
+): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_GROOVE_STORAGE_KEY, groove);
+    globalThis.dispatchEvent(new Event("grooveChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
+
+export const LAST_JAM_FILLS_STORAGE_KEY = "accordion_jam_fills";
+
+/**
+ * Retrieves the last persisted Jam Fills preference (true/false) from LocalStorage.
+ * Defaults to false (off).
+ */
+export function getLastPersistedJamFills(): boolean {
+  if (typeof globalThis.localStorage === "undefined") return false;
+  try {
+    return globalThis.localStorage.getItem(LAST_JAM_FILLS_STORAGE_KEY) === "true";
+  } catch (_err) {
+    return false;
+  }
+}
+
+/**
+ * Persists the Jam Fills preference (true/false) to LocalStorage and notifies listeners.
+ */
+export function persistJamFills(enabled: boolean): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_JAM_FILLS_STORAGE_KEY, enabled ? "true" : "false");
+    globalThis.dispatchEvent(new Event("jamFillsChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}

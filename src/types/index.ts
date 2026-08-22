@@ -154,3 +154,48 @@ export interface TabImportResponse {
   rawContent: string; // Cleaned text ready for client-side tokenizer
   error?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Strategy C: Stradella Accompaniment Groove Contracts
+// ---------------------------------------------------------------------------
+
+export type StradellaGrooveType =
+  | "boom_chick"
+  | "offbeat_chop"
+  | "waltz"
+  | "six_eight"
+  | "none";
+
+export interface StradellaGrooveStep {
+  beat: number | string; // "1", "2", "3", "4", "1&", etc.
+  label: string; // "Bass", "Chord", "5th Alt", "Rest"
+  buttonName: string; // "C", "CM", "G", etc.
+  type: "bass" | "chord" | "alt_bass" | "rest";
+  colOffset?: number;
+  row?: StradellaRow;
+  fingering?: number; // Recommended finger (e.g. 4, 3, 2)
+}
+
+export interface StradellaGroovePattern {
+  id: StradellaGrooveType;
+  name: string;
+  timeSignature: "4/4" | "3/4" | "6/8" | "Free";
+  description: string;
+  steps: StradellaGrooveStep[];
+  altBassButton?: StradellaButton;
+}
+
+// ---------------------------------------------------------------------------
+// Strategy D: CBA Jam Fill Scale Contracts
+// ---------------------------------------------------------------------------
+
+export type JamFillScaleType = "minor_blues" | "major_blues" | "dominant_blues" | "diminished";
+
+export interface CbaJamFillScale {
+  root: string; // e.g. "A"
+  scaleType: JamFillScaleType;
+  scaleName: string; // e.g. "A Minor Blues Pentatonic"
+  notes: string[]; // ["A", "C", "D", "D#", "E", "G"]
+  pitchClasses: number[]; // [9, 0, 2, 3, 4, 7]
+  fillButtonCoords: CbaButtonCoord[]; // All matching buttons across 5 rows
+}

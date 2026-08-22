@@ -9,16 +9,26 @@ import {
   COMPOUND_QUALITIES,
   COMPOUND_RULES,
   computeCbaCentroid,
+  computeCbaJamFills,
   enrichSongLinesWithVoiceLeading,
   extractSectionChords,
   getCounterBassColumn,
+  getGroovePresetList,
   getInitialSong,
   getInitialViewMode,
   getLastPersistedCbaGripMode,
+  getLastPersistedGroove,
+  getLastPersistedJamFills,
   getSongFromUrl,
   getViewModeFromUrl,
+  isJamFillButton,
   persistCbaGripMode,
+  persistGroove,
+  persistJamFills,
   solveCompoundChord,
+  solveStradellaChord,
+  solveStradellaGroove,
+  STRADELLA_GROOVES,
 } from "../../src/lib/index.ts";
 import { isChordActive } from "../../src/components/ChordBadge.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
@@ -247,4 +257,90 @@ Deno.test("REFACTOR-COMPOUND-01: Compound rules specify accurate column deltas a
     assertExists(voicing.rootButton);
     assertExists(voicing.chordButton);
   }
+});
+
+// ============================================================================
+// 6. Strategy C: Stradella Grooves & Rhythmic Step Generator
+// ============================================================================
+
+Deno.test("REFACTOR-GROOVE-01: solveStradellaGroove generates valid 4/4 and 3/4 pulse steps", () => {
+  assertEquals(STRADELLA_GROOVES.length >= 4, true);
+  assertEquals(getGroovePresetList().some((g) => g.id === "boom_chick"), true);
+
+  const chord = parseChord("C");
+  const voicing = solveStradellaChord(chord);
+
+  // 1. Folk Boom-Chick: Beat 1 Root (C), Beat 2 Chord (C), Beat 3 Alt (G, Col +1), Beat 4 Chord (C)
+  const boomChick = solveStradellaGroove(chord, voicing, "boom_chick");
+  assertExists(boomChick);
+  assertEquals(boomChick?.steps.length, 4);
+  assertEquals(boomChick?.steps[0].buttonName, "C");
+  assertEquals(boomChick?.steps[0].type, "bass");
+  assertEquals(boomChick?.steps[1].type, "chord");
+  assertEquals(boomChick?.steps[2].buttonName, "G");
+  assertEquals(boomChick?.steps[2].type, "alt_bass");
+  assertEquals(boomChick?.altBassButton?.column, 1); // G is Col 1
+
+  // 2. Waltz 3/4: Beat 1 Root, Beat 2 Chord, Beat 3 Chord
+  const waltz = solveStradellaGroove(chord, voicing, "waltz");
+  assertExists(waltz);
+  assertEquals(waltz?.steps.length, 3);
+  assertEquals(waltz?.steps[0].type, "bass");
+  assertEquals(waltz?.steps[1].type, "chord");
+  assertEquals(waltz?.steps[2].type, "chord");
+
+  // 3. Offbeat Chop: 8-step subdivision with rests on downbeats
+  const chop = solveStradellaGroove(chord, voicing, "offbeat_chop");
+  assertExists(chop);
+  assertEquals(chop?.steps.length, 8);
+  assertEquals(chop?.steps[0].type, "rest");
+  assertEquals(chop?.steps[1].type, "chord");
+
+  // 4. Persistence
+  if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
+  assertEquals(getLastPersistedGroove(), "boom_chick");
+  persistGroove("waltz");
+  assertEquals(getLastPersistedGroove(), "waltz");
+});
+
+// ============================================================================
+// 7. Strategy D: CBA Jam Fill Scale Calculator
+// ============================================================================
+
+Deno.test("REFACTOR-FILLS-01: computeCbaJamFills generates minor/major blues scales and button coordinates", () => {
+  // 1. Minor Blues for Am (A, C, D, D#, E, G)
+  const amChord = parseChord("Am");
+  const amFills = computeCbaJamFills(amChord);
+  assertExists(amFills);
+  assertEquals(amFills?.scaleType, "minor_blues");
+  assertEquals(amFills?.notes.includes("A"), true);
+  assertEquals(amFills?.notes.includes("C"), true);
+  assertEquals(amFills?.notes.includes("D"), true);
+  assertEquals(amFills?.notes.includes("E"), true);
+  assertEquals(amFills?.notes.includes("G"), true);
+  assertEquals(amFills?.fillButtonCoords.length > 0, true);
+
+  // Button membership check
+  assertEquals(isJamFillButton(1, 4, amFills), true); // A note is on Row 1 Col 4
+
+  // 2. Major Blues for C (C, D, D#, E, G, A)
+  const cChord = parseChord("C");
+  const cFills = computeCbaJamFills(cChord);
+  assertExists(cFills);
+  assertEquals(cFills?.scaleType, "major_blues");
+  assertEquals(cFills?.notes.includes("C"), true);
+  assertEquals(cFills?.notes.includes("E"), true);
+  assertEquals(cFills?.notes.includes("G"), true);
+
+  // 3. Dominant Blues for G7 (G, B, C, C#, D, F)
+  const g7Chord = parseChord("G7");
+  const g7Fills = computeCbaJamFills(g7Chord);
+  assertExists(g7Fills);
+  assertEquals(g7Fills?.scaleType, "dominant_blues");
+
+  // 4. Persistence
+  if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
+  assertEquals(getLastPersistedJamFills(), false);
+  persistJamFills(true);
+  assertEquals(getLastPersistedJamFills(), true);
 });
