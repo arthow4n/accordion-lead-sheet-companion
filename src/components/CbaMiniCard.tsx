@@ -5,12 +5,14 @@ import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
 import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
 export interface CbaMiniCardProps {
   chord: ChordDetail | string;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   fontSizeClass?: string;
+  jamFillsEnabled?: boolean;
   className?: string;
 }
 
@@ -79,6 +81,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   onSelectChord,
   active = false,
   fontSizeClass = "text-base",
+  jamFillsEnabled = false,
   className = "",
 }) => {
   const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
@@ -91,6 +94,10 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   const notes = grip.notes || [];
   const activeButtons: CbaButtonCoord[] = grip.buttonCoords || grip.buttons || [];
   const exitingButtons: CbaButtonCoord[] = grip.exitingCoords || [];
+
+  // Jam Fills calculation
+  const jamFills = jamFillsEnabled ? computeCbaJamFills(soundingChord) : null;
+  const jamFillPcs = new Set(jamFills?.pitchClasses || []);
 
   // Determine dynamic column range to display active AND ghost buttons (minimum 5 columns, with padding)
   const allRelevantButtons = [...activeButtons, ...exitingButtons];
@@ -134,7 +141,9 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
     <button
       type="button"
       onClick={handleClick}
-      title={`${chordName}: ${notes.join(" - ")} (5-Row CBA Grip)`}
+      title={`${chordName}: ${notes.join(" - ")}${
+        jamFills ? ` | Fills: ${jamFills.notes.join(" · ")}` : ""
+      } (5-Row CBA Grip)`}
       className={`flex flex-col items-center justify-between ${currentScale.cardPad} rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
         active
           ? "bg-emerald-950/90 border-emerald-400 shadow-md ring-1 ring-emerald-400"
@@ -162,9 +171,15 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
             {notes.join(" · ")}
           </span>
         )}
+        {/* Scale-Enriched Jam Fills Note Pool (Concept 1) */}
+        {jamFills && jamFills.notes.length > 0 && (
+          <span className="text-[9px] text-cyan-300 font-mono font-bold tracking-tight leading-tight text-center whitespace-nowrap bg-cyan-950/70 px-1.5 py-0.5 rounded border border-cyan-500/40">
+            ✨ {jamFills.notes.slice(0, 5).join("·")}
+          </span>
+        )}
       </div>
 
-      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes & Ghost Release Anchors */}
+      {/* Authentic Staggered 5-Row CBA Lattice with In-Button Notes, Ghost Release Anchors & Cyan Fills */}
       <div className="bg-zinc-950/90 rounded-lg p-1 border border-zinc-800/80 shadow-inner flex items-center justify-center">
         <svg
           viewBox={`0 0 ${svgWidth} 48`}
@@ -191,8 +206,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
               // Check if button is an entering tone in the voice leading transition
               const isEntering = isPrimary && !isRoot && enteringSet.has(`${rowNum}-${col}`);
 
-              // Check if button is a ghost tone released from the previous chord (Approach 1)
+              // Check if button is a ghost tone released from the previous chord
               const isGhost = !isPrimary && exitingSet.has(`${rowNum}-${col}`);
+
+              // Check if button is an improvisational fill scale tone (Concept 1)
+              const isJamFill = !isPrimary && !isGhost && jamFillPcs.has(pc);
 
               const x = xOffset + 5 + colIdx * colSpacing;
 
@@ -211,11 +229,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                     />
                   )}
 
-                  {/* Button circle: Amber for Root, Sky Blue for Entering, Emerald for Kept, Ghost Indigo for Released */}
+                  {/* Button circle: Amber Root, Sky Blue Entering, Emerald Kept, Ghost Indigo, Cyan Fills */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isRoot ? 4.4 : isPrimary ? 4.2 : isGhost ? 3.8 : 2.0}
+                    r={isRoot ? 4.4 : isPrimary ? 4.2 : isGhost ? 3.8 : isJamFill ? 3.4 : 2.0}
                     fill={isRoot
                       ? "#fde047"
                       : isEntering
@@ -224,6 +242,8 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       ? "#10b981"
                       : isGhost
                       ? "rgba(49, 46, 129, 0.5)"
+                      : isJamFill
+                      ? "rgba(8, 51, 68, 0.85)"
                       : "#27272a"}
                     stroke={isRoot
                       ? "#eab308"
@@ -233,12 +253,20 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       ? "#34d399"
                       : isGhost
                       ? "#818cf8"
+                      : isJamFill
+                      ? "#06b6d4"
                       : "#3f3f46"}
-                    strokeWidth={isPrimary ? (isRoot ? 1.1 : 0.8) : isGhost ? 0.9 : 0.4}
+                    strokeWidth={isPrimary
+                      ? (isRoot ? 1.1 : 0.8)
+                      : isGhost
+                      ? 0.9
+                      : isJamFill
+                      ? 0.7
+                      : 0.4}
                     strokeDasharray={isGhost ? "1.5 1.5" : undefined}
                   />
 
-                  {/* Direct In-Button Note Initials on active buttons and ghost buttons */}
+                  {/* Direct In-Button Note Initials on active buttons */}
                   {isPrimary && noteName && (
                     <text
                       x={x}
@@ -265,6 +293,23 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
                       textAnchor="middle"
                       fill="#c7d2fe"
                       opacity={0.8}
+                      className="select-none pointer-events-none"
+                    >
+                      {noteName}
+                    </text>
+                  )}
+
+                  {/* Cyan note initials on Jam Fill scale buttons (Concept 1) */}
+                  {isJamFill && noteName && (
+                    <text
+                      x={x}
+                      y={y + (noteName.length > 2 ? 0.8 : 1.0)}
+                      fontSize={noteName.length > 2 ? "2.2" : "2.7"}
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      textAnchor="middle"
+                      fill="#a5f3fc"
+                      opacity={0.9}
                       className="select-none pointer-events-none"
                     >
                       {noteName}

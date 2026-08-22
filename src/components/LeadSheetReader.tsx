@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ExternalLink, Music, RefreshCw, RotateCcw, Zap } from "lucide-react";
+import { ExternalLink, Music, RefreshCw, RotateCcw, Sparkles, Zap } from "lucide-react";
 import type {
   AccordionSize,
   CbaDisplayMode,
@@ -17,10 +17,12 @@ import {
   getLastPersistedCbaDisplayMode,
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
+  getLastPersistedJamFills,
   getLastPersistedStradellaDisplayMode,
   persistCbaDisplayMode,
   persistCbaGripMode,
   persistGroove,
+  persistJamFills,
   persistStradellaDisplayMode,
 } from "../lib/storage/urlState.ts";
 import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
@@ -77,6 +79,11 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     return getLastPersistedGroove();
   });
 
+  // User preference for Jam Fills scale overlay (default: false)
+  const [jamFills, setJamFills] = useState<boolean>(() => {
+    return getLastPersistedJamFills();
+  });
+
   // Listen for preference changes from other components
   React.useEffect(() => {
     const handleGrip = () => setCbaGripMode(getLastPersistedCbaGripMode());
@@ -84,17 +91,20 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     const handleStradDisplay = () =>
       setStradellaDisplayMode(getLastPersistedStradellaDisplayMode());
     const handleGroove = () => setGroove(getLastPersistedGroove());
+    const handleJamFills = () => setJamFills(getLastPersistedJamFills());
 
     if (typeof globalThis.addEventListener === "function") {
       globalThis.addEventListener("cbaGripModeChanged", handleGrip);
       globalThis.addEventListener("cbaDisplayModeChanged", handleCbaCbaDisplaySafe);
       globalThis.addEventListener("stradellaDisplayModeChanged", handleStradDisplay);
       globalThis.addEventListener("grooveChanged", handleGroove);
+      globalThis.addEventListener("jamFillsChanged", handleJamFills);
       return () => {
         globalThis.removeEventListener("cbaGripModeChanged", handleGrip);
         globalThis.removeEventListener("cbaDisplayModeChanged", handleCbaCbaDisplaySafe);
         globalThis.removeEventListener("stradellaDisplayModeChanged", handleStradDisplay);
         globalThis.removeEventListener("grooveChanged", handleGroove);
+        globalThis.removeEventListener("jamFillsChanged", handleJamFills);
       };
     }
 
@@ -121,6 +131,12 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   const handleSelectGroove = (newGroove: StradellaGrooveType) => {
     setGroove(newGroove);
     persistGroove(newGroove);
+  };
+
+  const handleToggleJamFills = () => {
+    const next = !jamFills;
+    setJamFills(next);
+    persistJamFills(next);
   };
 
   // Calculate sounding key from written key and current capo
@@ -463,6 +479,26 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                       <span>Micro</span>
                     </button>
                   </div>
+
+                  {/* Jam Fills Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleJamFills}
+                    className={`min-h-[32px] sm:min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer select-none active:scale-95 flex items-center gap-1.5 shadow-sm ${
+                      jamFills
+                        ? "bg-cyan-950/90 border border-cyan-500/80 text-cyan-300 ring-1 ring-cyan-400/50 shadow-cyan-900/30"
+                        : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                    }`}
+                    title={jamFills
+                      ? "Jam Fills ON (Displaying Pentatonic/Blues scale buttons on CBA grid & badges)"
+                      : "Jam Fills OFF"}
+                    aria-pressed={jamFills}
+                  >
+                    <Sparkles
+                      className={`w-3.5 h-3.5 ${jamFills ? "text-cyan-400 fill-current" : ""}`}
+                    />
+                    <span>Fills</span>
+                  </button>
                 </div>
               )}
 
@@ -525,6 +561,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
+                jamFillsEnabled={jamFills}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -541,6 +578,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             viewMode={viewMode}
             cbaDisplayMode={cbaDisplayMode}
             stradellaDisplayMode={stradellaDisplayMode}
+            jamFillsEnabled={jamFills}
             onSelectChord={onSelectChord}
             selectedChord={selectedChord}
             fontSizeClass={fontSizeClass}

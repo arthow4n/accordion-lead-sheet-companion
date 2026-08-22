@@ -17,6 +17,7 @@ export interface LineRendererProps {
   viewMode?: ViewMode;
   cbaDisplayMode?: CbaDisplayMode;
   stradellaDisplayMode?: StradellaDisplayMode;
+  jamFillsEnabled?: boolean;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   fontSizeClass?: string;
@@ -97,6 +98,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   viewMode = "stradella",
   cbaDisplayMode = "line_cards",
   stradellaDisplayMode = "badges",
+  jamFillsEnabled = false,
   onSelectChord,
   selectedChord,
   fontSizeClass = "text-base",
@@ -139,6 +141,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 viewMode={viewMode}
                 cbaDisplayMode={cbaDisplayMode}
                 stradellaDisplayMode={stradellaDisplayMode}
+                jamFillsEnabled={jamFillsEnabled}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -160,6 +163,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
+                jamFillsEnabled={jamFillsEnabled}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -217,6 +221,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 viewMode={viewMode}
                 cbaDisplayMode={cbaDisplayMode}
                 stradellaDisplayMode={stradellaDisplayMode}
+                jamFillsEnabled={jamFillsEnabled}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -243,6 +248,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
+                jamFillsEnabled={jamFillsEnabled}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -308,6 +314,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                   chord={chord}
                   onSelectChord={onSelectChord}
                   fontSizeClass={fontSizeClass}
+                  jamFillsEnabled={jamFillsEnabled}
                   active={isChordActive(chord, selectedChord)}
                 />
               ))}

@@ -7,12 +7,15 @@ import type {
 } from "../types/index.ts";
 
 import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
+import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
+import { getPitchClassAt } from "../lib/cba/grid.ts";
 
 export interface ChordBadgeProps {
   chord?: string | ChordDetail;
   viewMode?: ViewMode;
   cbaDisplayMode?: CbaDisplayMode;
   stradellaDisplayMode?: StradellaDisplayMode;
+  jamFillsEnabled?: boolean;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   fontSizeClass?: string;
@@ -116,6 +119,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   viewMode = "stradella",
   cbaDisplayMode = "line_cards",
   stradellaDisplayMode = "badges",
+  jamFillsEnabled = false,
   onSelectChord,
   active = false,
   fontSizeClass = "text-base",
@@ -227,6 +231,12 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     }
   }
 
+  // Jam Fills Scale Calculation for CBA mode
+  const jamFills = (jamFillsEnabled && chord.soundingChord)
+    ? computeCbaJamFills(chord.soundingChord)
+    : null;
+  const jamFillPcs = new Set(jamFills?.pitchClasses || []);
+
   // Micro Grid computation when cbaDisplayMode is "micro_badges"
   const activeButtons = chord.cba?.buttonCoords || chord.cba?.buttons || [];
   const cols = activeButtons.map((b) => b.column);
@@ -245,7 +255,9 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     <button
       type="button"
       onClick={handleClick}
-      title={`${rawChordName} (Sounding: ${soundingChordName}) - Tap for button diagram`}
+      title={`${rawChordName} (Sounding: ${soundingChordName})${
+        jamFills ? ` | Fills: ${jamFills.notes.join(" · ")}` : ""
+      } - Tap for button diagram`}
       className={`relative before:absolute before:-inset-2.5 before:content-[''] ${currentBadgeSize.minH} inline-flex items-center gap-1 ${currentBadgeSize.badgePad} rounded border ${currentBadgeSize.badgeFont} font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
     >
       {viewMode === "stradella" && (
@@ -385,6 +397,16 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               {chord.cba.flowVector}
             </span>
           )}
+
+          {/* Jam Fills Pentatonic Scale Subtext (Concept 3) */}
+          {jamFills && jamFills.notes.length > 0 && (
+            <span
+              className={`${currentBadgeSize.subFont} text-cyan-300 font-mono font-normal opacity-90`}
+            >
+              ({jamFills.notes.slice(0, 4).join("·")})
+            </span>
+          )}
+
           {/* Micro 5-Row SVG Lattice when in micro_badges mode */}
           {cbaDisplayMode === "micro_badges" && (
             <svg
@@ -394,6 +416,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
             >
               {CBA_MICRO_ROWS.map(({ rowNum, y, xOffset }) =>
                 displayCols.map((col, cIdx) => {
+                  const pc = getPitchClassAt(rowNum, col);
                   const isPrimary = activeButtons.some(
                     (b) => b.row === rowNum && b.column === col,
                   );
@@ -406,6 +429,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
                   );
                   const isEntering = isPrimary && !isRoot &&
                     enteringSet.has(`${rowNum}-${col}`);
+                  const isJamFillDot = !isPrimary && jamFillPcs.has(pc);
                   const x = xOffset + 2 + cIdx * 5;
 
                   return (
@@ -413,13 +437,15 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
                       key={`micro-${rowNum}-${col}`}
                       cx={x}
                       cy={y}
-                      r={isRoot ? 1.6 : isPrimary ? 1.4 : 0.6}
+                      r={isRoot ? 1.6 : isPrimary ? 1.4 : isJamFillDot ? 0.9 : 0.6}
                       fill={isRoot
                         ? "#fde047"
                         : isEntering
                         ? "#38bdf8"
                         : isPrimary
                         ? "#10b981"
+                        : isJamFillDot
+                        ? "#06b6d4"
                         : "#27272a"}
                       stroke={isRoot
                         ? "#eab308"
@@ -427,8 +453,10 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
                         ? "#0284c7"
                         : isPrimary
                         ? "#34d399"
+                        : isJamFillDot
+                        ? "#0891b2"
                         : "none"}
-                      strokeWidth={isPrimary ? 0.4 : 0}
+                      strokeWidth={isPrimary ? 0.4 : isJamFillDot ? 0.3 : 0}
                     />
                   );
                 })

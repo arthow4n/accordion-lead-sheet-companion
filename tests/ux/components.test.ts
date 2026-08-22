@@ -1005,6 +1005,28 @@ Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Dra
   );
   assertEquals(cbaDrawerHtml.includes("Right Hand CBA C-System Treble"), true);
   assertEquals(cbaDrawerHtml.includes("Fills"), true);
+
+  // 4. Concept 1: CbaMiniCard renders cyan Jam Fill scale buttons and note pill when jamFillsEnabled is true
+  const miniCardFillsHtml = renderToStaticMarkup(
+    React.createElement(CbaMiniCard, {
+      chord: chordDetail,
+      jamFillsEnabled: true,
+    }),
+  );
+  assertEquals(miniCardFillsHtml.includes("✨"), true);
+  assertEquals(miniCardFillsHtml.includes("#06b6d4"), true); // Cyan scale stroke
+  assertEquals(miniCardFillsHtml.includes("#a5f3fc"), true); // Cyan text fill
+
+  // 5. Concept 3: ChordBadge in CBA mode renders pentatonic scale subtext when jamFillsEnabled is true
+  const badgeFillsHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: chordDetail,
+      viewMode: "cba",
+      jamFillsEnabled: true,
+    }),
+  );
+  assertEquals(badgeFillsHtml.includes("text-cyan-300"), true);
+  assertEquals(badgeFillsHtml.includes("A·C·D·Eb"), true); // Am pentatonic subtext
 });
 
 Deno.test("UX-18: UpdateToast renders floating pill and manual update check works in footer", () => {
