@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import type { ChordDetail, ChordLyricSegment, LeadSheetLine, ViewMode } from "../types/index.ts";
-import { ChordBadge } from "./ChordBadge.tsx";
+import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
 import { isMeasureDelimiter } from "../lib/parser/twoline.ts";
 
@@ -47,7 +47,6 @@ export const TabStaffLine: React.FC<TabStaffLineProps> = ({
           </span>
         </button>
       </div>
-
       {isExpanded && (
         <pre className="font-mono text-xs text-zinc-300 bg-zinc-900/80 p-3 rounded-lg border border-zinc-800 overflow-x-auto whitespace-pre leading-relaxed select-text">
           {tabContent}
@@ -121,14 +120,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 viewMode={viewMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
-                active={Boolean(
-                  selectedChord &&
-                    ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
-                      (typeof segment.chord === "object" &&
-                        typeof selectedChord === "object" &&
-                        segment.chord?.soundingChord?.raw ===
-                          (selectedChord as ChordDetail)?.soundingChord?.raw)),
-                )}
+                active={isChordActive(segment.chord, selectedChord)}
               />
             </div>
           );
@@ -152,14 +144,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 viewMode={viewMode}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
-                active={Boolean(
-                  selectedChord &&
-                    ((typeof segment.chord === "string" && segment.chord === selectedChord) ||
-                      (typeof segment.chord === "object" &&
-                        typeof selectedChord === "object" &&
-                        segment.chord?.soundingChord?.raw ===
-                          (selectedChord as ChordDetail)?.soundingChord?.raw)),
-                )}
+                active={isChordActive(segment.chord, selectedChord)}
               />
             </div>
             <span
@@ -203,14 +188,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                   chord={chord}
                   onSelectChord={onSelectChord}
                   fontSizeClass={fontSizeClass}
-                  active={Boolean(
-                    selectedChord &&
-                      ((typeof chord === "string" && chord === selectedChord) ||
-                        (typeof chord === "object" &&
-                          typeof selectedChord === "object" &&
-                          chord?.soundingChord?.raw ===
-                            (selectedChord as ChordDetail)?.soundingChord?.raw)),
-                  )}
+                  active={isChordActive(chord, selectedChord)}
                 />
               ))}
             </div>

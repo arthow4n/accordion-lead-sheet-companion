@@ -507,25 +507,30 @@ Deno.test("Layout: LineRenderer renders atomic inline-flex column containers", (
 
 Deno.test("StradellaGrid: Renders 3x3 Circle of Fifths subgrid with active counter-bass button", () => {
   const chordDetail = enrichChord("D/F#", 3); // Sounding F/A -> Counter-bass A_
-  const grid = StradellaGrid({
-    stradella: chordDetail.stradella,
-    soundingChord: chordDetail.soundingChord,
-    accordionSize: "120-bass",
-  }) as unknown as MockReactElement;
+  const html = renderToStaticMarkup(
+    React.createElement(StradellaGrid, {
+      stradella: chordDetail.stradella,
+      soundingChord: chordDetail.soundingChord,
+      accordionSize: "120-bass",
+    }),
+  );
 
-  assertExists(grid);
-  assertEquals(grid.type, "div");
+  assertExists(html);
+  assertEquals(html.includes("Counter-bass"), true);
+  assertEquals(html.includes("A_"), true);
 });
 
 Deno.test("CbaGrid: Renders CBA C-System Treble buttons with active chord fingering", () => {
   const chordDetail = enrichChord("Bb", 0);
-  const grid = CbaGrid({
-    cba: chordDetail.cba,
-    soundingChord: chordDetail.soundingChord,
-  }) as unknown as MockReactElement;
+  const html = renderToStaticMarkup(
+    React.createElement(CbaGrid, {
+      cba: chordDetail.cba,
+      soundingChord: chordDetail.soundingChord,
+    }),
+  );
 
-  assertExists(grid);
-  assertEquals(grid.type, "div");
+  assertExists(html);
+  assertEquals(html.includes("Bb"), true);
 });
 
 // ============================================================================

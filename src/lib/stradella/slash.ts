@@ -1,7 +1,12 @@
 import type { AccordionSize, ParsedChord, StradellaVoicing } from "../../types/index.ts";
 import { normalizePitchClass } from "../capo/transposition.ts";
 import { getNoteName } from "../capo/enharmonics.ts";
-import { createStradellaButton, getStradellaColumn, isColumnOutOfRange } from "./layout.ts";
+import {
+  createStradellaButton,
+  getCounterBassColumn,
+  getStradellaColumn,
+  isColumnOutOfRange,
+} from "./layout.ts";
 
 /**
  * Solve slash chord using the Minimum Physical Button Distance Algorithm
@@ -20,7 +25,7 @@ export function solveSlashChord(
 
   // 2. Candidate: Counter-Bass
   // Counter-bass produces bass note when placed 4 fifths flat (-4 cols from bass note fundamental column)
-  const counterCol = fundCol - 4;
+  const counterCol = getCounterBassColumn(fundCol);
   const counterDist = Math.abs(counterCol - rootCol);
 
   // Major 3rd interval check

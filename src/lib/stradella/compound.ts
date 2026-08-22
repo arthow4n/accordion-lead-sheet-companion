@@ -11,99 +11,119 @@ import { createStradellaButton, getStradellaColumn, isColumnOutOfRange } from ".
 /**
  * Compound voicing mapping definition
  */
-interface CompoundRule {
+export interface CompoundRule {
   chordRow: "major" | "minor" | "seventh" | "diminished";
   chordPitchClassOffset: number; // semitone offset from root for the upper chord button
+  columnDelta: number; // Circle of Fifths column delta from fundamental root column
   explanation: string;
 }
 
-const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
+export const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
   major7: {
     chordRow: "minor",
     chordPitchClassOffset: 4, // 3rd above root (e.g. C -> em)
+    columnDelta: 4,
     explanation: "Fundamental bass + minor chord on 3rd (1-3-5-7)",
   },
   minor7: {
     chordRow: "major",
     chordPitchClassOffset: 3, // b3 above root (e.g. A -> c)
+    columnDelta: -3,
     explanation: "Fundamental bass + major chord on b3 (1-b3-5-b7)",
   },
   halfDiminished7: {
     chordRow: "minor",
     chordPitchClassOffset: 3, // b3 above root (e.g. B -> dm)
+    columnDelta: -3,
     explanation: "Fundamental bass + minor chord on b3 (1-b3-b5-b7)",
   },
   six: {
     chordRow: "minor",
     chordPitchClassOffset: 9, // 6th above root (e.g. C -> am)
+    columnDelta: 3,
     explanation: "Fundamental bass + minor chord on 6th (1-3-5-6)",
   },
   minorSix: {
     chordRow: "diminished",
     chordPitchClassOffset: 0, // root dim button (e.g. C -> cdim gives 1-b3-6)
+    columnDelta: 0,
     explanation: "Fundamental bass + diminished chord on root (1-b3-5-6)",
   },
   dominant9: {
     chordRow: "minor",
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> gm gives 1-5-b7-9)
+    columnDelta: 1,
     explanation: "Fundamental bass + minor chord on 5th (1-5-b7-9)",
   },
   major9: {
     chordRow: "major",
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> g gives 1-5-7-9)
+    columnDelta: 1,
     explanation: "Fundamental bass + major chord on 5th (1-5-7-9)",
   },
   minor9: {
     chordRow: "major",
     chordPitchClassOffset: 3, // b3 above root (e.g. C -> eb)
+    columnDelta: -3,
     explanation: "Fundamental bass + major chord on b3 (1-b3-5-b7)",
   },
   dominant13: {
     chordRow: "minor",
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> gm gives 1-5-b7-9/13)
+    columnDelta: 1,
     explanation: "Fundamental bass + minor chord on 5th (1-5-b7-9/13)",
   },
   sevenSharpEleven: {
     chordRow: "diminished",
     chordPitchClassOffset: 0, // root dim button (e.g. C -> cdim gives 1-b5/#11)
+    columnDelta: 0,
     explanation: "Fundamental bass + diminished chord on root (1-b5/#11)",
   },
   sevenFlatNine: {
     chordRow: "diminished",
     chordPitchClassOffset: 1, // dim button half-step up (e.g. C -> dbdim gives 1-b9-3-5-b7)
+    columnDelta: -5,
     explanation: "Fundamental bass + diminished chord half-step up (1-b9-3-5-b7)",
   },
   sixNine: {
     chordRow: "major",
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> g gives 1-5-6-9)
+    columnDelta: 1,
     explanation: "Fundamental bass + major chord on 5th (1-5-6-9)",
   },
   altered: {
     chordRow: "diminished",
     chordPitchClassOffset: 0, // root dim button (e.g. C -> cdim gives altered color)
+    columnDelta: 0,
     explanation: "Fundamental bass + diminished chord on root (altered color 1-b5-#9)",
   },
   sus4: {
     chordRow: "major",
     chordPitchClassOffset: 5, // 4th above root (e.g. C -> f gives F/C sus color)
+    columnDelta: -1,
     explanation: "Fundamental bass + major chord on 4th (1-4-5 / F/C)",
   },
   sus2: {
     chordRow: "major",
     chordPitchClassOffset: 0,
+    columnDelta: 0,
     explanation: "Fundamental bass + major chord (RH voices sus2)",
   },
   add9: {
     chordRow: "major",
     chordPitchClassOffset: 0,
+    columnDelta: 0,
     explanation: "Fundamental bass + major chord (RH voices 9)",
   },
   augmented: {
     chordRow: "major",
     chordPitchClassOffset: 0,
+    columnDelta: 0,
     explanation: "Fundamental bass + major chord (RH voices aug #5)",
   },
 };
+
+export const COMPOUND_QUALITIES: ChordQuality[] = Object.keys(COMPOUND_RULES) as ChordQuality[];
 
 /**
  * Solve compound voicing for extended chords
@@ -122,31 +142,7 @@ export function solveCompoundChord(
   let explanation: string;
 
   if (rule) {
-    let colDelta = 0;
-    switch (rule.chordPitchClassOffset) {
-      case 7:
-        colDelta = 1;
-        break;
-      case 5:
-        colDelta = -1;
-        break;
-      case 4:
-        colDelta = 4;
-        break;
-      case 3:
-        colDelta = -3;
-        break;
-      case 9:
-        colDelta = 3;
-        break;
-      case 1:
-        colDelta = -5;
-        break;
-      default:
-        colDelta = 0;
-        break;
-    }
-    let chordCol = rootCol + colDelta;
+    let chordCol = rootCol + rule.columnDelta;
     if (chordCol < -6) {
       chordCol += 12;
     } else if (chordCol > 10) {

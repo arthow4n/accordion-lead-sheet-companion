@@ -139,13 +139,7 @@ export function enrichLeadSheetLines(
  * Determine whether a document string is formatted in ChordPro format
  */
 export function detectChordPro(rawText: string): boolean {
-  if (isChordProDocument?.(rawText)) return true;
-  if (
-    /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus|start_of_tab|sot|end_of_tab|eot):?/i
-      .test(rawText)
-  ) {
-    return true;
-  }
+  if (isChordProDocument(rawText)) return true;
 
   const lines = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   let chordProLineCount = 0;

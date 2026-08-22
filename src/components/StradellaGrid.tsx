@@ -19,22 +19,8 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   accordionSize = "120-bass",
   className = "",
 }) => {
-  // Check if React is actively executing inside a component render dispatcher
-  const reactInternals = React as unknown as {
-    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?: { H?: unknown };
-    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?: {
-      ReactCurrentDispatcher?: { current?: unknown };
-    };
-  };
-
-  const hasDispatcher = Boolean(
-    reactInternals.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?.H ||
-      reactInternals.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?.ReactCurrentDispatcher
-        ?.current,
-  );
-
-  const scrollContainerRef = hasDispatcher ? useRef<HTMLDivElement>(null) : null;
-  const activeAnchorRef = hasDispatcher ? useRef<HTMLDivElement>(null) : null;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeAnchorRef = useRef<HTMLDivElement>(null);
 
   const targetCol = stradella?.columnOffset ?? 0;
   const isOutOfRange = stradella?.isOutOfRange ?? isColumnOutOfRange(targetCol, accordionSize);
@@ -85,18 +71,16 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   ];
 
   // Instant layout jump to centered position before browser paint (no animated glide)
-  if (hasDispatcher) {
-    useLayoutEffect(() => {
-      if (activeAnchorRef?.current && scrollContainerRef?.current) {
-        const container = scrollContainerRef.current;
-        const activeEl = activeAnchorRef.current;
-        const containerWidth = container.clientWidth;
-        const activeLeft = activeEl.offsetLeft;
-        const activeWidth = activeEl.clientWidth;
-        container.scrollLeft = activeLeft - containerWidth / 2 + activeWidth / 2;
-      }
-    }, [stradella, targetCol]);
-  }
+  useLayoutEffect(() => {
+    if (activeAnchorRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const activeEl = activeAnchorRef.current;
+      const containerWidth = container.clientWidth;
+      const activeLeft = activeEl.offsetLeft;
+      const activeWidth = activeEl.clientWidth;
+      container.scrollLeft = activeLeft - containerWidth / 2 + activeWidth / 2;
+    }
+  }, [stradella, targetCol]);
 
   return (
     <div

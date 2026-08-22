@@ -1,5 +1,6 @@
 import type { CbaGrip, ParsedChord } from "../../types/index.ts";
 import { parseChord } from "../capo/transposition.ts";
+import { computeCbaCentroid } from "./grid.ts";
 import { generateCbaGrip, getChordNotes } from "./grips.ts";
 
 /**
@@ -54,10 +55,9 @@ export function computeCbaTransition(
   prevGrip?: CbaGrip,
 ): CbaGrip {
   const currBtns = currGrip.buttonCoords || currGrip.buttons || [];
-  const currCentroidCol = currGrip.centroidColumn ??
-    (currBtns.length > 0 ? currBtns.reduce((acc, b) => acc + b.column, 0) / currBtns.length : 5);
-  const currCentroidRow = currGrip.centroidRow ??
-    (currBtns.length > 0 ? currBtns.reduce((acc, b) => acc + b.row, 0) / currBtns.length : 3);
+  const { column: computedCurrCol, row: computedCurrRow } = computeCbaCentroid(currBtns);
+  const currCentroidCol = currGrip.centroidColumn ?? computedCurrCol;
+  const currCentroidRow = currGrip.centroidRow ?? computedCurrRow;
 
   if (!prevGrip) {
     return {
@@ -72,10 +72,9 @@ export function computeCbaTransition(
   }
 
   const prevBtns = prevGrip.buttonCoords || prevGrip.buttons || [];
-  const prevCentroidCol = prevGrip.centroidColumn ??
-    (prevBtns.length > 0 ? prevBtns.reduce((acc, b) => acc + b.column, 0) / prevBtns.length : 5);
-  const prevCentroidRow = prevGrip.centroidRow ??
-    (prevBtns.length > 0 ? prevBtns.reduce((acc, b) => acc + b.row, 0) / prevBtns.length : 3);
+  const { column: computedPrevCol, row: computedPrevRow } = computeCbaCentroid(prevBtns);
+  const prevCentroidCol = prevGrip.centroidColumn ?? computedPrevCol;
+  const prevCentroidRow = prevGrip.centroidRow ?? computedPrevRow;
 
   // Set Deltas
   const sharedCoords = currBtns.filter((cb) =>

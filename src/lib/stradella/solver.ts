@@ -5,7 +5,7 @@ import type {
   StradellaVoicing,
 } from "../../types/index.ts";
 import { normalizePitchClass, parseChord } from "../capo/transposition.ts";
-import { solveCompoundChord } from "./compound.ts";
+import { COMPOUND_QUALITIES, solveCompoundChord } from "./compound.ts";
 import { createStradellaButton, getStradellaColumn, isColumnOutOfRange } from "./layout.ts";
 import { solveSlashChord } from "./slash.ts";
 
@@ -29,27 +29,7 @@ export function solveStradellaChord(
   }
 
   // 2. Compound / Extended chord check
-  const compoundQualities = [
-    "major7",
-    "minor7",
-    "halfDiminished7",
-    "six",
-    "minorSix",
-    "dominant9",
-    "major9",
-    "minor9",
-    "dominant13",
-    "sevenSharpEleven",
-    "sevenFlatNine",
-    "sixNine",
-    "altered",
-    "sus4",
-    "sus2",
-    "add9",
-    "augmented",
-  ];
-
-  if (compoundQualities.includes(parsed.quality)) {
+  if (COMPOUND_QUALITIES.includes(parsed.quality)) {
     return solveCompoundChord(parsed, accordionSize);
   }
 

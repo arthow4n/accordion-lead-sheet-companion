@@ -41,61 +41,8 @@ export function decodeHtmlEntities(str: string): string {
     });
 }
 
-/**
- * Extracts Capo fret number (0-11) from raw text or HTML using English, Portuguese,
- * Spanish, and ChordPro patterns.
- */
-export function extractCapoFret(text: string): number {
-  if (!text) return 0;
-
-  // 1. ChordPro directive: {capo: 3} or {c: 3}
-  const chordProMatch = text.match(/\{(?:capo|c):\s*(\d+)[^}]*\}/i);
-  if (chordProMatch) {
-    const fret = parseInt(chordProMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0) {
-      return fret % 12;
-    }
-  }
-
-  // 2. Portuguese: "com capotraste na 3ª casa", "capotraste: 3", "2ª casa", "capo na 3 casa"
-  const ptMatch = text.match(
-    /(?:com\s+)?(?:capotraste|capo)?\s*(?:na|no|em)?\s*(\d+)(?:ª|º|a|o)?\s*casa/i,
-  ) || text.match(
-    /(?:capotraste|capo)\s*(?:na|no|em|:|-)?\s*(\d+)(?:ª|º|a|o)?\s*(?:casa)?/i,
-  );
-  if (ptMatch) {
-    const fret = parseInt(ptMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0) {
-      return fret % 12;
-    }
-  }
-
-  // 3. Spanish: "cejilla en el 2do traste", "cejilla: 3", "con cejilla en el 1er traste"
-  const esMatch = text.match(
-    /(?:con\s+)?cejilla\s*(?:en|en\s*el|:|-)?\s*(\d+)(?:do|er|ro|to|º|ª)?(?:\s*traste)?/i,
-  );
-  if (esMatch) {
-    const fret = parseInt(esMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0) {
-      return fret % 12;
-    }
-  }
-
-  // 4. English variants: "Capo: 3rd fret", "Capo on 2", "Capo - 3rd fret", "Capo: fret 3", "Capo 2nd", "Capo. 2", "CAPO AT 4"
-  const enMatch = text.match(
-    /capo\s*(?:at|on|fret|fret\s*:|:|\.|\-)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*fret)?/i,
-  ) || text.match(
-    /capo\s*(?:at|on|:|\-)?\s*fret\s*(\d+)/i,
-  );
-  if (enMatch) {
-    const fret = parseInt(enMatch[1], 10);
-    if (!isNaN(fret) && fret >= 0) {
-      return fret % 12;
-    }
-  }
-
-  return 0;
-}
+import { extractCapoFret } from "../../src/lib/parser/tokenizer.ts";
+export { extractCapoFret };
 
 /**
  * Extracts title and artist from HTML <title> tag or <meta> tags.

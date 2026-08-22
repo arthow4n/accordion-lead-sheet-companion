@@ -119,17 +119,6 @@ export interface LeadSheetLine {
   tabBlock?: string[]; // Grouped multi-line ASCII tab staves
 }
 
-export interface LeadSheet {
-  id: string;
-  title: string;
-  artist?: string;
-  capo: number;
-  viewMode: ViewMode;
-  rawText: string;
-  lines: ChordLyricSegment[][];
-  updatedAt: number;
-}
-
 export interface LeadSheetSong {
   id: string;
   title: string;

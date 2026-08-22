@@ -19,161 +19,17 @@ import { SongbookDrawer } from "./SongbookDrawer.tsx";
 import { AutoScrollFooter } from "./AutoScrollFooter.tsx";
 import { ImportModal } from "./ImportModal.tsx";
 
-function getSongFromUrl(availableSongs: LeadSheetSong[]): LeadSheetSong | undefined {
-  if (typeof globalThis.location === "undefined") return undefined;
-  try {
-    const params = new URLSearchParams(globalThis.location.search);
-    const songParam = params.get("song") ||
-      (globalThis.location.hash.startsWith("#song=")
-        ? decodeURIComponent(globalThis.location.hash.slice(6))
-        : null);
-    if (!songParam) return undefined;
-
-    const normalized = songParam.trim().toLowerCase();
-    return availableSongs.find(
-      (s) =>
-        s.id === songParam ||
-        s.id.toLowerCase() === normalized ||
-        s.title.toLowerCase() === normalized,
-    );
-  } catch (_err) {
-    return undefined;
-  }
-}
-
-function getViewModeFromUrl(): ViewMode | undefined {
-  if (typeof globalThis.location === "undefined") return undefined;
-  try {
-    const params = new URLSearchParams(globalThis.location.search);
-    const viewParam = params.get("view");
-    if (
-      viewParam === "stradella" ||
-      viewParam === "cba" ||
-      viewParam === "guitar" ||
-      viewParam === "dual"
-    ) {
-      return viewParam;
-    }
-    return undefined;
-  } catch (_err) {
-    return undefined;
-  }
-}
-
-const LAST_VIEW_STORAGE_KEY = "accordion_companion_last_view_mode";
-
-function getLastPersistedViewMode(): ViewMode | null {
-  if (typeof globalThis.localStorage === "undefined") return null;
-  try {
-    const val = globalThis.localStorage.getItem(LAST_VIEW_STORAGE_KEY);
-    if (val === "stradella" || val === "cba" || val === "guitar" || val === "dual") {
-      return val as ViewMode;
-    }
-    return null;
-  } catch (_err) {
-    return null;
-  }
-}
-
-function persistLastViewMode(viewMode: ViewMode) {
-  if (typeof globalThis.localStorage === "undefined") return;
-  try {
-    globalThis.localStorage.setItem(LAST_VIEW_STORAGE_KEY, viewMode);
-  } catch (_err) {
-    // Ignore quota or private browsing errors
-  }
-}
-
-function getInitialViewMode(initialSong?: LeadSheetSong): ViewMode {
-  // 1. Highest Priority: Explicit URL query param (?view=... / ?tab=...)
-  const fromUrl = getViewModeFromUrl();
-  if (fromUrl) {
-    persistLastViewMode(fromUrl);
-    return fromUrl;
-  }
-
-  // 2. Second Priority: Last persisted view mode in localStorage
-  const fromStorage = getLastPersistedViewMode();
-  if (fromStorage) {
-    return fromStorage;
-  }
-
-  // 3. Third Priority: Song default view mode
-  if (initialSong?.viewMode) {
-    return initialSong.viewMode;
-  }
-
-  // 4. Default: Stradella LH
-  return "stradella";
-}
-
-function updateAppUrl(song?: LeadSheetSong, viewMode?: ViewMode) {
-  if (typeof globalThis.location === "undefined" || typeof globalThis.history === "undefined") {
-    return;
-  }
-  try {
-    const url = new URL(globalThis.location.href);
-    if (song?.id) {
-      url.searchParams.set("song", song.id);
-    } else {
-      url.searchParams.delete("song");
-    }
-    if (viewMode) {
-      url.searchParams.set("view", viewMode);
-    } else {
-      url.searchParams.delete("view");
-    }
-    globalThis.history.replaceState(null, "", url.toString());
-  } catch (err) {
-    console.warn("Failed to update URL search params:", err);
-  }
-}
-
-const LAST_SONG_STORAGE_KEY = "accordion_companion_last_song_id";
-
-function getLastPersistedSongId(): string | null {
-  if (typeof globalThis.localStorage === "undefined") return null;
-  try {
-    return globalThis.localStorage.getItem(LAST_SONG_STORAGE_KEY);
-  } catch (_err) {
-    return null;
-  }
-}
-
-function persistLastSongId(songId: string) {
-  if (typeof globalThis.localStorage === "undefined") return;
-  try {
-    globalThis.localStorage.setItem(LAST_SONG_STORAGE_KEY, songId);
-  } catch (_err) {
-    // Ignore quota or private browsing errors
-  }
-}
-
-function getInitialSong(availableSongs: LeadSheetSong[]): LeadSheetSong {
-  // 1. Highest Priority: Explicit URL query param (?song=... or #song=...)
-  const fromUrl = getSongFromUrl(availableSongs);
-  if (fromUrl) {
-    persistLastSongId(fromUrl.id);
-    return fromUrl;
-  }
-
-  // 2. Second Priority: Last active song in PWA / LocalStorage
-  const lastId = getLastPersistedSongId();
-  if (lastId) {
-    const fromStorage = availableSongs.find(
-      (s) =>
-        s.id === lastId ||
-        s.id.toLowerCase() === lastId.toLowerCase() ||
-        s.title.toLowerCase() === lastId.toLowerCase(),
-    );
-    if (fromStorage) {
-      return fromStorage;
-    }
-  }
-
-  // 3. Fallback: First song in available list
-  return availableSongs[0];
-}
+import {
+  getInitialSong,
+  getInitialViewMode,
+  getLastPersistedSongId,
+  getLastPersistedViewMode,
+  getSongFromUrl,
+  getViewModeFromUrl,
+  persistLastSongId,
+  persistLastViewMode,
+  updateAppUrl,
+} from "../lib/storage/urlState.ts";
 
 export default function App(): React.JSX.Element {
   const initialSong = getInitialSong(PRESET_SONGS);

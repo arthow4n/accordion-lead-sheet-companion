@@ -1,6 +1,8 @@
 import React from "react";
 import type { ChordDetail, ViewMode } from "../types/index.ts";
 
+import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
+
 export interface ChordBadgeProps {
   chord?: string | ChordDetail;
   viewMode?: ViewMode;
@@ -8,6 +10,82 @@ export interface ChordBadgeProps {
   active?: boolean;
   fontSizeClass?: string;
   className?: string;
+}
+
+export const BADGE_SIZE_MAP: Record<string, {
+  badgeFont: string;
+  badgePad: string;
+  minH: string;
+  subFont: string;
+  dualMainFont: string;
+}> = {
+  "text-sm": {
+    badgeFont: "text-xs",
+    badgePad: "px-1.5 py-0.5",
+    minH: "min-h-6",
+    subFont: "text-[8px]",
+    dualMainFont: "text-[10px]",
+  },
+  "text-base": {
+    badgeFont: "text-xs sm:text-sm",
+    badgePad: "px-2 py-0.5 sm:py-1",
+    minH: "min-h-6 sm:min-h-7",
+    subFont: "text-[9px]",
+    dualMainFont: "text-[11px]",
+  },
+  "text-lg": {
+    badgeFont: "text-sm sm:text-base",
+    badgePad: "px-2.5 py-1",
+    minH: "min-h-6 sm:min-h-7",
+    subFont: "text-[10px]",
+    dualMainFont: "text-xs",
+  },
+  "text-xl": {
+    badgeFont: "text-base sm:text-lg",
+    badgePad: "px-3 py-1.5",
+    minH: "min-h-6 sm:min-h-8",
+    subFont: "text-xs",
+    dualMainFont: "text-sm",
+  },
+  "text-2xl": {
+    badgeFont: "text-lg sm:text-xl",
+    badgePad: "px-3.5 py-2",
+    minH: "min-h-6 sm:min-h-9",
+    subFont: "text-sm",
+    dualMainFont: "text-base",
+  },
+};
+
+/**
+ * Checks whether a chord candidate is active / selected.
+ */
+export function isChordActive(
+  chord?: ChordDetail | string | null,
+  activeChord?: ChordDetail | string | null,
+): boolean {
+  if (!chord || !activeChord) return false;
+  if (typeof chord === "string" && typeof activeChord === "string") {
+    return chord === activeChord;
+  }
+  if (typeof chord === "string" && typeof activeChord === "object") {
+    return (
+      chord === activeChord.soundingChord?.raw ||
+      chord === activeChord.originalChord?.raw
+    );
+  }
+  if (typeof chord === "object" && typeof activeChord === "string") {
+    return (
+      chord.soundingChord?.raw === activeChord ||
+      chord.originalChord?.raw === activeChord
+    );
+  }
+  if (typeof chord === "object" && typeof activeChord === "object") {
+    return (
+      Boolean(chord.soundingChord?.raw) &&
+      chord.soundingChord?.raw === activeChord.soundingChord?.raw
+    );
+  }
+  return false;
 }
 
 export const ChordBadge: React.FC<ChordBadgeProps> = ({
@@ -22,50 +100,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
     return <span className="inline-block h-6 min-w-[1.5rem]" aria-hidden="true" />;
   }
 
-  const badgeSizeMap: Record<string, {
-    badgeFont: string;
-    badgePad: string;
-    minH: string;
-    subFont: string;
-    dualMainFont: string;
-  }> = {
-    "text-sm": {
-      badgeFont: "text-xs",
-      badgePad: "px-1.5 py-0.5",
-      minH: "min-h-6",
-      subFont: "text-[8px]",
-      dualMainFont: "text-[10px]",
-    },
-    "text-base": {
-      badgeFont: "text-xs sm:text-sm",
-      badgePad: "px-2 py-0.5 sm:py-1",
-      minH: "min-h-6 sm:min-h-7",
-      subFont: "text-[9px]",
-      dualMainFont: "text-[11px]",
-    },
-    "text-lg": {
-      badgeFont: "text-sm sm:text-base",
-      badgePad: "px-2.5 py-1",
-      minH: "min-h-6 sm:min-h-7",
-      subFont: "text-[10px]",
-      dualMainFont: "text-xs",
-    },
-    "text-xl": {
-      badgeFont: "text-base sm:text-lg",
-      badgePad: "px-3 py-1.5",
-      minH: "min-h-6 sm:min-h-8",
-      subFont: "text-xs",
-      dualMainFont: "text-sm",
-    },
-    "text-2xl": {
-      badgeFont: "text-lg sm:text-xl",
-      badgePad: "px-3.5 py-2",
-      minH: "min-h-6 sm:min-h-9",
-      subFont: "text-sm",
-      dualMainFont: "text-base",
-    },
-  };
-  const currentBadgeSize = badgeSizeMap[fontSizeClass] || badgeSizeMap["text-base"];
+  const currentBadgeSize = BADGE_SIZE_MAP[fontSizeClass] || BADGE_SIZE_MAP["text-base"];
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation so clicking chord badge does not trigger page turns or scroll gestures (UX-05)
@@ -121,28 +156,9 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       soundingChordName.includes("/"),
   );
 
-  const compoundQualities = [
-    "major7",
-    "minor7",
-    "halfDiminished7",
-    "six",
-    "minorSix",
-    "dominant9",
-    "major9",
-    "minor9",
-    "dominant13",
-    "sevenSharpEleven",
-    "sevenFlatNine",
-    "sixNine",
-    "altered",
-    "sus4",
-    "sus2",
-    "add9",
-    "augmented",
-  ];
   const isCompound = Boolean(
     chord.soundingChord?.quality &&
-      compoundQualities.includes(chord.soundingChord.quality) &&
+      COMPOUND_QUALITIES.includes(chord.soundingChord.quality) &&
       chord.stradella?.chordButton &&
       !isSlash,
   );

@@ -32,6 +32,7 @@ export {
   COLUMN_TO_BASS_NOTE,
   createStradellaButton,
   getBassNoteForColumn,
+  getCounterBassColumn,
   getCounterBassNoteForColumn,
   getStradellaColumn,
   isColumnOutOfRange,
@@ -40,11 +41,12 @@ export {
 } from "./stradella/layout.ts";
 
 export { solveSlashChord } from "./stradella/slash.ts";
-export { solveCompoundChord } from "./stradella/compound.ts";
+export { COMPOUND_QUALITIES, COMPOUND_RULES, solveCompoundChord } from "./stradella/compound.ts";
 export { solveStradellaChord } from "./stradella/solver.ts";
 
 // 3. CBA C-System Treble Engine
 export {
+  computeCbaCentroid,
   createCbaButtonCoord,
   getCbaPositionsForNote,
   getCbaRowForPitchClass,
@@ -59,7 +61,8 @@ export {
   invertNotes,
 } from "./cba/grips.ts";
 
-export { optimizeVoiceLeading } from "./cba/voiceLeading.ts";
+export { computeCbaTransition, optimizeVoiceLeading } from "./cba/voiceLeading.ts";
+export { extractSectionChords } from "./cba/sectionChords.ts";
 
 // 4. Parser & Tokenizer Engine
 export {
@@ -103,3 +106,17 @@ export {
   initPresets,
   saveSong,
 } from "./storage/songbook.ts";
+
+export {
+  getInitialSong,
+  getInitialViewMode,
+  getLastPersistedSongId,
+  getLastPersistedViewMode,
+  getSongFromUrl,
+  getViewModeFromUrl,
+  LAST_SONG_STORAGE_KEY,
+  LAST_VIEW_STORAGE_KEY,
+  persistLastSongId,
+  persistLastViewMode,
+  updateAppUrl,
+} from "./storage/urlState.ts";

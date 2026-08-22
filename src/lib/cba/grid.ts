@@ -88,3 +88,19 @@ export function createCbaButtonCoord(
     finger,
   };
 }
+
+/**
+ * Computes the centroid (mean column and row) for a set of CBA button coordinates.
+ */
+export function computeCbaCentroid(
+  coords: Array<{ row: number; column: number }>,
+  defaultCol = 5,
+  defaultRow = 3,
+): { column: number; row: number } {
+  if (!coords || coords.length === 0) {
+    return { column: defaultCol, row: defaultRow };
+  }
+  const column = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
+  const row = coords.reduce((acc, c) => acc + c.row, 0) / coords.length;
+  return { column, row };
+}

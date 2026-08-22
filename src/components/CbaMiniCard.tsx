@@ -14,6 +14,66 @@ export interface CbaMiniCardProps {
   className?: string;
 }
 
+// 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger
+export const CBA_MINI_ROWS = [
+  { rowNum: 5, y: 6, xOffset: 12 },
+  { rowNum: 4, y: 15, xOffset: 9 },
+  { rowNum: 3, y: 24, xOffset: 6 },
+  { rowNum: 2, y: 33, xOffset: 3 },
+  { rowNum: 1, y: 42, xOffset: 0 },
+];
+
+// Font and Card Scaling Map
+export const CBA_MINI_SCALE_MAP: Record<string, {
+  cardPad: string;
+  titleSize: string;
+  notesSize: string;
+  svgW: string;
+  svgH: string;
+  minW: string;
+}> = {
+  "text-sm": {
+    cardPad: "p-1.5",
+    titleSize: "text-sm",
+    notesSize: "text-[11px]",
+    svgW: "w-[62px]",
+    svgH: "h-[46px]",
+    minW: "min-w-[80px]",
+  },
+  "text-base": {
+    cardPad: "p-2",
+    titleSize: "text-base",
+    notesSize: "text-xs",
+    svgW: "w-[72px]",
+    svgH: "h-[52px]",
+    minW: "min-w-[92px]",
+  },
+  "text-lg": {
+    cardPad: "p-2.5",
+    titleSize: "text-lg",
+    notesSize: "text-sm",
+    svgW: "w-[84px]",
+    svgH: "h-[60px]",
+    minW: "min-w-[106px]",
+  },
+  "text-xl": {
+    cardPad: "p-3",
+    titleSize: "text-xl",
+    notesSize: "text-base",
+    svgW: "w-[96px]",
+    svgH: "h-[68px]",
+    minW: "min-w-[122px]",
+  },
+  "text-2xl": {
+    cardPad: "p-3.5",
+    titleSize: "text-2xl",
+    notesSize: "text-lg",
+    svgW: "w-[110px]",
+    svgH: "h-[78px]",
+    minW: "min-w-[138px]",
+  },
+};
+
 export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   chord,
   onSelectChord,
@@ -42,15 +102,6 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
     displayCols.push(c);
   }
 
-  // 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger
-  const rows = [
-    { rowNum: 5, y: 6, xOffset: 12 },
-    { rowNum: 4, y: 15, xOffset: 9 },
-    { rowNum: 3, y: 24, xOffset: 6 },
-    { rowNum: 2, y: 33, xOffset: 3 },
-    { rowNum: 1, y: 42, xOffset: 0 },
-  ];
-
   // Determine if note spelling should prefer flats
   const preferFlats = notes.some((n) => n.includes("b")) ||
     Boolean(soundingChord?.root && soundingChord.root.includes("b"));
@@ -62,57 +113,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
     }
   };
 
-  // Font and Card Scaling Map
-  const scaleMap: Record<string, {
-    cardPad: string;
-    titleSize: string;
-    notesSize: string;
-    svgW: string;
-    svgH: string;
-    minW: string;
-  }> = {
-    "text-sm": {
-      cardPad: "p-1.5",
-      titleSize: "text-sm",
-      notesSize: "text-[11px]",
-      svgW: "w-[62px]",
-      svgH: "h-[46px]",
-      minW: "min-w-[80px]",
-    },
-    "text-base": {
-      cardPad: "p-2",
-      titleSize: "text-base",
-      notesSize: "text-xs",
-      svgW: "w-[72px]",
-      svgH: "h-[52px]",
-      minW: "min-w-[92px]",
-    },
-    "text-lg": {
-      cardPad: "p-2.5",
-      titleSize: "text-lg",
-      notesSize: "text-sm",
-      svgW: "w-[84px]",
-      svgH: "h-[60px]",
-      minW: "min-w-[106px]",
-    },
-    "text-xl": {
-      cardPad: "p-3",
-      titleSize: "text-xl",
-      notesSize: "text-base",
-      svgW: "w-[96px]",
-      svgH: "h-[68px]",
-      minW: "min-w-[122px]",
-    },
-    "text-2xl": {
-      cardPad: "p-3.5",
-      titleSize: "text-2xl",
-      notesSize: "text-lg",
-      svgW: "w-[110px]",
-      svgH: "h-[78px]",
-      minW: "min-w-[138px]",
-    },
-  };
-  const currentScale = scaleMap[fontSizeClass] || scaleMap["text-base"];
+  const currentScale = CBA_MINI_SCALE_MAP[fontSizeClass] || CBA_MINI_SCALE_MAP["text-base"];
 
   const colSpacing = 9.5;
   const svgWidth = 14 + (displayCols.length - 1) * colSpacing + 12;
@@ -151,7 +152,7 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
           className={`${currentScale.svgW} ${currentScale.svgH} overflow-visible`}
           aria-hidden="true"
         >
-          {rows.map(({ rowNum, y, xOffset }) => {
+          {CBA_MINI_ROWS.map(({ rowNum, y, xOffset }) => {
             return displayCols.map((col, colIdx) => {
               const pc = getPitchClassAt(rowNum, col);
               const noteName = getNoteName(pc, preferFlats);

@@ -1,7 +1,12 @@
 import type { CbaButtonCoord, CbaGrip, ChordQuality, ParsedChord } from "../../types/index.ts";
 import { getPitchClass, normalizePitchClass, parseChord } from "../capo/transposition.ts";
 import { getNoteName } from "../capo/enharmonics.ts";
-import { createCbaButtonCoord, getCbaPositionsForNote, getCbaRowForPitchClass } from "./grid.ts";
+import {
+  computeCbaCentroid,
+  createCbaButtonCoord,
+  getCbaPositionsForNote,
+  getCbaRowForPitchClass,
+} from "./grid.ts";
 
 /**
  * Get note pitch classes for a given chord root and quality
@@ -291,8 +296,7 @@ export function generateCbaGrip(
     coords[3].finger = 5;
   }
 
-  const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
-  const centroidRow = coords.reduce((acc, c) => acc + c.row, 0) / coords.length;
+  const { column: centroid, row: centroidRow } = computeCbaCentroid(coords);
 
   return {
     chord: parsed.raw || parsed.root,
@@ -363,8 +367,7 @@ export function generateCanonicalRootGrip(
     coords.push(createCbaButtonCoord(bestPos.row, bestPos.column, note, finger));
   }
 
-  const centroid = coords.reduce((acc, c) => acc + c.column, 0) / coords.length;
-  const centroidRow = coords.reduce((acc, c) => acc + c.row, 0) / coords.length;
+  const { column: centroid, row: centroidRow } = computeCbaCentroid(coords);
   const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : "1-2-4";
 
   return {

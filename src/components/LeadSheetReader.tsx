@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { ExternalLink, RotateCcw, Zap } from "lucide-react";
 import type {
   AccordionSize,
-  CbaGrip,
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
@@ -10,10 +9,10 @@ import type {
 } from "../types/index.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
-import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
-import { computeCbaTransition, optimizeVoiceLeading } from "../lib/cba/voiceLeading.ts";
+import { extractSectionChords } from "../lib/cba/sectionChords.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
+import { isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
 
 export interface LeadSheetReaderProps {
@@ -83,79 +82,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     return enrichLeadSheetLines(rawLines, capo, song.originalKey);
   }, [song.lines, capo, song.originalKey]);
 
-  // Precompute unique chords per section
+  // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
-    const map = new Map<number, Array<ChordDetail | string>>();
-    const allChords: Array<ChordDetail | string> = [];
-    const allSeen = new Set<string>();
-
-    for (let i = 0; i < renderedLines.length; i++) {
-      const line = renderedLines[i];
-      if (line.type === "section_header") {
-        const uniqueChords: Array<ChordDetail | string> = [];
-        const seen = new Set<string>();
-        for (let j = i + 1; j < renderedLines.length; j++) {
-          const nextLine = renderedLines[j];
-          if (nextLine.type === "section_header") break;
-          if (nextLine.segments) {
-            for (const seg of nextLine.segments) {
-              if (seg.chord) {
-                const rawName = typeof seg.chord === "string"
-                  ? seg.chord
-                  : seg.chord.soundingChord?.raw || seg.chord.originalChord?.raw || "Chord";
-                if (!seen.has(rawName)) {
-                  seen.add(rawName);
-                  uniqueChords.push(seg.chord);
-                }
-              }
-            }
-          }
-        }
-        // Generate section unique chords according to cbaGripMode (Root vs Smooth Voice-Led)
-        let prevGrip: CbaGrip | undefined = undefined;
-        const resolvedUniqueChords = uniqueChords.map((chord) => {
-          if (typeof chord === "string") return chord;
-          const sounding = chord.soundingChord || chord.originalChord;
-          if (!sounding) return chord;
-          const grip = cbaGripMode === "root"
-            ? computeCbaTransition(generateCanonicalRootGrip(sounding), prevGrip)
-            : optimizeVoiceLeading(sounding, prevGrip);
-          prevGrip = grip;
-          return {
-            ...chord,
-            cba: grip,
-          };
-        });
-        map.set(i, resolvedUniqueChords);
-      }
-
-      if (line.segments) {
-        for (const seg of line.segments) {
-          if (seg.chord) {
-            const rawName = typeof seg.chord === "string"
-              ? seg.chord
-              : seg.chord.soundingChord?.raw || seg.chord.originalChord?.raw || "Chord";
-            if (!allSeen.has(rawName)) {
-              allSeen.add(rawName);
-              allChords.push(seg.chord);
-            }
-          }
-        }
-      }
-    }
-
-    const resolvedAllChords = allChords.map((chord) => {
-      if (typeof chord === "string") return chord;
-      const sounding = chord.soundingChord || chord.originalChord;
-      if (!sounding) return chord;
-      const grip = cbaGripMode === "root" ? generateCanonicalRootGrip(sounding) : chord.cba;
-      return {
-        ...chord,
-        cba: grip,
-      };
-    });
-
-    return { sectionChordsMap: map, allSongChords: resolvedAllChords };
+    return extractSectionChords(renderedLines, cbaGripMode);
   }, [renderedLines, cbaGripMode]);
 
   const handleToggleCapo = () => {
@@ -307,14 +236,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
-                active={Boolean(
-                  selectedChord &&
-                    ((typeof chord === "string" && chord === selectedChord) ||
-                      (typeof chord === "object" &&
-                        typeof selectedChord === "object" &&
-                        chord?.soundingChord?.raw ===
-                          (selectedChord as ChordDetail)?.soundingChord?.raw)),
-                )}
+                active={isChordActive(chord, selectedChord)}
               />
             ))}
           </div>

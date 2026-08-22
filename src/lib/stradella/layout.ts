@@ -137,6 +137,15 @@ export function getCounterBassNoteForColumn(column: number): string {
 }
 
 /**
+ * Get Circle of Fifths column for the counter-bass button that produces a given note.
+ * (Counter-bass produces a note 4 fifths sharp / Major 3rd above the fundamental bass of that column,
+ * so the button producing note X is located at fundamentalCol - 4).
+ */
+export function getCounterBassColumn(fundamentalCol: number): number {
+  return fundamentalCol - 4;
+}
+
+/**
  * Build a StradellaButton object
  */
 export function createStradellaButton(
