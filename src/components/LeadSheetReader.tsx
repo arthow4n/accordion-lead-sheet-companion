@@ -174,7 +174,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
 
   const handleStepCapo = (delta: number) => {
     if (!onChangeCapo) return;
-    const next = (capo + delta + 12) % 12;
+    // Capo values are physical frets, so stepping stops at the supported
+    // boundaries instead of wrapping from 0 to 11 (or 11 to 0).
+    const next = Math.max(0, Math.min(11, capo + delta));
     if (next > 0) {
       setLastNonZeroCapo(next);
     }
@@ -244,7 +246,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 <button
                   type="button"
                   onClick={() => handleStepCapo(-1)}
-                  className="min-w-[32px] min-h-[32px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center font-black text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 active:bg-zinc-700 rounded-md transition-all active:scale-95 cursor-pointer"
+                  disabled={capo <= 0}
+                  className="min-w-[32px] min-h-[32px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center font-black text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 active:bg-zinc-700 disabled:hover:bg-transparent disabled:active:bg-transparent disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all active:scale-95 cursor-pointer"
                   title="Capo down 1 fret (-1 semitone)"
                   aria-label="Decrease Capo"
                 >
@@ -256,7 +259,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 <button
                   type="button"
                   onClick={() => handleStepCapo(1)}
-                  className="min-w-[32px] min-h-[32px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center font-black text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 active:bg-zinc-700 rounded-md transition-all active:scale-95 cursor-pointer"
+                  disabled={capo >= 11}
+                  className="min-w-[32px] min-h-[32px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center font-black text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 active:bg-zinc-700 disabled:hover:bg-transparent disabled:active:bg-transparent disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all active:scale-95 cursor-pointer"
                   title="Capo up 1 fret (+1 semitone)"
                   aria-label="Increase Capo"
                 >

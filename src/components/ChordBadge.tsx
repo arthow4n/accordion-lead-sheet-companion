@@ -414,6 +414,11 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
           <span className="text-emerald-400 font-bold tracking-tight">
             {soundingChordName}
           </span>
+          {chord.cba?.notes.length === 3 && chord.cba.fingeringPattern && (
+            <span className={`${currentBadgeSize.subFont} text-emerald-300 font-mono font-normal`}>
+              [{chord.cba.fingeringPattern}]
+            </span>
+          )}
           {chord.cba?.flowVector && chord.cba.flowVector !== "●" && (
             <span className="text-[10px] text-sky-400 font-bold">
               {chord.cba.flowVector}

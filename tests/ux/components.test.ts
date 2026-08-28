@@ -692,7 +692,7 @@ Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click
   assertEquals(propagationStopped, true);
 });
 
-Deno.test("UX-08e: MiniGripDrawer adopts natural responsive height", () => {
+Deno.test("UX-08e: MiniGripDrawer stays within the mobile occlusion budget", () => {
   const chordDetail = enrichChord("Cmaj7", 0);
   const html = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
@@ -707,7 +707,7 @@ Deno.test("UX-08e: MiniGripDrawer adopts natural responsive height", () => {
 
   assertExists(html);
   // Natural responsive container
-  assertEquals(html.includes("max-h-[85vh]"), true);
+  assertEquals(html.includes("max-h-[35vh]"), true);
   assertEquals(html.includes("overflow-y-auto"), true);
 });
 
@@ -771,7 +771,17 @@ Deno.test("UX-11: Guitar View Mode renders original guitar chords & LeadSheetRea
 });
 
 Deno.test("UX-12: 5-Row CBA Section-Header Mini-Grip Previews & Clean In-Line Badges", () => {
-  // 1. In-line ChordBadge in CBA mode has clean chord name without [1-2-4-5]
+  // 1. Triad badges show the compact CBA fingering; extended chords stay compact.
+  const triadDetail = enrichChord("Am", 0);
+  const triadBadgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: triadDetail,
+      viewMode: "cba",
+    }),
+  );
+  assertEquals(triadBadgeHtml.includes("Am"), true);
+  assertEquals(triadBadgeHtml.includes("[1-2-4]"), true);
+
   const chordDetail = enrichChord("F#7", 0);
   const cbaBadgeHtml = renderToStaticMarkup(
     React.createElement(ChordBadge, {
@@ -840,6 +850,32 @@ Deno.test("UX-13: Capo & Key Controller with Quick On/Off and Reset to Default C
   );
   assertEquals(modifiedHtml.includes("Reset (2)"), true);
   assertEquals(modifiedHtml.includes("text-amber-300"), true);
+
+  // 3. The physical-fret stepper disables at both supported boundaries.
+  const minimumCapoHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 0,
+      viewMode: "stradella",
+      onChangeCapo: onChangeCapo,
+    }),
+  );
+  const maximumCapoHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: song,
+      capo: 11,
+      viewMode: "stradella",
+      onChangeCapo: onChangeCapo,
+    }),
+  );
+  assertEquals(
+    /<button[^>]*disabled=""[^>]*aria-label="Decrease Capo"/.test(minimumCapoHtml),
+    true,
+  );
+  assertEquals(
+    /<button[^>]*disabled=""[^>]*aria-label="Increase Capo"/.test(maximumCapoHtml),
+    true,
+  );
 });
 
 Deno.test("UX-14: Font Size Scaling scales lyrics, ChordBadge, and CbaMiniCard dimensions", () => {

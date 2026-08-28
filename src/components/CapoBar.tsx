@@ -83,7 +83,7 @@ export const CapoBar: React.FC<CapoBarProps> = ({
                 ? "bg-indigo-600 text-white shadow-md"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
             }`}
-            title="Dual Mode (Guitar Chords + Stradella Recipe)"
+            title="Dual Mode (Guitar Chords + Stradella)"
             aria-pressed={viewMode === "dual"}
           >
             <span>🪗🎸</span>

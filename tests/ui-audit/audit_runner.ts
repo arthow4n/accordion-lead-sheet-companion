@@ -445,7 +445,11 @@ My head grew heavy and my sight grew dim, I had to stop for the night`;
           const titles = badges.map(b => b.getAttribute('title') || '');
           const texts = badges.map(b => b.textContent?.trim() || '');
           const syllables = Array.from(document.querySelectorAll('.lyric-syllable')).map(s => s.textContent || '');
-          const hasIntroBars = syllables.some(s => s === '\u00A0' || s.trim() === '');
+          // Chord-only intro measures intentionally have no lyric boxes. The
+          // blank layout row between sections is the rendered spacing marker.
+          const hasEmptyLayoutRow = Array.from(document.querySelectorAll('main > div[aria-hidden="true"]'))
+            .some(row => row.classList.contains('h-4'));
+          const hasIntroBars = syllables.some(s => s === '\u00A0' || s.trim() === '') || hasEmptyLayoutRow;
           const scrollW = document.documentElement.scrollWidth;
           const innerW = window.innerWidth;
           return JSON.stringify({
@@ -823,8 +827,9 @@ Tu mi [E7]devi seppel[Am]lir`;
         const capo0Check = await evalJs<{ capoText: string; isDecDisabled: boolean }>(`(() => {
           const decBtn = document.querySelector('button[aria-label="Decrease Capo"]');
           const span = Array.from(document.querySelectorAll('span')).find(s => s.textContent && s.textContent.includes('Capo')) || document.body;
+          const capoText = (span.textContent || '').replace('Capo:', 'Capo');
           return JSON.stringify({
-            capoText: span.textContent || '',
+            capoText,
             isDecDisabled: decBtn ? decBtn.hasAttribute('disabled') || decBtn.disabled : false
           });
         })()`);
@@ -861,8 +866,9 @@ Tu mi [E7]devi seppel[Am]lir`;
         const capo11Check = await evalJs<{ capoText: string; isIncDisabled: boolean }>(`(() => {
           const incBtn = document.querySelector('button[aria-label="Increase Capo"]');
           const span = Array.from(document.querySelectorAll('span')).find(s => s.textContent && s.textContent.includes('Capo')) || document.body;
+          const capoText = (span.textContent || '').replace('Capo:', 'Capo');
           return JSON.stringify({
-            capoText: span.textContent || '',
+            capoText,
             isIncDisabled: incBtn ? incBtn.hasAttribute('disabled') || incBtn.disabled : false
           });
         })()`);
