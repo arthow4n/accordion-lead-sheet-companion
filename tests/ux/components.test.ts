@@ -26,6 +26,7 @@ import { CbaMiniCard } from "../../src/components/CbaMiniCard.tsx";
 import { StradellaMiniCard } from "../../src/components/StradellaMiniCard.tsx";
 import { UpdateToast } from "../../src/components/UpdateToast.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
+import { computeStradellaTransition } from "../../src/lib/stradella/transitions.ts";
 import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
 
 interface MockReactElement {
@@ -196,6 +197,19 @@ Deno.test("UX-05b: ChordBadge renders Counter-Bass Amber styling for slash count
   const className = badge.props.className || "";
   assertEquals(className.includes("bg-amber-950/80"), true);
   assertEquals(className.includes("text-amber-300"), true);
+});
+
+Deno.test("UX-05f: ChordBadge renders compact Stradella movement marker", () => {
+  const badgeHtml = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: enrichChord("E", 0),
+      viewMode: "stradella",
+      stradellaTransition: computeStradellaTransition(5, 4),
+    }),
+  );
+
+  assertEquals(badgeHtml.includes("←1"), true);
+  assertEquals(badgeHtml.includes("Move left 1 Stradella column"), true);
 });
 
 Deno.test("UX-05c: ChordBadge formats CBA C-System mode with fingering", () => {

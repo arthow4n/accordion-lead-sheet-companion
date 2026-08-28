@@ -26,6 +26,7 @@ import {
   persistStradellaDisplayMode,
 } from "../lib/storage/urlState.ts";
 import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
+import { annotateStradellaTransitions } from "../lib/stradella/transitions.ts";
 import { checkForAppUpdate } from "../lib/pwa/updateChecker.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
@@ -146,7 +147,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   const renderedLines = useMemo(() => {
     const rawLines = (song.lines || []) as LeadSheetLine[];
     const enriched = enrichLeadSheetLines(rawLines, capo, song.originalKey);
-    return enrichSongLinesWithVoiceLeading(enriched, cbaGripMode);
+    const withVoiceLeading = enrichSongLinesWithVoiceLeading(enriched, cbaGripMode);
+    return annotateStradellaTransitions(withVoiceLeading);
   }, [song.lines, capo, song.originalKey, cbaGripMode]);
 
   // Precompute unique chords per section and for the entire song

@@ -72,6 +72,14 @@ export interface StradellaVoicing {
   isOutOfRange?: boolean; // true if column is outside chosen AccordionSize
 }
 
+export interface StradellaTransition {
+  fromColumn: number;
+  toColumn: number;
+  delta: number;
+  distance: number;
+  direction: "left" | "right" | "same";
+}
+
 export interface CbaButtonCoord {
   row: number; // 1-3 core, 4-5 auxiliary
   column: number; // Diagonal column index
@@ -111,6 +119,7 @@ export interface ChordDetail {
 export interface ChordLyricSegment {
   chord?: string | ChordDetail;
   lyric: string;
+  stradellaTransition?: StradellaTransition;
 }
 
 export interface LeadSheetLine {

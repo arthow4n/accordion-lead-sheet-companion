@@ -1,9 +1,15 @@
 import React from "react";
-import type { ChordDetail, ParsedChord, StradellaVoicing } from "../types/index.ts";
+import type {
+  ChordDetail,
+  ParsedChord,
+  StradellaTransition,
+  StradellaVoicing,
+} from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { solveStradellaChord } from "../lib/stradella/solver.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getBassNoteForColumn, getCounterBassNoteForColumn } from "../lib/stradella/layout.ts";
+import { formatStradellaTransition } from "../lib/stradella/transitions.ts";
 
 export interface StradellaMiniCardProps {
   chord: ChordDetail | string;
@@ -11,6 +17,7 @@ export interface StradellaMiniCardProps {
   active?: boolean;
   fontSizeClass?: string;
   className?: string;
+  stradellaTransition?: StradellaTransition;
 }
 
 export const STRADELLA_MINI_ROWS = [
@@ -78,6 +85,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
   active = false,
   fontSizeClass = "text-base",
   className = "",
+  stradellaTransition,
 }) => {
   const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
   const soundingChord: ParsedChord = chordDetail.soundingChord ||
@@ -90,6 +98,14 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
   const activeBassLabel = stradella.primaryBass || soundingChord.root || "";
   const activeChordLabel = stradella.chordButton?.label || "";
   const isCounterBass = Boolean(stradella.isCounterBass || activeBassLabel.endsWith("_"));
+  const transitionMarker = formatStradellaTransition(stradellaTransition);
+  const transitionDescription = stradellaTransition
+    ? stradellaTransition.direction === "same"
+      ? "No horizontal move"
+      : `Move ${stradellaTransition.direction} ${stradellaTransition.distance} Stradella column${
+        stradellaTransition.distance === 1 ? "" : "s"
+      }`
+    : "";
 
   // Track active columns
   const activeCols: number[] = [];
@@ -147,7 +163,9 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
     <button
       type="button"
       onClick={handleClick}
-      title={`${chordName}: Stradella (${recipeText})`}
+      title={`${chordName}: Stradella (${recipeText})${
+        transitionDescription ? ` | ${transitionDescription}` : ""
+      }`}
       className={`flex flex-col items-center justify-between ${currentScale.cardPad} rounded-xl border transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
         active
           ? "bg-blue-950/90 border-blue-400 shadow-md ring-1 ring-blue-400"
@@ -156,11 +174,22 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
     >
       {/* Chord Name Header + Recipe Subtitle */}
       <div className="flex flex-col items-center justify-center gap-0.5 mb-1.5 w-full">
-        <span
-          className={`font-mono font-black tracking-tight text-blue-400 leading-tight ${currentScale.titleSize}`}
-        >
-          {chordName}
-        </span>
+        <div className="flex items-center justify-center gap-1">
+          <span
+            className={`font-mono font-black tracking-tight text-blue-400 leading-tight ${currentScale.titleSize}`}
+          >
+            {chordName}
+          </span>
+          {transitionMarker && (
+            <span
+              className="font-mono text-[10px] font-black leading-none text-zinc-300 whitespace-nowrap"
+              aria-label={transitionDescription}
+              title={transitionDescription}
+            >
+              {transitionMarker}
+            </span>
+          )}
+        </div>
         <span
           className={`font-mono font-semibold text-zinc-400 leading-tight ${currentScale.notesSize}`}
         >

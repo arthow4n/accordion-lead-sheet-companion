@@ -5,6 +5,7 @@ import type {
   ChordLyricSegment,
   LeadSheetLine,
   StradellaDisplayMode,
+  StradellaTransition,
   ViewMode,
 } from "../types/index.ts";
 import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
@@ -27,6 +28,24 @@ export interface LineRendererProps {
 export interface TabStaffLineProps {
   line: LeadSheetLine;
   defaultExpanded?: boolean;
+}
+
+type ChordSegmentWithChord = ChordLyricSegment & {
+  chord: NonNullable<ChordLyricSegment["chord"]>;
+};
+
+interface LineChordEntry {
+  chord: ChordSegmentWithChord["chord"];
+  stradellaTransition?: StradellaTransition;
+}
+
+function extractLineChords(segments: ChordLyricSegment[]): LineChordEntry[] {
+  return segments
+    .filter((segment): segment is ChordSegmentWithChord => Boolean(segment.chord))
+    .map((segment) => ({
+      chord: segment.chord,
+      stradellaTransition: segment.stradellaTransition,
+    }));
 }
 
 /**
@@ -106,11 +125,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
 }) => {
   const renderDenseMeasureLine = (segments: ChordLyricSegment[]) => {
     // Extract line-level chronological chords
-    const lineChords = segments
-      .filter((s): s is ChordLyricSegment & { chord: NonNullable<ChordLyricSegment["chord"]> } =>
-        Boolean(s.chord)
-      )
-      .map((s) => s.chord);
+    const lineChords = extractLineChords(segments);
 
     const content = (
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2 leading-relaxed max-w-full overflow-x-clip">
@@ -145,6 +160,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
+                stradellaTransition={segment.stradellaTransition}
               />
             </div>
           );
@@ -157,7 +173,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       return (
         <div className="flex flex-col gap-1.5 my-1 max-w-full">
           <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
-            {lineChords.map((chord, cIdx) => (
+            {lineChords.map(({ chord }, cIdx) => (
               <CbaMiniCard
                 key={`measure-line-cba-${cIdx}`}
                 chord={chord}
@@ -181,13 +197,14 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       return (
         <div className="flex flex-col gap-1.5 my-1 max-w-full">
           <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
-            {lineChords.map((chord, cIdx) => (
+            {lineChords.map(({ chord, stradellaTransition }, cIdx) => (
               <StradellaMiniCard
                 key={`measure-line-strad-${cIdx}`}
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(chord, selectedChord)}
+                stradellaTransition={stradellaTransition}
               />
             ))}
           </div>
@@ -201,11 +218,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
 
   const renderStandardChordLyricLine = (segments: ChordLyricSegment[]) => {
     // Extract line-level chronological chords
-    const lineChords = segments
-      .filter((s): s is ChordLyricSegment & { chord: NonNullable<ChordLyricSegment["chord"]> } =>
-        Boolean(s.chord)
-      )
-      .map((s) => s.chord);
+    const lineChords = extractLineChords(segments);
 
     const content = (
       <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 leading-normal max-w-full overflow-x-clip">
@@ -225,6 +238,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
+                stradellaTransition={segment.stradellaTransition}
               />
             </div>
             <span
@@ -242,7 +256,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       return (
         <div className="flex flex-col gap-1 my-1 max-w-full">
           <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
-            {lineChords.map((chord, cIdx) => (
+            {lineChords.map(({ chord }, cIdx) => (
               <CbaMiniCard
                 key={`line-cba-${cIdx}`}
                 chord={chord}
@@ -266,13 +280,14 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
       return (
         <div className="flex flex-col gap-1 my-1 max-w-full">
           <div className="flex flex-wrap items-center gap-1.5 pb-1 overflow-x-auto">
-            {lineChords.map((chord, cIdx) => (
+            {lineChords.map(({ chord, stradellaTransition }, cIdx) => (
               <StradellaMiniCard
                 key={`line-strad-${cIdx}`}
                 chord={chord}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(chord, selectedChord)}
+                stradellaTransition={stradellaTransition}
               />
             ))}
           </div>

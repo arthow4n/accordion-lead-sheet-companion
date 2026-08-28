@@ -3,12 +3,14 @@ import type {
   CbaDisplayMode,
   ChordDetail,
   StradellaDisplayMode,
+  StradellaTransition,
   ViewMode,
 } from "../types/index.ts";
 
 import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { formatStradellaTransition } from "../lib/stradella/transitions.ts";
 
 export interface ChordBadgeProps {
   chord?: string | ChordDetail;
@@ -20,6 +22,7 @@ export interface ChordBadgeProps {
   active?: boolean;
   fontSizeClass?: string;
   className?: string;
+  stradellaTransition?: StradellaTransition;
 }
 
 export const BADGE_SIZE_MAP: Record<string, {
@@ -124,6 +127,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   active = false,
   fontSizeClass = "text-base",
   className = "",
+  stradellaTransition,
 }) => {
   if (!chord) {
     return <span className="inline-block h-6 min-w-[1.5rem]" aria-hidden="true" />;
@@ -177,6 +181,14 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   const soundingChordName = chord.soundingChord?.raw || rawChordName;
   const primaryBass = chord.stradella?.primaryBass || chord.soundingChord?.root || "";
   const chordButton = chord.stradella?.chordButton?.label || "";
+  const transitionMarker = formatStradellaTransition(stradellaTransition);
+  const transitionDescription = stradellaTransition
+    ? stradellaTransition.direction === "same"
+      ? "No horizontal move"
+      : `Move ${stradellaTransition.direction} ${stradellaTransition.distance} Stradella column${
+        stradellaTransition.distance === 1 ? "" : "s"
+      }`
+    : "";
 
   // Classification for clean Stradella view
   const isSlash = Boolean(
@@ -257,7 +269,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       onClick={handleClick}
       title={`${rawChordName} (Sounding: ${soundingChordName})${
         jamFills ? ` | Fills: ${jamFills.notes.join(" · ")}` : ""
-      } - Tap for button diagram`}
+      }${transitionDescription ? ` | ${transitionDescription}` : ""} - Tap for button diagram`}
       className={`relative before:absolute before:-inset-2.5 before:content-[''] ${currentBadgeSize.minH} inline-flex items-center gap-1 ${currentBadgeSize.badgePad} rounded border ${currentBadgeSize.badgeFont} font-mono transition-all cursor-pointer select-none active:scale-95 ${badgeStyle} ${className}`}
     >
       {viewMode === "stradella" && (
@@ -378,6 +390,16 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               )}
             </svg>
           )}
+
+          {transitionMarker && (
+            <span
+              className={`${currentBadgeSize.subFont} text-zinc-300 font-black leading-none whitespace-nowrap`}
+              aria-label={transitionDescription}
+              title={transitionDescription}
+            >
+              {transitionMarker}
+            </span>
+          )}
         </span>
       )}
 
@@ -481,6 +503,15 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
               : isCompound
               ? <span>{primaryBass}+{formattedChordBtn}</span>
               : <span className="text-sky-400 font-semibold">{soundingChordName}</span>}
+            {transitionMarker && (
+              <span
+                className="ml-1 text-zinc-300 font-black whitespace-nowrap"
+                aria-label={transitionDescription}
+                title={transitionDescription}
+              >
+                {transitionMarker}
+              </span>
+            )}
           </span>
         </span>
       )}

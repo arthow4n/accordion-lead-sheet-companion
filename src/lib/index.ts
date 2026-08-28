@@ -44,6 +44,12 @@ export { solveSlashChord } from "./stradella/slash.ts";
 export { COMPOUND_QUALITIES, COMPOUND_RULES, solveCompoundChord } from "./stradella/compound.ts";
 export { solveStradellaChord } from "./stradella/solver.ts";
 export {
+  annotateStradellaTransitions,
+  computeStradellaTransition,
+  formatStradellaTransition,
+  getStradellaMovementColumn,
+} from "./stradella/transitions.ts";
+export {
   getGroovePresetList,
   solveStradellaGroove,
   STRADELLA_GROOVES,
