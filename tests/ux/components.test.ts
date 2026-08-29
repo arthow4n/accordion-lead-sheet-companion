@@ -1218,3 +1218,41 @@ Deno.test("UX-21: 3-Way Stradella Display Mode (Badges, Line Cards, Micro Grids)
   assertEquals(readerHtml.includes("Cards"), true);
   assertEquals(readerHtml.includes("Micro"), true);
 });
+
+Deno.test("UX-22: YouTube Search & Direct Video Link Integration", () => {
+  const baseSong = createPresetSongs()[0]; // Bella Ciao
+
+  // 1. Default state without custom youtubeUrl: Renders YouTube search button with target="_blank"
+  const defaultHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: baseSong,
+      capo: 2,
+      viewMode: "stradella",
+      onChangeCapo: () => {},
+      onUpdateSong: () => {},
+    }),
+  );
+  assertEquals(defaultHtml.includes("Search YT"), true);
+  assertEquals(defaultHtml.includes("youtube.com/results?search_query="), true);
+  assertEquals(defaultHtml.includes('target="_blank"'), true);
+  assertEquals(defaultHtml.includes('rel="noopener noreferrer"'), true);
+  assertEquals(defaultHtml.includes("Bella%20Ciao"), true);
+
+  // 2. Custom youtubeUrl saved: Renders direct YouTube video link and highlighted badge
+  const linkedSong: LeadSheetSong = {
+    ...baseSong,
+    youtubeUrl: "https://www.youtube.com/watch?v=4CI3lhyNKfo",
+  };
+  const linkedHtml = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song: linkedSong,
+      capo: 2,
+      viewMode: "stradella",
+      onChangeCapo: () => {},
+      onUpdateSong: () => {},
+    }),
+  );
+  assertEquals(linkedHtml.includes("YouTube"), true);
+  assertEquals(linkedHtml.includes('href="https://www.youtube.com/watch?v=4CI3lhyNKfo"'), true);
+  assertEquals(linkedHtml.includes("bg-red-950"), true);
+});

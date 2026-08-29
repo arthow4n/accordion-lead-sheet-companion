@@ -230,6 +230,14 @@ export const SongbookDrawer: React.FC<SongbookDrawerProps> = ({
                         {song.artist && <span>•</span>}
                         <span>Capo {song.capoFret ?? song.capo ?? 0}</span>
                         {song.originalKey && <span>• {song.originalKey}</span>}
+                        {song.youtubeUrl && (
+                          <span
+                            className="text-red-400 font-bold"
+                            title={`Linked to: ${song.youtubeUrl}`}
+                          >
+                            • ▶ YT
+                          </span>
+                        )}
                       </div>
                     </button>
 

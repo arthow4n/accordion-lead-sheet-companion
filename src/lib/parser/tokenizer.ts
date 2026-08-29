@@ -165,8 +165,9 @@ export function parseLeadSheetText(
 
   let title = "Untitled Lead Sheet";
   let artist: string | undefined;
+  let youtubeUrl: string | undefined;
 
-  // Extract Title / Artist from standard header patterns
+  // Extract Title / Artist / YouTube from standard header patterns
   const titleMatch = normalizedText.match(/^(?:\{title:\s*([^}]+)\}|title:\s*(.+)$)/im);
   if (titleMatch) {
     title = (titleMatch[1] || titleMatch[2]).trim();
@@ -177,12 +178,20 @@ export function parseLeadSheetText(
     artist = (artistMatch[1] || artistMatch[2]).trim();
   }
 
+  const youtubeMatch = normalizedText.match(
+    /^(?:\{(?:youtube|yt):\s*([^}]+)\}|(?:youtube|yt):\s*(.+)$)/im,
+  );
+  if (youtubeMatch) {
+    youtubeUrl = (youtubeMatch[1] || youtubeMatch[2]).trim();
+  }
+
   let lines: LeadSheetLine[];
 
   if (detectChordPro(normalizedText)) {
     const doc = parseChordProDocument(normalizedText);
     if (doc.title && title === "Untitled Lead Sheet") title = doc.title;
     if (doc.artist && !artist) artist = doc.artist;
+    if (doc.youtubeUrl && !youtubeUrl) youtubeUrl = doc.youtubeUrl;
     lines = doc.lines;
   } else {
     lines = parseTwoLineDocument(normalizedText);
@@ -195,6 +204,7 @@ export function parseLeadSheetText(
     id: `song_${now}_${Math.random().toString(36).slice(2, 9)}`,
     title,
     artist,
+    youtubeUrl,
     capoFret,
     capo: capoFret,
     originalKey: keyContext,
@@ -224,6 +234,7 @@ export function parseChordPro(
     id: `song_${now}_${Math.random().toString(36).slice(2, 9)}`,
     title: doc.title || "Untitled Lead Sheet",
     artist: doc.artist,
+    youtubeUrl: doc.youtubeUrl,
     capoFret,
     capo: capoFret,
     originalKey: keyContext,

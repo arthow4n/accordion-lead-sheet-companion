@@ -134,6 +134,7 @@ export interface LeadSheetSong {
   id: string;
   title: string;
   artist?: string;
+  youtubeUrl?: string; // e.g. "https://www.youtube.com/watch?v=..."
   capoFret: number; // 0-11
   capo?: number;
   originalKey?: string;
@@ -160,6 +161,7 @@ export interface TabImportResponse {
   sourceUrl?: string;
   title?: string;
   artist?: string;
+  youtubeUrl?: string;
   capoFret: number; // 0 if no capo
   originalKey?: string;
   rawContent: string; // Cleaned text ready for client-side tokenizer

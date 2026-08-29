@@ -12,7 +12,7 @@ export function isChordProDirective(line: string): boolean {
  * Check if raw document text is in ChordPro format
  */
 export function isChordProDocument(rawText: string): boolean {
-  return /\{(?:title|t|artist|a|subtitle|st|su|capo|comment|c|soc|eoc|start_of_chorus|end_of_chorus|start_of_tab|sot|end_of_tab|eot):?/i
+  return /\{(?:title|t|artist|a|subtitle|st|su|capo|youtube|yt|comment|c|soc|eoc|start_of_chorus|end_of_chorus|start_of_tab|sot|end_of_tab|eot):?/i
     .test(rawText);
 }
 
@@ -92,6 +92,7 @@ export function parseChordProLine(line: string): ChordLyricSegment[] {
 export function parseChordProDocument(rawText: string): {
   title?: string;
   artist?: string;
+  youtubeUrl?: string;
   capoFret?: number;
   lines: LeadSheetLine[];
 } {
@@ -99,6 +100,7 @@ export function parseChordProDocument(rawText: string): {
   const lines: LeadSheetLine[] = [];
   let title: string | undefined;
   let artist: string | undefined;
+  let youtubeUrl: string | undefined;
   let capoFret: number | undefined;
 
   let i = 0;
@@ -125,6 +127,13 @@ export function parseChordProDocument(rawText: string): {
       const artistMatch = trimmed.match(/^\{(?:artist|a|subtitle|st|su):\s*(.+?)\s*\}$/i);
       if (artistMatch) {
         artist = artistMatch[1];
+        i++;
+        continue;
+      }
+
+      const youtubeMatch = trimmed.match(/^\{(?:youtube|yt):\s*(.+?)\s*\}$/i);
+      if (youtubeMatch) {
+        youtubeUrl = youtubeMatch[1];
         i++;
         continue;
       }
@@ -238,5 +247,5 @@ export function parseChordProDocument(rawText: string): {
     i++;
   }
 
-  return { title, artist, capoFret, lines };
+  return { title, artist, youtubeUrl, capoFret, lines };
 }

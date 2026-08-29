@@ -1,5 +1,16 @@
 import React, { useMemo, useState } from "react";
-import { ExternalLink, Music, RefreshCw, RotateCcw, Sparkles, Zap } from "lucide-react";
+import {
+  ExternalLink,
+  Link2,
+  Music,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
+  Zap,
+} from "lucide-react";
 import type {
   AccordionSize,
   CbaDisplayMode,
@@ -33,11 +44,23 @@ import { LineRenderer } from "./LineRenderer.tsx";
 import { isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
 
+const YouTubeIcon: React.FC<{ className?: string }> = ({ className = "w-3.5 h-3.5" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+  </svg>
+);
+
 export interface LeadSheetReaderProps {
   song: LeadSheetSong;
   capo: number;
   viewMode: ViewMode;
   onChangeCapo?: (capo: number) => void;
+  onUpdateSong?: (updatedSong: LeadSheetSong) => void;
   fontSizeClass?: string;
   accordionSize?: AccordionSize;
   onSelectChord?: (chord: ChordDetail | string) => void;
@@ -50,6 +73,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   capo,
   viewMode,
   onChangeCapo,
+  onUpdateSong,
   fontSizeClass = "text-base",
   onSelectChord,
   selectedChord,
@@ -188,6 +212,43 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     "idle",
   );
 
+  // YouTube integration
+  const youtubeSearchQuery = [song.title, song.artist].filter(Boolean).join(" ").trim();
+  const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${
+    encodeURIComponent(youtubeSearchQuery)
+  }`;
+  const hasCustomYoutubeUrl = Boolean(song.youtubeUrl && song.youtubeUrl.trim().length > 0);
+  const youtubeTargetUrl = hasCustomYoutubeUrl ? song.youtubeUrl! : youtubeSearchUrl;
+
+  const [isEditYoutubeOpen, setIsEditYoutubeOpen] = useState(false);
+  const [inputYoutubeUrl, setInputYoutubeUrl] = useState(song.youtubeUrl || "");
+
+  React.useEffect(() => {
+    setInputYoutubeUrl(song.youtubeUrl || "");
+  }, [song.id, song.youtubeUrl]);
+
+  const handleSaveYoutubeUrl = (urlToSave?: string) => {
+    const trimmed = (urlToSave !== undefined ? urlToSave : inputYoutubeUrl).trim();
+    if (onUpdateSong) {
+      onUpdateSong({
+        ...song,
+        youtubeUrl: trimmed.length > 0 ? trimmed : undefined,
+      });
+    }
+    setIsEditYoutubeOpen(false);
+  };
+
+  const handleClearYoutubeUrl = () => {
+    setInputYoutubeUrl("");
+    if (onUpdateSong) {
+      onUpdateSong({
+        ...song,
+        youtubeUrl: undefined,
+      });
+    }
+    setIsEditYoutubeOpen(false);
+  };
+
   const handleManualUpdateCheck = async () => {
     setCheckStatus("checking");
     const res = await checkForAppUpdate();
@@ -206,33 +267,83 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       {/* Header Info */}
       <header className="mb-4 space-y-2.5">
         <div>
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-50">
-              {song.title}
-            </h1>
-            {song.sourceUrl && (
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-50 leading-tight">
+            {song.title}
+          </h1>
+
+          {/* Dedicated Sub-header Action Badges & Metadata Row */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 text-xs font-mono">
+            {/* Left: Artist and Key/Capo info */}
+            <div className="flex flex-wrap items-center gap-x-2 text-zinc-400">
+              {song.artist && (
+                <span className="text-zinc-200 font-sans font-semibold">{song.artist}</span>
+              )}
+              {song.artist && <span>•</span>}
+              <span>Capo: {capo}</span>
+              {song.originalKey && (
+                <>
+                  <span>•</span>
+                  <span>Key: {song.originalKey}</span>
+                </>
+              )}
+            </div>
+
+            {/* Right: Badges Row (Source, YouTube Search / Watch, Link/Edit) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {song.sourceUrl && (
+                <a
+                  href={song.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-mono border border-zinc-800 hover:border-zinc-700 transition-colors shrink-0 cursor-pointer"
+                  title={`Open original source tab: ${song.sourceUrl}`}
+                >
+                  <span>Source</span>
+                  <ExternalLink className="w-3 h-3 text-zinc-400" />
+                </a>
+              )}
+
+              {/* YouTube Action Badge */}
               <a
-                href={song.sourceUrl}
+                href={youtubeTargetUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono transition-colors shrink-0"
-                title={`Open original source tab: ${song.sourceUrl}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer shadow-xs ${
+                  hasCustomYoutubeUrl
+                    ? "bg-red-950/80 hover:bg-red-900 border border-red-700/80 text-red-200 shadow-red-950/40"
+                    : "bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white"
+                }`}
+                title={hasCustomYoutubeUrl
+                  ? `Watch linked YouTube video: ${song.youtubeUrl}`
+                  : `Search YouTube: "${youtubeSearchQuery}"`}
+                aria-label={hasCustomYoutubeUrl ? "Watch on YouTube" : "Search on YouTube"}
               >
-                <span>Source</span>
+                <YouTubeIcon
+                  className={`w-3.5 h-3.5 ${hasCustomYoutubeUrl ? "text-red-500" : "text-red-400"}`}
+                />
+                <span>{hasCustomYoutubeUrl ? "YouTube" : "Search YT"}</span>
                 <ExternalLink className="w-3 h-3 text-zinc-400" />
               </a>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-400 font-mono mt-0.5">
-            {song.artist && <span>{song.artist}</span>}
-            {song.artist && <span>•</span>}
-            <span>Capo: {capo}</span>
-            {song.originalKey && (
-              <>
-                <span>•</span>
-                <span>Key: {song.originalKey}</span>
-              </>
-            )}
+
+              {/* Link / Edit Button */}
+              {onUpdateSong && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditYoutubeOpen(true)}
+                  className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                    hasCustomYoutubeUrl
+                      ? "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-amber-400 hover:text-amber-300"
+                      : "bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                  title={hasCustomYoutubeUrl
+                    ? "Edit or remove linked YouTube URL"
+                    : "Attach specific YouTube video URL"}
+                  aria-label="Edit YouTube Link"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -633,6 +744,137 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             : <span>build: {COMMIT_HASH}</span>}
         </div>
       </footer>
+
+      {/* Edit YouTube Link Modal */}
+      {isEditYoutubeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          onClick={() => setIsEditYoutubeOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <YouTubeIcon className="w-5 h-5 text-red-500" />
+                <h2 className="text-sm font-bold text-white tracking-tight">
+                  {hasCustomYoutubeUrl ? "Edit YouTube Link" : "Link YouTube Video"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditYoutubeOpen(false)}
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 space-y-3.5">
+              <div>
+                <div className="text-xs font-bold text-zinc-200 truncate">
+                  {song.title}
+                </div>
+                {song.artist && (
+                  <div className="text-[11px] text-zinc-400 font-mono">
+                    by {song.artist}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Search Shortcut */}
+              <div className="p-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs space-y-1.5">
+                <div className="text-zinc-400 text-[11px] flex items-center gap-1">
+                  <Search className="w-3 h-3 text-zinc-500" />
+                  <span>Need to find the video first?</span>
+                </div>
+                <a
+                  href={youtubeSearchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-mono text-[11px] underline underline-offset-2 break-all"
+                >
+                  <span>Search "{youtubeSearchQuery}" on YouTube</span>
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                </a>
+              </div>
+
+              {/* URL Input */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveYoutubeUrl();
+                }}
+                className="space-y-1.5"
+              >
+                <label className="text-xs font-semibold text-zinc-300 block">
+                  YouTube Video URL:
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={inputYoutubeUrl}
+                    onChange={(e) => setInputYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-mono"
+                    autoFocus
+                  />
+                  {inputYoutubeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setInputYoutubeUrl("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs"
+                      aria-label="Clear input"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-500">
+                  Paste any YouTube video or backing track link to attach it directly to this song.
+                </p>
+              </form>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/40">
+              {hasCustomYoutubeUrl
+                ? (
+                  <button
+                    type="button"
+                    onClick={handleClearYoutubeUrl}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-rose-950/80 border border-zinc-800 hover:border-rose-700/60 text-zinc-400 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove Link</span>
+                  </button>
+                )
+                : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditYoutubeOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-medium transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveYoutubeUrl()}
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  Save Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

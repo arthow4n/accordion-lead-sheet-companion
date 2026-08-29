@@ -363,3 +363,30 @@ Deno.test("PARSE-12: step-by-step chromatic slash bass line syllable alignment",
   assertEquals(feChord.stradella.isCounterBass, true);
   assertEquals(feChord.stradella.primaryBass, "E_");
 });
+
+Deno.test("PARSE-13: parses youtube directives from ChordPro and standard lead sheets", () => {
+  const chordProInput = [
+    "{title: Bella Ciao}",
+    "{artist: Italian Folk}",
+    "{youtube: https://www.youtube.com/watch?v=4CI3lhyNKfo}",
+    "[Am]Una mattina mi son svegliato",
+  ].join("\n");
+
+  const cpResult = parseChordPro(chordProInput, 0);
+  assertEquals(cpResult.title, "Bella Ciao");
+  assertEquals(cpResult.artist, "Italian Folk");
+  assertEquals(cpResult.youtubeUrl, "https://www.youtube.com/watch?v=4CI3lhyNKfo");
+
+  const leadSheetInput = [
+    "Title: La Vie En Rose",
+    "Artist: Edith Piaf",
+    "YouTube: https://youtu.be/kFzViYkZAz4",
+    "C       Cmaj7",
+    "Des yeux qui font baisser",
+  ].join("\n");
+
+  const lsResult = parseLeadSheetText(leadSheetInput, 0);
+  assertEquals(lsResult.title, "La Vie En Rose");
+  assertEquals(lsResult.artist, "Edith Piaf");
+  assertEquals(lsResult.youtubeUrl, "https://youtu.be/kFzViYkZAz4");
+});

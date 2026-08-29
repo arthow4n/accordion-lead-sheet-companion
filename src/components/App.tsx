@@ -186,6 +186,13 @@ export default function App(): React.JSX.Element {
     handleSelectSong(song);
   };
 
+  const handleUpdateSong = async (song: LeadSheetSong) => {
+    await saveSong(song);
+    const updated = await getSongs();
+    setSongs(updated);
+    setCurrentSong(song);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-zinc-100 selection:bg-blue-600 selection:text-white font-sans antialiased">
       {/* Sticky Top Capo & View Mode Bar */}
@@ -211,6 +218,7 @@ export default function App(): React.JSX.Element {
               capo={capo}
               viewMode={viewMode}
               onChangeCapo={setCapo}
+              onUpdateSong={handleUpdateSong}
               fontSizeClass={fontSizeClass}
               accordionSize={accordionSize}
               onSelectChord={(chord) => {
