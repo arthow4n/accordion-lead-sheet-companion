@@ -4,7 +4,7 @@ import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
-import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
 export interface CbaMiniCardProps {
@@ -16,14 +16,19 @@ export interface CbaMiniCardProps {
   className?: string;
 }
 
-// 5 Rows in top-to-bottom visual order with authentic 60-degree diagonal stagger
+// 5 rows in top-to-bottom visual order with alternating half-column staggering.
+const CBA_MINI_ROW_STAGGER = 4.75;
 export const CBA_MINI_ROWS = [
-  { rowNum: 5, y: 6, xOffset: 12 },
-  { rowNum: 4, y: 15, xOffset: 9 },
-  { rowNum: 3, y: 24, xOffset: 6 },
-  { rowNum: 2, y: 33, xOffset: 3 },
-  { rowNum: 1, y: 42, xOffset: 0 },
-];
+  { rowNum: 5, y: 6 },
+  { rowNum: 4, y: 15 },
+  { rowNum: 3, y: 24 },
+  { rowNum: 2, y: 33 },
+  { rowNum: 1, y: 42 },
+].map((row) => ({
+  ...row,
+  // Normalize the left-most row to x=0 so no SVG content is clipped.
+  xOffset: (getCbaVisualRowOffset(row.rowNum) + 1) * CBA_MINI_ROW_STAGGER,
+}));
 
 // Font and Card Scaling Map
 export const CBA_MINI_SCALE_MAP: Record<string, {

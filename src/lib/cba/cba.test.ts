@@ -1,7 +1,22 @@
 import { assertEquals } from "@std/assert";
 import type { CbaGrip } from "../../types/index.ts";
 import { generateCanonicalRootGrip, generateCbaGrip } from "./grips.ts";
+import { getCbaVisualRowOffset, getPitchClassAt } from "./grid.ts";
 import { computeCbaTransition, optimizeVoiceLeading } from "./voiceLeading.ts";
+
+Deno.test("CBA geometry: five-row auxiliary lattice alternates physical diagonal direction", () => {
+  assertEquals(
+    [1, 2, 3, 4, 5].map((row) => getCbaVisualRowOffset(row)),
+    [0, -1, 0, 1, 0],
+  );
+
+  for (let column = 1; column <= 12; column++) {
+    assertEquals(getPitchClassAt(4, column), getPitchClassAt(1, column));
+    assertEquals(getPitchClassAt(5, column), getPitchClassAt(2, column));
+    assertEquals(getPitchClassAt(2, column), (getPitchClassAt(1, column) + 1) % 12);
+    assertEquals(getPitchClassAt(3, column), (getPitchClassAt(2, column) + 1) % 12);
+  }
+});
 
 Deno.test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("Bb", 0, 5);

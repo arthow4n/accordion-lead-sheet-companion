@@ -3,7 +3,7 @@ import type { CbaButtonCoord, CbaGrip, ParsedChord } from "../types/index.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getNoteName } from "../lib/capo/enharmonics.ts";
-import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
 export interface CbaGridProps {
@@ -13,13 +13,19 @@ export interface CbaGridProps {
   jamFillsEnabled?: boolean;
 }
 
+const CBA_GRID_ROW_STAGGER_PX = 20;
+
 export const CBA_ROWS_5 = [
-  { rowNumber: 5, label: "Row 5 (Aux 2)", indentPx: 24 },
-  { rowNumber: 4, label: "Row 4 (Aux 1)", indentPx: 18 },
-  { rowNumber: 3, label: "Row 3", indentPx: 12 },
-  { rowNumber: 2, label: "Row 2", indentPx: 6 },
-  { rowNumber: 1, label: "Row 1", indentPx: 0 },
-];
+  { rowNumber: 5, label: "Row 5 (Aux 2)" },
+  { rowNumber: 4, label: "Row 4 (Aux 1)" },
+  { rowNumber: 3, label: "Row 3" },
+  { rowNumber: 2, label: "Row 2" },
+  { rowNumber: 1, label: "Row 1" },
+].map((row) => ({
+  ...row,
+  // Keep the negative row-2 offset inside the scrollable layout bounds.
+  indentPx: (getCbaVisualRowOffset(row.rowNumber) + 1) * CBA_GRID_ROW_STAGGER_PX,
+}));
 
 export const CbaGrid: React.FC<CbaGridProps> = ({
   cba,

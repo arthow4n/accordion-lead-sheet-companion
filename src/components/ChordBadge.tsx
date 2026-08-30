@@ -9,7 +9,7 @@ import type {
 
 import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
-import { getPitchClassAt } from "../lib/cba/grid.ts";
+import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { formatStradellaTransition } from "../lib/stradella/transitions.ts";
 
 export interface ChordBadgeProps {
@@ -69,13 +69,17 @@ export const BADGE_SIZE_MAP: Record<string, {
   },
 };
 
+const CBA_MICRO_ROW_STAGGER = 2.5;
 const CBA_MICRO_ROWS = [
-  { rowNum: 5, y: 2, xOffset: 3 },
-  { rowNum: 4, y: 5.5, xOffset: 2.25 },
-  { rowNum: 3, y: 9, xOffset: 1.5 },
-  { rowNum: 2, y: 12.5, xOffset: 0.75 },
-  { rowNum: 1, y: 16, xOffset: 0 },
-];
+  { rowNum: 5, y: 2 },
+  { rowNum: 4, y: 5.5 },
+  { rowNum: 3, y: 9 },
+  { rowNum: 2, y: 12.5 },
+  { rowNum: 1, y: 16 },
+].map((row) => ({
+  ...row,
+  xOffset: (getCbaVisualRowOffset(row.rowNum) + 1) * CBA_MICRO_ROW_STAGGER,
+}));
 
 const STRADELLA_MICRO_ROWS = [
   { rowKey: "counter", y: 2, xOffset: 0 },

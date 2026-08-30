@@ -15,7 +15,28 @@ import { getPitchClass, normalizePitchClass } from "../capo/transposition.ts";
  * Row 5 (Auxiliary 2):                        Duplicate of Row 2 [1, 4, 7, 10]
  *
  * Column period is strictly 4 columns per octave (4 * 3 = 12 semitones).
+ *
+ * Physical row staggering is a separate concern from pitch lookup. In a five-row
+ * C-system board, the rows alternate around the center row instead of forming a
+ * single staircase: rows 1, 3, and 5 align; row 2 sits one half-column to the
+ * left; and row 4 sits one half-column to the right.
  */
+
+/**
+ * Horizontal physical offset for each logical row, measured in half-column units.
+ * Positive values move a row to the right in the visual keyboard.
+ */
+export const CBA_ROW_VISUAL_OFFSETS: Record<1 | 2 | 3 | 4 | 5, -1 | 0 | 1> = {
+  1: 0,
+  2: -1,
+  3: 0,
+  4: 1,
+  5: 0,
+};
+
+export function getCbaVisualRowOffset(row: number): -1 | 0 | 1 {
+  return CBA_ROW_VISUAL_OFFSETS[row as 1 | 2 | 3 | 4 | 5] ?? 0;
+}
 
 /**
  * Computes exact pitch class (0-11) at any 5-row button coordinate (row, column).
