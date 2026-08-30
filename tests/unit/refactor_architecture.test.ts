@@ -21,6 +21,7 @@ import {
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
+  getLastPersistedSongId,
   getSongFromUrl,
   getViewModeFromUrl,
   initUpdateChecker,
@@ -28,6 +29,7 @@ import {
   persistCbaGripMode,
   persistGroove,
   persistJamFills,
+  persistLastSongId,
   solveCompoundChord,
   solveStradellaChord,
   solveStradellaGroove,
@@ -78,6 +80,35 @@ Deno.test("REFACTOR-URL-01: Song parameter resolution from URL query and fallbac
   // Initial song resolution fallback
   const initial = getInitialSong(MOCK_SONGS, "?song=bella-ciao");
   assertEquals(initial.id, "bella-ciao");
+});
+
+Deno.test("REFACTOR-URL-01b: URL and PWA song persistence resolve after async songbook hydration", () => {
+  const fallbackSong = MOCK_SONGS[0];
+  const persistedSong = MOCK_SONGS[1];
+  const previousSongId = getLastPersistedSongId();
+
+  try {
+    if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
+
+    // A standalone PWA has no incoming URL, so its persisted song must resolve from the full
+    // songbook once IndexedDB has hydrated it.
+    persistLastSongId(persistedSong.id);
+    assertEquals(getInitialSong([fallbackSong, persistedSong], ""), persistedSong);
+
+    // A browser URL remains authoritative over the PWA/localStorage value.
+    assertEquals(
+      getInitialSong([fallbackSong, persistedSong], `?song=${fallbackSong.id}`),
+      fallbackSong,
+    );
+  } finally {
+    if (typeof globalThis.localStorage !== "undefined") {
+      if (previousSongId) {
+        globalThis.localStorage.setItem("accordion_companion_last_song_id", previousSongId);
+      } else {
+        globalThis.localStorage.removeItem("accordion_companion_last_song_id");
+      }
+    }
+  }
 });
 
 Deno.test("REFACTOR-URL-02: View mode resolution from canonical parameters", () => {
