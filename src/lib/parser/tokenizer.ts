@@ -3,9 +3,10 @@ import type {
   ChordLyricSegment,
   LeadSheetLine,
   LeadSheetSong,
+  NoteSpelling,
 } from "../../types/index.ts";
 import { parseChord } from "../capo/transposition.ts";
-import { transposeChord } from "../capo/enharmonics.ts";
+import { respellParsedChord, transposeChord } from "../capo/enharmonics.ts";
 import { solveStradellaChord } from "../stradella/solver.ts";
 import { generateCbaGrip } from "../cba/grips.ts";
 import { isChordProDocument, isChordProLine, parseChordProDocument } from "./chordpro.ts";
@@ -76,11 +77,14 @@ export function enrichChord(
   rawChord: string,
   capoFret = 0,
   keyContext?: string,
+  noteSpelling: NoteSpelling = "auto",
 ): ChordDetail & { raw: string } {
-  const originalChord = parseChord(rawChord);
-  const soundingChord = transposeChord(originalChord, capoFret, keyContext);
-  const stradella = solveStradellaChord(soundingChord);
-  const cba = generateCbaGrip(soundingChord);
+  const parsedOriginal = parseChord(rawChord);
+  const parsedSounding = transposeChord(parsedOriginal, capoFret, keyContext);
+  const stradella = solveStradellaChord(parsedSounding);
+  const cba = generateCbaGrip(parsedSounding, 0, 5, 5, noteSpelling);
+  const originalChord = respellParsedChord(parsedOriginal, noteSpelling);
+  const soundingChord = respellParsedChord(parsedSounding, noteSpelling);
 
   return {
     raw: rawChord,
@@ -99,6 +103,7 @@ export function enrichLeadSheetLines(
   lines: LeadSheetLine[],
   capoFret = 0,
   keyContext?: string,
+  noteSpelling: NoteSpelling = "auto",
 ): LeadSheetLine[] {
   return lines.map((line) => {
     if (line.type !== "chord_lyric" || !line.segments) {
@@ -123,7 +128,7 @@ export function enrichLeadSheetLines(
       }
 
       return {
-        chord: enrichChord(rawChord, capoFret, keyContext),
+        chord: enrichChord(rawChord, capoFret, keyContext, noteSpelling),
         lyric: seg.lyric,
       };
     });
@@ -158,6 +163,7 @@ export function parseLeadSheetText(
   rawText: string,
   defaultCapo = 0,
   keyContext?: string,
+  noteSpelling: NoteSpelling = "auto",
 ): LeadSheetSong {
   const normalizedText = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const extractedCapo = extractCapoFret(normalizedText);
@@ -197,7 +203,7 @@ export function parseLeadSheetText(
     lines = parseTwoLineDocument(normalizedText);
   }
 
-  const enrichedLines = enrichLeadSheetLines(lines, capoFret, keyContext);
+  const enrichedLines = enrichLeadSheetLines(lines, capoFret, keyContext, noteSpelling);
 
   const now = Date.now();
   return {
@@ -223,11 +229,12 @@ export function parseChordPro(
   rawText: string,
   defaultCapo = 0,
   keyContext?: string,
+  noteSpelling: NoteSpelling = "auto",
 ): LeadSheetSong {
   const normalizedText = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const doc = parseChordProDocument(normalizedText);
   const capoFret = doc.capoFret !== undefined ? doc.capoFret : defaultCapo;
-  const enrichedLines = enrichLeadSheetLines(doc.lines, capoFret, keyContext);
+  const enrichedLines = enrichLeadSheetLines(doc.lines, capoFret, keyContext, noteSpelling);
 
   const now = Date.now();
   return {

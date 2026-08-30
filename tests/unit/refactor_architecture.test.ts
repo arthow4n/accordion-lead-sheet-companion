@@ -21,6 +21,7 @@ import {
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
+  getLastPersistedNoteSpelling,
   getLastPersistedSongId,
   getSongFromUrl,
   getViewModeFromUrl,
@@ -30,6 +31,7 @@ import {
   persistGroove,
   persistJamFills,
   persistLastSongId,
+  persistNoteSpelling,
   solveCompoundChord,
   solveStradellaChord,
   solveStradellaGroove,
@@ -128,6 +130,35 @@ Deno.test("REFACTOR-URL-02: View mode resolution from canonical parameters", () 
 
   if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.clear();
   assertEquals(getInitialViewMode(undefined, ""), "stradella");
+});
+
+Deno.test("REFACTOR-URL-02b: Note spelling preference persists and normalizes legacy values", () => {
+  const testKey = "accordion_companion_note_spelling";
+  const previous = typeof globalThis.localStorage === "undefined"
+    ? null
+    : globalThis.localStorage.getItem(testKey);
+
+  try {
+    if (typeof globalThis.localStorage !== "undefined") globalThis.localStorage.removeItem(testKey);
+    assertEquals(getLastPersistedNoteSpelling(), "auto");
+
+    persistNoteSpelling("flats");
+    assertEquals(getLastPersistedNoteSpelling(), "flats");
+    persistNoteSpelling("sharps");
+    assertEquals(getLastPersistedNoteSpelling(), "sharps");
+
+    if (typeof globalThis.localStorage !== "undefined") {
+      globalThis.localStorage.setItem(testKey, "flat");
+      assertEquals(getLastPersistedNoteSpelling(), "flats");
+      globalThis.localStorage.setItem(testKey, "sharp");
+      assertEquals(getLastPersistedNoteSpelling(), "sharps");
+    }
+  } finally {
+    if (typeof globalThis.localStorage !== "undefined") {
+      if (previous === null) globalThis.localStorage.removeItem(testKey);
+      else globalThis.localStorage.setItem(testKey, previous);
+    }
+  }
 });
 
 // ============================================================================

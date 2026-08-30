@@ -2,6 +2,7 @@ import React from "react";
 import type {
   CbaDisplayMode,
   ChordDetail,
+  NoteSpelling,
   StradellaDisplayMode,
   StradellaTransition,
   ViewMode,
@@ -11,6 +12,8 @@ import { COMPOUND_QUALITIES } from "../lib/stradella/compound.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { formatStradellaTransition } from "../lib/stradella/transitions.ts";
+import { parseChord } from "../lib/capo/transposition.ts";
+import { respellNoteLabel, respellParsedChord } from "../lib/capo/enharmonics.ts";
 
 export interface ChordBadgeProps {
   chord?: string | ChordDetail;
@@ -18,6 +21,7 @@ export interface ChordBadgeProps {
   cbaDisplayMode?: CbaDisplayMode;
   stradellaDisplayMode?: StradellaDisplayMode;
   jamFillsEnabled?: boolean;
+  noteSpelling?: NoteSpelling;
   onSelectChord?: (chord: ChordDetail | string) => void;
   active?: boolean;
   fontSizeClass?: string;
@@ -127,6 +131,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
   cbaDisplayMode = "line_cards",
   stradellaDisplayMode = "badges",
   jamFillsEnabled = false,
+  noteSpelling = "auto",
   onSelectChord,
   active = false,
   fontSizeClass = "text-base",
@@ -149,6 +154,9 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
 
   // If chord is a plain string
   if (typeof chord === "string") {
+    const displayChord = /^[A-Ga-g]/.test(chord)
+      ? respellParsedChord(parseChord(chord), noteSpelling).raw
+      : chord;
     let stringBadgeStyle = "";
     if (viewMode === "cba") {
       stringBadgeStyle = active
@@ -170,7 +178,7 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
         onClick={handleClick}
         className={`relative before:absolute before:-inset-2.5 before:content-[''] ${currentBadgeSize.minH} inline-flex items-center gap-1 ${currentBadgeSize.badgePad} rounded ${currentBadgeSize.badgeFont} font-mono font-bold tracking-tight transition-all cursor-pointer select-none active:scale-95 ${stringBadgeStyle} ${className}`}
       >
-        {chord}
+        {displayChord}
       </button>
     );
   }
@@ -181,9 +189,16 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       (chord.stradella?.primaryBass && chord.stradella.primaryBass.endsWith("_")),
   );
 
-  const rawChordName = chord.originalChord?.raw || chord.soundingChord?.raw || "Chord";
-  const soundingChordName = chord.soundingChord?.raw || rawChordName;
-  const primaryBass = chord.stradella?.primaryBass || chord.soundingChord?.root || "";
+  const displayOriginalChord = chord.originalChord
+    ? respellParsedChord(chord.originalChord, noteSpelling)
+    : undefined;
+  const displaySoundingChord = chord.soundingChord
+    ? respellParsedChord(chord.soundingChord, noteSpelling)
+    : undefined;
+  const rawChordName = displayOriginalChord?.raw || displaySoundingChord?.raw || "Chord";
+  const soundingChordName = displaySoundingChord?.raw || rawChordName;
+  const rawPrimaryBass = chord.stradella?.primaryBass || chord.soundingChord?.root || "";
+  const primaryBass = respellNoteLabel(rawPrimaryBass, noteSpelling);
   const chordButton = chord.stradella?.chordButton?.label || "";
   const transitionMarker = formatStradellaTransition(stradellaTransition);
   const transitionDescription = stradellaTransition
@@ -246,10 +261,11 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
       formattedChordBtn = btnNote; // Major row
     }
   }
+  formattedChordBtn = respellNoteLabel(formattedChordBtn, noteSpelling);
 
   // Jam Fills Scale Calculation for CBA mode
   const jamFills = (jamFillsEnabled && chord.soundingChord)
-    ? computeCbaJamFills(chord.soundingChord)
+    ? computeCbaJamFills(chord.soundingChord, noteSpelling)
     : null;
   const jamFillPcs = new Set(jamFills?.pitchClasses || []);
 

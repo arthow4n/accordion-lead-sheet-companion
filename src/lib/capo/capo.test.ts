@@ -5,7 +5,13 @@ import {
   normalizeUnicodeAccidentals,
   parseChord,
 } from "./transposition.ts";
-import { getSoundingKey, isFlatKey, transposeChord } from "./enharmonics.ts";
+import {
+  getSoundingKey,
+  isFlatKey,
+  respellNoteLabel,
+  respellParsedChord,
+  transposeChord,
+} from "./enharmonics.ts";
 
 Deno.test("CAPO-01: G + Capo 3 -> Bb (Flat Key, must NOT output A#)", () => {
   const result = transposeChord("G", 3);
@@ -30,6 +36,28 @@ Deno.test("CAPO-03: D/F# + Capo 3 -> F/A (Transposes both root and slash bass)",
   assertEquals(result.root, "F");
   assertEquals(result.bassNote, "A");
   assertEquals(result.raw, "F/A");
+});
+
+Deno.test("CAPO-SPELLING-01: Explicit flats/sharps respell chord roots and slash bass independently", () => {
+  const parsed = parseChord("C#7/F#");
+  const flats = respellParsedChord(parsed, "flats");
+  const sharps = respellParsedChord(parseChord("Db7/Gb"), "sharps");
+
+  assertEquals(flats.raw, "Db7/Gb");
+  assertEquals(sharps.raw, "C#7/F#");
+  assertEquals(flats.rootPitchClass, parsed.rootPitchClass);
+  assertEquals(flats.bassPitchClass, parsed.bassPitchClass);
+  assertEquals(respellNoteLabel("F#_", "flats"), "Gb_");
+  assertEquals(respellNoteLabel("Gb7", "sharps"), "F#7");
+});
+
+Deno.test("CAPO-SPELLING-02: Explicit spelling applies after capo transposition and keeps extensions intact", () => {
+  const sounding = transposeChord("G7b9", 3);
+  const sharpDisplay = respellParsedChord(sounding, "sharps");
+  assertEquals(sounding.rootPitchClass, 10);
+  assertEquals(sharpDisplay.raw, "A#7b9");
+  assertEquals(getSoundingKey("G", 3, "flats"), "Bb");
+  assertEquals(getSoundingKey("G", 3, "sharps"), "A#");
 });
 
 Deno.test("CAPO-04: Cadd9 + Capo 2 -> Dadd9 (Sharp key, extension preserved)", () => {

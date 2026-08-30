@@ -1005,6 +1005,41 @@ Deno.test("UX-16: Unified Context-Aware Dynamic Config Bar across ViewModes", ()
   assertEquals(dualHtml.includes("Folk Boom-Chick"), true);
 });
 
+Deno.test("UX-16b: Global note spelling control respells rendered chord and button labels", () => {
+  const song = createPresetSongs().find((candidate) => candidate.originalKey === "G");
+  assertExists(song);
+
+  const html = renderToStaticMarkup(
+    React.createElement(LeadSheetReader, {
+      song,
+      capo: 0,
+      viewMode: "stradella",
+      noteSpelling: "flats",
+      onChangeCapo: () => {},
+    }),
+  );
+  assertEquals(html.includes("Note spelling"), true);
+  assertEquals(html.includes("♭ Flats"), true);
+  assertEquals(html.includes("Spell accidentals as sharps"), true);
+
+  const flatBadge = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: enrichChord("C#7", 0),
+      viewMode: "stradella",
+      noteSpelling: "flats",
+    }),
+  );
+  const sharpBadge = renderToStaticMarkup(
+    React.createElement(ChordBadge, {
+      chord: enrichChord("Db7", 0),
+      viewMode: "stradella",
+      noteSpelling: "sharps",
+    }),
+  );
+  assertEquals(flatBadge.includes("Db7"), true);
+  assertEquals(sharpBadge.includes("C#7"), true);
+});
+
 Deno.test("UX-17: Visual Pulse Ribbon and Jam Fill Scale Overlays in Grids & Drawer", () => {
   const chordDetail = enrichChord("Am", 0);
 

@@ -3,7 +3,13 @@
  * Path: src/lib/cba/sectionChords.ts
  */
 
-import type { CbaGrip, CbaGripMode, ChordDetail, LeadSheetLine } from "../../types/index.ts";
+import type {
+  CbaGrip,
+  CbaGripMode,
+  ChordDetail,
+  LeadSheetLine,
+  NoteSpelling,
+} from "../../types/index.ts";
 import { generateCanonicalRootGrip } from "./grips.ts";
 import { computeCbaTransition, optimizeVoiceLeading } from "./voiceLeading.ts";
 
@@ -19,6 +25,7 @@ export interface SectionChordsResult {
 export function enrichSongLinesWithVoiceLeading(
   lines: LeadSheetLine[],
   cbaGripMode: CbaGripMode = "root_5row",
+  noteSpelling: NoteSpelling = "auto",
 ): LeadSheetLine[] {
   let prevGrip: CbaGrip | undefined = undefined;
 
@@ -36,14 +43,14 @@ export function enrichSongLinesWithVoiceLeading(
       if (!sounding) return seg;
 
       const rawGrip = cbaGripMode === "root_3row"
-        ? generateCanonicalRootGrip(sounding, 5, "3row")
+        ? generateCanonicalRootGrip(sounding, 5, "3row", noteSpelling)
         : cbaGripMode === "voice_led"
         ? undefined
-        : generateCanonicalRootGrip(sounding, 5, "5row");
+        : generateCanonicalRootGrip(sounding, 5, "5row", noteSpelling);
 
       const grip = rawGrip
         ? computeCbaTransition(rawGrip, prevGrip)
-        : optimizeVoiceLeading(sounding, prevGrip);
+        : optimizeVoiceLeading(sounding, prevGrip, 5, noteSpelling);
 
       prevGrip = grip;
 
@@ -70,6 +77,7 @@ export function enrichSongLinesWithVoiceLeading(
 export function extractSectionChords(
   renderedLines: LeadSheetLine[],
   cbaGripMode: CbaGripMode = "root_5row",
+  noteSpelling: NoteSpelling = "auto",
 ): SectionChordsResult {
   const map = new Map<number, Array<ChordDetail | string>>();
   const allChords: Array<ChordDetail | string> = [];
@@ -105,14 +113,14 @@ export function extractSectionChords(
         if (!sounding) return chord;
 
         const rawGrip = cbaGripMode === "root_3row"
-          ? generateCanonicalRootGrip(sounding, 5, "3row")
+          ? generateCanonicalRootGrip(sounding, 5, "3row", noteSpelling)
           : cbaGripMode === "voice_led"
           ? undefined
-          : generateCanonicalRootGrip(sounding, 5, "5row");
+          : generateCanonicalRootGrip(sounding, 5, "5row", noteSpelling);
 
         const grip = rawGrip
           ? computeCbaTransition(rawGrip, prevGrip)
-          : optimizeVoiceLeading(sounding, prevGrip);
+          : optimizeVoiceLeading(sounding, prevGrip, 5, noteSpelling);
 
         prevGrip = grip;
         return {
@@ -143,9 +151,9 @@ export function extractSectionChords(
     const sounding = chord.soundingChord || chord.originalChord;
     if (!sounding) return chord;
     const grip = cbaGripMode === "root_3row"
-      ? generateCanonicalRootGrip(sounding, 5, "3row")
+      ? generateCanonicalRootGrip(sounding, 5, "3row", noteSpelling)
       : cbaGripMode === "root_5row" || cbaGripMode === "root"
-      ? generateCanonicalRootGrip(sounding, 5, "5row")
+      ? generateCanonicalRootGrip(sounding, 5, "5row", noteSpelling)
       : chord.cba;
     return {
       ...chord,

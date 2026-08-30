@@ -1,8 +1,8 @@
 import React from "react";
-import type { CbaButtonCoord, CbaGrip, ParsedChord } from "../types/index.ts";
+import type { CbaButtonCoord, CbaGrip, NoteSpelling, ParsedChord } from "../types/index.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
-import { parseChord } from "../lib/capo/transposition.ts";
-import { getNoteName } from "../lib/capo/enharmonics.ts";
+import { getPitchClass, parseChord } from "../lib/capo/transposition.ts";
+import { getNoteName, getPreferFlats, respellParsedChord } from "../lib/capo/enharmonics.ts";
 import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
@@ -11,6 +11,7 @@ export interface CbaGridProps {
   soundingChord?: ParsedChord | string;
   className?: string;
   jamFillsEnabled?: boolean;
+  noteSpelling?: NoteSpelling;
 }
 
 const CBA_GRID_ROW_STAGGER_PX = 20;
@@ -32,15 +33,16 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
   soundingChord,
   className = "",
   jamFillsEnabled = false,
+  noteSpelling = "auto",
 }) => {
   const parsedChord: ParsedChord = typeof soundingChord === "string"
     ? parseChord(soundingChord)
     : soundingChord || parseChord(cba?.chord || "C");
 
-  const grip: CbaGrip = cba || generateCbaGrip(parsedChord);
+  const grip: CbaGrip = cba || generateCbaGrip(parsedChord, 0, 5, 5, noteSpelling);
   const activeButtons: CbaButtonCoord[] = grip?.buttonCoords || grip?.buttons || [];
-  const chordName = parsedChord.raw || grip?.chord || "Chord";
-  const notes = grip?.notes || [];
+  const chordName = respellParsedChord(parsedChord, noteSpelling).raw || grip?.chord || "Chord";
+  const rawNotes = grip?.notes || [];
 
   // Determine dynamic column range based on active buttons (minimum 5 columns)
   const cols = activeButtons.map((b) => b.column);
@@ -53,13 +55,15 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
     displayCols.push(c);
   }
 
-  const preferFlats = notes.some((n) => n.includes("b")) ||
+  const autoPreferFlats = rawNotes.some((n) => n.includes("b")) ||
     Boolean(parsedChord?.root && parsedChord.root.includes("b"));
+  const preferFlats = getPreferFlats(noteSpelling, autoPreferFlats);
+  const notes = rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
 
   const rows = CBA_ROWS_5;
 
   // Compute Jam Fill scale for this chord if enabled
-  const activeJamFills = jamFillsEnabled ? computeCbaJamFills(parsedChord) : null;
+  const activeJamFills = jamFillsEnabled ? computeCbaJamFills(parsedChord, noteSpelling) : null;
 
   return (
     <div

@@ -1,6 +1,7 @@
 import React from "react";
 import type {
   ChordDetail,
+  NoteSpelling,
   ParsedChord,
   StradellaTransition,
   StradellaVoicing,
@@ -10,6 +11,7 @@ import { solveStradellaChord } from "../lib/stradella/solver.ts";
 import { parseChord } from "../lib/capo/transposition.ts";
 import { getBassNoteForColumn, getCounterBassNoteForColumn } from "../lib/stradella/layout.ts";
 import { formatStradellaTransition } from "../lib/stradella/transitions.ts";
+import { respellNoteLabel, respellParsedChord } from "../lib/capo/enharmonics.ts";
 
 export interface StradellaMiniCardProps {
   chord: ChordDetail | string;
@@ -18,6 +20,7 @@ export interface StradellaMiniCardProps {
   fontSizeClass?: string;
   className?: string;
   stradellaTransition?: StradellaTransition;
+  noteSpelling?: NoteSpelling;
 }
 
 export const STRADELLA_MINI_ROWS = [
@@ -86,17 +89,23 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
   fontSizeClass = "text-base",
   className = "",
   stradellaTransition,
+  noteSpelling = "auto",
 }) => {
-  const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
+  const chordDetail: ChordDetail = typeof chord === "string"
+    ? enrichChord(chord, 0, undefined, noteSpelling)
+    : chord;
   const soundingChord: ParsedChord = chordDetail.soundingChord ||
     chordDetail.originalChord ||
     parseChord(typeof chord === "string" ? chord : "C");
 
-  const chordName = soundingChord.raw || (typeof chord === "string" ? chord : "Chord");
+  const chordName = respellParsedChord(soundingChord, noteSpelling).raw ||
+    (typeof chord === "string" ? chord : "Chord");
   const stradella: StradellaVoicing = chordDetail.stradella || solveStradellaChord(soundingChord);
 
   const activeBassLabel = stradella.primaryBass || soundingChord.root || "";
   const activeChordLabel = stradella.chordButton?.label || "";
+  const displayActiveBassLabel = respellNoteLabel(activeBassLabel, noteSpelling);
+  const displayActiveChordLabel = respellNoteLabel(activeChordLabel, noteSpelling);
   const isCounterBass = Boolean(stradella.isCounterBass || activeBassLabel.endsWith("_"));
   const transitionMarker = formatStradellaTransition(stradellaTransition);
   const transitionDescription = stradellaTransition
@@ -144,9 +153,9 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
 
   // Recipe display text (e.g. "B_ + C" or "C + em" or "G + G")
   const recipeText = isCounterBass
-    ? `${activeBassLabel} + ${activeChordLabel || chordName}`
+    ? `${displayActiveBassLabel} + ${displayActiveChordLabel || chordName}`
     : stradella.chordButton && stradella.chordButton.note !== activeBassLabel
-    ? `${activeBassLabel} + ${stradella.chordButton.note}${
+    ? `${displayActiveBassLabel} + ${respellNoteLabel(stradella.chordButton.note, noteSpelling)}${
       stradella.chordButton.row === "minor"
         ? "m"
         : stradella.chordButton.row === "seventh"
@@ -156,8 +165,8 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
         : ""
     }`
     : activeChordLabel
-    ? `${activeBassLabel} + ${activeChordLabel}`
-    : activeBassLabel;
+    ? `${displayActiveBassLabel} + ${displayActiveChordLabel}`
+    : displayActiveBassLabel;
 
   return (
     <button
@@ -208,6 +217,8 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
             displayCols.map((col, cIdx) => {
               const bassNote = getBassNoteForColumn(col);
               const counterNote = getCounterBassNoteForColumn(col);
+              const displayBassNote = respellNoteLabel(bassNote, noteSpelling);
+              const displayCounterNote = respellNoteLabel(counterNote, noteSpelling);
 
               let buttonLabel = "";
               let isCounter = false;
@@ -215,7 +226,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
 
               if (rowInfo.rowIndex === 0) {
                 // Counter-Bass
-                buttonLabel = `${counterNote}_`;
+                buttonLabel = `${displayCounterNote}_`;
                 isCounter = true;
                 if (
                   stradella.rootButton
@@ -227,7 +238,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
                 }
               } else if (rowInfo.rowIndex === 1) {
                 // Fundamental Bass
-                buttonLabel = bassNote;
+                buttonLabel = displayBassNote;
                 if (
                   stradella.rootButton
                     ? stradella.rootButton.row === "bass" &&
@@ -238,7 +249,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
                 }
               } else if (rowInfo.rowIndex === 2) {
                 // Major
-                buttonLabel = bassNote;
+                buttonLabel = displayBassNote;
                 if (
                   stradella.chordButton &&
                   stradella.chordButton.row === "major" &&
@@ -248,7 +259,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
                 }
               } else if (rowInfo.rowIndex === 3) {
                 // Minor
-                buttonLabel = `${bassNote}m`;
+                buttonLabel = `${displayBassNote}m`;
                 if (
                   stradella.chordButton &&
                   stradella.chordButton.row === "minor" &&
@@ -258,7 +269,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
                 }
               } else if (rowInfo.rowIndex === 4) {
                 // Seventh
-                buttonLabel = `${bassNote}7`;
+                buttonLabel = `${displayBassNote}7`;
                 if (
                   stradella.chordButton &&
                   stradella.chordButton.row === "seventh" &&
@@ -268,7 +279,7 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
                 }
               } else if (rowInfo.rowIndex === 5) {
                 // Diminished
-                buttonLabel = `${bassNote}d`;
+                buttonLabel = `${displayBassNote}d`;
                 if (
                   stradella.chordButton &&
                   stradella.chordButton.row === "diminished" &&

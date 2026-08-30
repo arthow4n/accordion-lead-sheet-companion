@@ -17,6 +17,7 @@ import type {
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
+  NoteSpelling,
   StradellaDisplayMode,
   StradellaGrooveType,
   ViewMode,
@@ -29,11 +30,13 @@ import {
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
+  getLastPersistedNoteSpelling,
   getLastPersistedStradellaDisplayMode,
   persistCbaDisplayMode,
   persistCbaGripMode,
   persistGroove,
   persistJamFills,
+  persistNoteSpelling,
   persistStradellaDisplayMode,
 } from "../lib/storage/urlState.ts";
 import { STRADELLA_GROOVES } from "../lib/stradella/grooves.ts";
@@ -59,6 +62,8 @@ export interface LeadSheetReaderProps {
   song: LeadSheetSong;
   capo: number;
   viewMode: ViewMode;
+  noteSpelling?: NoteSpelling;
+  onChangeNoteSpelling?: (spelling: NoteSpelling) => void;
   onChangeCapo?: (capo: number) => void;
   onUpdateSong?: (updatedSong: LeadSheetSong) => void;
   fontSizeClass?: string;
@@ -72,6 +77,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   song,
   capo,
   viewMode,
+  noteSpelling,
+  onChangeNoteSpelling,
   onChangeCapo,
   onUpdateSong,
   fontSizeClass = "text-base",
@@ -83,6 +90,11 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   const [lastNonZeroCapo, setLastNonZeroCapo] = useState<number>(
     defaultCapo > 0 ? defaultCapo : (capo > 0 ? capo : 2),
   );
+
+  const [storedNoteSpelling, setStoredNoteSpelling] = useState<NoteSpelling>(() =>
+    getLastPersistedNoteSpelling()
+  );
+  const activeNoteSpelling = noteSpelling ?? storedNoteSpelling;
 
   // User preference for CBA grip mode (default: "root_5row")
   const [cbaGripMode, setCbaGripMode] = useState<"root_3row" | "root_5row" | "voice_led">(() => {
@@ -117,6 +129,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       setStradellaDisplayMode(getLastPersistedStradellaDisplayMode());
     const handleGroove = () => setGroove(getLastPersistedGroove());
     const handleJamFills = () => setJamFills(getLastPersistedJamFills());
+    const handleNoteSpelling = () => setStoredNoteSpelling(getLastPersistedNoteSpelling());
 
     if (typeof globalThis.addEventListener === "function") {
       globalThis.addEventListener("cbaGripModeChanged", handleGrip);
@@ -124,12 +137,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       globalThis.addEventListener("stradellaDisplayModeChanged", handleStradDisplay);
       globalThis.addEventListener("grooveChanged", handleGroove);
       globalThis.addEventListener("jamFillsChanged", handleJamFills);
+      globalThis.addEventListener("noteSpellingChanged", handleNoteSpelling);
       return () => {
         globalThis.removeEventListener("cbaGripModeChanged", handleGrip);
         globalThis.removeEventListener("cbaDisplayModeChanged", handleCbaCbaDisplaySafe);
         globalThis.removeEventListener("stradellaDisplayModeChanged", handleStradDisplay);
         globalThis.removeEventListener("grooveChanged", handleGroove);
         globalThis.removeEventListener("jamFillsChanged", handleJamFills);
+        globalThis.removeEventListener("noteSpellingChanged", handleNoteSpelling);
       };
     }
 
@@ -164,21 +179,36 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     persistJamFills(next);
   };
 
+  const handleChangeNoteSpelling = (next: NoteSpelling) => {
+    setStoredNoteSpelling(next);
+    onChangeNoteSpelling?.(next);
+    if (!onChangeNoteSpelling) persistNoteSpelling(next);
+  };
+
   // Calculate sounding key from written key and current capo
-  const soundingKey = song.originalKey ? getSoundingKey(song.originalKey, capo) : "";
+  const soundingKey = song.originalKey
+    ? getSoundingKey(song.originalKey, capo, activeNoteSpelling)
+    : "";
+  const displayOriginalKey = song.originalKey
+    ? getSoundingKey(song.originalKey, 0, activeNoteSpelling)
+    : "";
 
   // Reactively re-enrich lines with current capo and chronological whole-song voice leading
   const renderedLines = useMemo(() => {
     const rawLines = (song.lines || []) as LeadSheetLine[];
-    const enriched = enrichLeadSheetLines(rawLines, capo, song.originalKey);
-    const withVoiceLeading = enrichSongLinesWithVoiceLeading(enriched, cbaGripMode);
+    const enriched = enrichLeadSheetLines(rawLines, capo, song.originalKey, activeNoteSpelling);
+    const withVoiceLeading = enrichSongLinesWithVoiceLeading(
+      enriched,
+      cbaGripMode,
+      activeNoteSpelling,
+    );
     return annotateStradellaTransitions(withVoiceLeading);
-  }, [song.lines, capo, song.originalKey, cbaGripMode]);
+  }, [song.lines, capo, song.originalKey, cbaGripMode, activeNoteSpelling]);
 
   // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
-    return extractSectionChords(renderedLines, cbaGripMode);
-  }, [renderedLines, cbaGripMode]);
+    return extractSectionChords(renderedLines, cbaGripMode, activeNoteSpelling);
+  }, [renderedLines, cbaGripMode, activeNoteSpelling]);
 
   const handleToggleCapo = () => {
     if (!onChangeCapo) return;
@@ -283,7 +313,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
               {song.originalKey && (
                 <>
                   <span>•</span>
-                  <span>Key: {song.originalKey}</span>
+                  <span>Key: {displayOriginalKey}</span>
                 </>
               )}
             </div>
@@ -430,6 +460,40 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   )}
                 </div>
               )}
+
+              {/* Global accidental spelling: presentation-only, never changes voicing coordinates */}
+              <div
+                className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 gap-0.5 text-xs font-mono"
+                role="group"
+                aria-label="Note spelling"
+              >
+                <span className="hidden sm:inline px-1 text-[10px] text-zinc-500 font-bold uppercase tracking-wide">
+                  Spelling
+                </span>
+                {(
+                  [
+                    { value: "auto", label: "Auto", title: "Use key-aware note spelling" },
+                    { value: "flats", label: "♭ Flats", title: "Spell accidentals as flats" },
+                    { value: "sharps", label: "♯ Sharps", title: "Spell accidentals as sharps" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleChangeNoteSpelling(option.value)}
+                    className={`min-h-[32px] sm:min-h-[34px] px-2 py-1 rounded-md font-bold transition-all cursor-pointer select-none active:scale-95 ${
+                      activeNoteSpelling === option.value
+                        ? "bg-sky-600 text-white shadow-md ring-1 ring-sky-400/50"
+                        : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                    }`}
+                    title={option.title}
+                    aria-label={option.title}
+                    aria-pressed={activeNoteSpelling === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Context-Aware Right Controls (Dynamic by View Mode) */}
@@ -679,6 +743,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 jamFillsEnabled={jamFills}
+                noteSpelling={activeNoteSpelling}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -696,6 +761,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             cbaDisplayMode={cbaDisplayMode}
             stradellaDisplayMode={stradellaDisplayMode}
             jamFillsEnabled={jamFills}
+            noteSpelling={activeNoteSpelling}
             onSelectChord={onSelectChord}
             selectedChord={selectedChord}
             fontSizeClass={fontSizeClass}

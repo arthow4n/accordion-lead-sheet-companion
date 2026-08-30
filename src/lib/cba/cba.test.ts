@@ -42,6 +42,18 @@ Deno.test("CBA-02: G Minor (G - Bb - D) with 1-2-4 fingering", () => {
   assertEquals(coords[2], { row: 3, column: 5, note: "D", finger: 4 });
 });
 
+Deno.test("CBA-SPELLING-01: Note spelling changes labels but not CBA physical coordinates", () => {
+  const flats = generateCbaGrip("Db7", 0, 5, 5, "flats");
+  const sharps = generateCbaGrip("C#7", 0, 5, 5, "sharps");
+
+  assertEquals(flats.notes, ["Db", "F", "Ab", "B"]);
+  assertEquals(sharps.notes, ["C#", "F", "G#", "B"]);
+  assertEquals(
+    flats.buttonCoords?.map((button) => ({ row: button.row, column: button.column })),
+    sharps.buttonCoords?.map((button) => ({ row: button.row, column: button.column })),
+  );
+});
+
 Deno.test("CBA-03: F Major (F - A - C) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("F", 0, 5);
   assertEquals(grip.notes, ["F", "A", "C"]);

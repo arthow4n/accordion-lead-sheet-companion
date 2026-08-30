@@ -1,4 +1,10 @@
-import type { CbaButtonCoord, CbaGrip, ChordQuality, ParsedChord } from "../../types/index.ts";
+import type {
+  CbaButtonCoord,
+  CbaGrip,
+  ChordQuality,
+  NoteSpelling,
+  ParsedChord,
+} from "../../types/index.ts";
 import { getPitchClass, normalizePitchClass, parseChord } from "../capo/transposition.ts";
 import { getNoteName } from "../capo/enharmonics.ts";
 import {
@@ -67,9 +73,16 @@ export function getChordPitchClasses(
 /**
  * Get spelled note names for a chord
  */
-export function getChordNotes(chord: ParsedChord): string[] {
+export function getChordNotes(
+  chord: ParsedChord,
+  noteSpelling: NoteSpelling = "auto",
+): string[] {
   const rootPc = chord.rootPitchClass;
   const pitchClasses = getChordPitchClasses(rootPc, chord.quality);
+
+  if (noteSpelling !== "auto") {
+    return pitchClasses.map((pc) => getNoteName(pc, noteSpelling === "flats"));
+  }
 
   return pitchClasses.map((pc) => {
     let preferFlats = false;
@@ -261,9 +274,10 @@ export function generateCbaGrip(
   inversion = 0,
   targetColumnCenter = 5,
   maxRow = 5,
+  noteSpelling: NoteSpelling = "auto",
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
-  const baseNotes = getChordNotes(parsed);
+  const baseNotes = getChordNotes(parsed, noteSpelling);
   const invertedNotes = invertNotes(baseNotes, inversion);
 
   const coords = findBestCoordinateCluster(invertedNotes, targetColumnCenter, maxRow);
@@ -321,6 +335,7 @@ export function generateCanonicalRootGrip(
   chordInput: string | ParsedChord,
   targetColumnCenter = 5,
   rowTierMode: "3row" | "5row" = "5row",
+  noteSpelling: NoteSpelling = "auto",
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
   const rootPc = parsed.rootPitchClass;
@@ -336,7 +351,7 @@ export function generateCanonicalRootGrip(
     rootPositions[0] || { row: baseRow, column: targetColumnCenter },
   );
 
-  const chordNotes = getChordNotes(parsed);
+  const chordNotes = getChordNotes(parsed, noteSpelling);
   const coords: CbaButtonCoord[] = [
     createCbaButtonCoord(rootPos.row, rootPos.column, chordNotes[0], 1),
   ];

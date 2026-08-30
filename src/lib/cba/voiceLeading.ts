@@ -1,4 +1,4 @@
-import type { CbaGrip, ParsedChord } from "../../types/index.ts";
+import type { CbaGrip, NoteSpelling, ParsedChord } from "../../types/index.ts";
 import { parseChord } from "../capo/transposition.ts";
 import { computeCbaCentroid } from "./grid.ts";
 import { generateCbaGrip, getChordNotes } from "./grips.ts";
@@ -12,9 +12,10 @@ export function optimizeVoiceLeading(
   chordInput: string | ParsedChord,
   previousGrip?: CbaGrip | number,
   maxRow = 5,
+  noteSpelling: NoteSpelling = "auto",
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
-  const notes = getChordNotes(parsed);
+  const notes = getChordNotes(parsed, noteSpelling);
   const numInversions = notes.length;
 
   const prevCentroid = typeof previousGrip === "number"
@@ -25,11 +26,11 @@ export function optimizeVoiceLeading(
     ? (previousGrip.buttonCoords || previousGrip.buttons || [])
     : [];
 
-  let bestGrip = generateCbaGrip(parsed, 0, prevCentroid, maxRow);
+  let bestGrip = generateCbaGrip(parsed, 0, prevCentroid, maxRow, noteSpelling);
   let bestScore = evaluateVoiceLeadingCost(bestGrip, prevCentroid, prevButtons);
 
   for (let inv = 1; inv < numInversions; inv++) {
-    const candidate = generateCbaGrip(parsed, inv, prevCentroid, maxRow);
+    const candidate = generateCbaGrip(parsed, inv, prevCentroid, maxRow, noteSpelling);
     const score = evaluateVoiceLeadingCost(candidate, prevCentroid, prevButtons);
 
     if (score < bestScore) {

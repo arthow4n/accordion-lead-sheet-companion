@@ -4,6 +4,7 @@ import type {
   ChordDetail,
   ChordLyricSegment,
   LeadSheetLine,
+  NoteSpelling,
   StradellaDisplayMode,
   StradellaTransition,
   ViewMode,
@@ -19,6 +20,7 @@ export interface LineRendererProps {
   cbaDisplayMode?: CbaDisplayMode;
   stradellaDisplayMode?: StradellaDisplayMode;
   jamFillsEnabled?: boolean;
+  noteSpelling?: NoteSpelling;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   fontSizeClass?: string;
@@ -118,6 +120,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
   cbaDisplayMode = "line_cards",
   stradellaDisplayMode = "badges",
   jamFillsEnabled = false,
+  noteSpelling = "auto",
   onSelectChord,
   selectedChord,
   fontSizeClass = "text-base",
@@ -157,6 +160,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 cbaDisplayMode={cbaDisplayMode}
                 stradellaDisplayMode={stradellaDisplayMode}
                 jamFillsEnabled={jamFillsEnabled}
+                noteSpelling={noteSpelling}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -180,6 +184,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 jamFillsEnabled={jamFillsEnabled}
+                noteSpelling={noteSpelling}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -205,6 +210,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(chord, selectedChord)}
                 stradellaTransition={stradellaTransition}
+                noteSpelling={noteSpelling}
               />
             ))}
           </div>
@@ -235,6 +241,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 cbaDisplayMode={cbaDisplayMode}
                 stradellaDisplayMode={stradellaDisplayMode}
                 jamFillsEnabled={jamFillsEnabled}
+                noteSpelling={noteSpelling}
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(segment.chord, selectedChord)}
@@ -263,6 +270,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 onSelectChord={onSelectChord}
                 fontSizeClass={fontSizeClass}
                 jamFillsEnabled={jamFillsEnabled}
+                noteSpelling={noteSpelling}
                 active={isChordActive(chord, selectedChord)}
               />
             ))}
@@ -288,6 +296,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                 fontSizeClass={fontSizeClass}
                 active={isChordActive(chord, selectedChord)}
                 stradellaTransition={stradellaTransition}
+                noteSpelling={noteSpelling}
               />
             ))}
           </div>
@@ -330,6 +339,7 @@ export const LineRenderer: React.FC<LineRendererProps> = ({
                   onSelectChord={onSelectChord}
                   fontSizeClass={fontSizeClass}
                   jamFillsEnabled={jamFillsEnabled}
+                  noteSpelling={noteSpelling}
                   active={isChordActive(chord, selectedChord)}
                 />
               ))}

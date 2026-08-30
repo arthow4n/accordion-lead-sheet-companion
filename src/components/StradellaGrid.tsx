@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef } from "react";
 import type {
   AccordionSize,
+  NoteSpelling,
   ParsedChord,
   StradellaGroovePattern,
   StradellaGrooveType,
@@ -12,6 +13,7 @@ import {
   isColumnOutOfRange,
 } from "../lib/stradella/layout.ts";
 import { solveStradellaGroove } from "../lib/stradella/grooves.ts";
+import { respellNoteLabel, respellNoteText } from "../lib/capo/enharmonics.ts";
 
 export interface StradellaGridProps {
   stradella?: StradellaVoicing;
@@ -20,6 +22,7 @@ export interface StradellaGridProps {
   grooveType?: StradellaGrooveType;
   groovePattern?: StradellaGroovePattern | null;
   className?: string;
+  noteSpelling?: NoteSpelling;
 }
 
 export const StradellaGrid: React.FC<StradellaGridProps> = ({
@@ -29,6 +32,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   grooveType = "boom_chick",
   groovePattern,
   className = "",
+  noteSpelling = "auto",
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeAnchorRef = useRef<HTMLDivElement>(null);
@@ -99,7 +103,10 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
       {/* Clean Single-Line Recipe Header without Clutter */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800/80 font-mono">
         <span className="text-sm sm:text-base font-bold text-blue-400">
-          {stradella?.explanation || `${activeBassLabel} Bass + ${activeChordLabel || "Chord"}`}
+          {respellNoteText(
+            stradella?.explanation || `${activeBassLabel} Bass + ${activeChordLabel || "Chord"}`,
+            noteSpelling,
+          )}
         </span>
       </div>
 
@@ -130,10 +137,12 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                     ? "bg-blue-950 border border-blue-500/60 text-blue-300"
                     : "bg-zinc-900 border border-zinc-800 text-zinc-400"
                 }`}
-                title={`Beat ${step.beat}: ${step.label} (${step.buttonName})`}
+                title={`Beat ${step.beat}: ${step.label} (${
+                  respellNoteLabel(step.buttonName, noteSpelling)
+                })`}
               >
                 <span className="opacity-70">{step.beat}:</span>
-                <span>{step.buttonName}</span>
+                <span>{respellNoteLabel(step.buttonName, noteSpelling)}</span>
               </div>
             ))}
           </div>
@@ -156,6 +165,8 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
               {columns.map((col) => {
                 const bassNote = getBassNoteForColumn(col);
                 const counterNote = getCounterBassNoteForColumn(col);
+                const displayBassNote = respellNoteLabel(bassNote, noteSpelling);
+                const displayCounterNote = respellNoteLabel(counterNote, noteSpelling);
 
                 let buttonLabel = "";
                 let isCounter = false;
@@ -163,7 +174,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
 
                 if (rowInfo.rowIndex === 0) {
                   // Counter-Bass (Capitalized with _ suffix, e.g. E_, B_, F#_)
-                  buttonLabel = `${counterNote}_`;
+                  buttonLabel = `${displayCounterNote}_`;
                   isCounter = true;
                   if (
                     stradella?.rootButton
@@ -177,7 +188,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 } else if (rowInfo.rowIndex === 1) {
                   // Fundamental Bass (Capitalized, e.g. C, G, D, B)
-                  buttonLabel = bassNote;
+                  buttonLabel = displayBassNote;
                   if (
                     stradella?.rootButton
                       ? stradella.rootButton.row === "bass" &&
@@ -189,7 +200,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 } else if (rowInfo.rowIndex === 2) {
                   // Major Triad (Capitalized, e.g. C, G, D, B)
-                  buttonLabel = bassNote;
+                  buttonLabel = displayBassNote;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "major" &&
@@ -204,7 +215,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 } else if (rowInfo.rowIndex === 3) {
                   // Minor Triad (Proper Casing: Bm, Em, Cm, Gm, Dm)
-                  buttonLabel = `${bassNote}m`;
+                  buttonLabel = `${displayBassNote}m`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "minor" &&
@@ -218,7 +229,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 } else if (rowInfo.rowIndex === 4) {
                   // 7th Chord (Proper Casing: B7, E7, C7, G7, F#7)
-                  buttonLabel = `${bassNote}7`;
+                  buttonLabel = `${displayBassNote}7`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "seventh" &&
@@ -232,7 +243,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                   }
                 } else if (rowInfo.rowIndex === 5) {
                   // Diminished (Proper Casing: Bd, Ed, Cd, Gd, F#d)
-                  buttonLabel = `${bassNote}d`;
+                  buttonLabel = `${displayBassNote}d`;
                   if (
                     stradella?.chordButton
                       ? (stradella.chordButton.row === "diminished" &&

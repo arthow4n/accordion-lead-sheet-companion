@@ -3,7 +3,7 @@
  * Path: src/lib/storage/urlState.ts
  */
 
-import type { LeadSheetSong, ViewMode } from "../../types/index.ts";
+import type { LeadSheetSong, NoteSpelling, ViewMode } from "../../types/index.ts";
 
 export const LAST_VIEW_STORAGE_KEY = "accordion_companion_last_view_mode";
 export const LAST_SONG_STORAGE_KEY = "accordion_companion_last_song_id";
@@ -233,6 +233,37 @@ export function getInitialSong(
 }
 
 export const LAST_CBA_GRIP_MODE_STORAGE_KEY = "cbaGripMode";
+
+export const LAST_NOTE_SPELLING_STORAGE_KEY = "accordion_companion_note_spelling";
+
+/**
+ * Retrieves the global note-spelling preference.
+ * Defaults to Auto so existing songs retain their current key-aware notation.
+ */
+export function getLastPersistedNoteSpelling(): NoteSpelling {
+  if (typeof globalThis.localStorage === "undefined") return "auto";
+  try {
+    const val = globalThis.localStorage.getItem(LAST_NOTE_SPELLING_STORAGE_KEY);
+    if (val === "auto" || val === "flats" || val === "sharps") return val;
+    // Accept the singular names used by early local builds, if present.
+    if (val === "flat") return "flats";
+    if (val === "sharp") return "sharps";
+    return "auto";
+  } catch (_err) {
+    return "auto";
+  }
+}
+
+/** Persists the global note-spelling preference and notifies mounted readers. */
+export function persistNoteSpelling(spelling: NoteSpelling): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  try {
+    globalThis.localStorage.setItem(LAST_NOTE_SPELLING_STORAGE_KEY, spelling);
+    globalThis.dispatchEvent(new Event("noteSpellingChanged"));
+  } catch (_err) {
+    // Ignore quota or private browsing errors
+  }
+}
 
 /**
  * Retrieves the last persisted CBA Grip Mode ("root_3row" | "root_5row" | "voice_led") from LocalStorage.

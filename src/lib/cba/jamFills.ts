@@ -7,26 +7,34 @@ import type {
   CbaButtonCoord,
   CbaJamFillScale,
   JamFillScaleType,
+  NoteSpelling,
   ParsedChord,
 } from "../../types/index.ts";
-import { getNoteName } from "../capo/enharmonics.ts";
-import { getPitchClass } from "../capo/transposition.ts";
+import { getNoteName, getPreferFlats } from "../capo/enharmonics.ts";
 import { createCbaButtonCoord, getPitchClassAt } from "./grid.ts";
 
 /**
  * Computes the improvisation fill scale (notes, pitch classes, and 5-row button coordinates)
  * for a sounding chord on the CBA C-System keyboard.
  */
-export function computeCbaJamFills(soundingChord: ParsedChord | undefined): CbaJamFillScale | null {
+export function computeCbaJamFills(
+  soundingChord: ParsedChord | undefined,
+  noteSpelling: NoteSpelling = "auto",
+): CbaJamFillScale | null {
   if (!soundingChord || !soundingChord.root) {
     return null;
   }
 
-  const rootPitchClass = getPitchClass(soundingChord.root);
+  const rootPitchClass = soundingChord.rootPitchClass;
   const quality = soundingChord.quality || "major";
 
+  const autoPreferFlats = soundingChord.root.includes("b") ||
+    quality === "minor" || quality === "minor7";
+  const preferFlats = getPreferFlats(noteSpelling, autoPreferFlats);
+  const displayRoot = getNoteName(rootPitchClass, preferFlats);
+
   let scaleType: JamFillScaleType = "major_blues";
-  let scaleName = `${soundingChord.root} Major Blues Pentatonic`;
+  let scaleName = `${displayRoot} Major Blues Pentatonic`;
   let intervals: number[] = [0, 2, 3, 4, 7, 9]; // Major Blues
 
   if (
@@ -36,7 +44,7 @@ export function computeCbaJamFills(soundingChord: ParsedChord | undefined): CbaJ
     quality === "minor9"
   ) {
     scaleType = "minor_blues";
-    scaleName = `${soundingChord.root} Minor Blues Pentatonic`;
+    scaleName = `${displayRoot} Minor Blues Pentatonic`;
     intervals = [0, 3, 5, 6, 7, 10]; // Minor Blues: 1, b3, 4, b5, 5, b7
   } else if (
     quality === "dominant7" ||
@@ -47,7 +55,7 @@ export function computeCbaJamFills(soundingChord: ParsedChord | undefined): CbaJ
     quality === "altered"
   ) {
     scaleType = "dominant_blues";
-    scaleName = `${soundingChord.root} Dominant Blues`;
+    scaleName = `${displayRoot} Dominant Blues`;
     intervals = [0, 4, 5, 6, 7, 10]; // Mixolydian Blues: 1, 3, 4, b5, 5, b7
   } else if (
     quality === "diminished" ||
@@ -55,17 +63,13 @@ export function computeCbaJamFills(soundingChord: ParsedChord | undefined): CbaJ
     quality === "halfDiminished7"
   ) {
     scaleType = "diminished";
-    scaleName = `${soundingChord.root} Diminished Blues`;
+    scaleName = `${displayRoot} Diminished Blues`;
     intervals = [0, 3, 5, 6, 10]; // Locrian Blues: 1, b3, 4, b5, b7
   } else if (quality === "sus4" || quality === "sus2") {
     scaleType = "dominant_blues";
-    scaleName = `${soundingChord.root} Pentatonic`;
+    scaleName = `${displayRoot} Pentatonic`;
     intervals = [0, 2, 5, 7, 10]; // 1, 2, 4, 5, b7
   }
-
-  const preferFlats = soundingChord.root.includes("b") ||
-    quality === "minor" ||
-    quality === "minor7";
 
   const pitchClasses = intervals.map((int) => (rootPitchClass + int) % 12);
   const notes = pitchClasses.map((pc) => getNoteName(pc, preferFlats));
@@ -85,7 +89,7 @@ export function computeCbaJamFills(soundingChord: ParsedChord | undefined): CbaJ
   }
 
   return {
-    root: soundingChord.root,
+    root: displayRoot,
     scaleType,
     scaleName,
     notes,

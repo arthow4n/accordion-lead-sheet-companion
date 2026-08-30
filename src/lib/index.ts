@@ -20,8 +20,12 @@ export {
 export {
   FLAT_KEYS,
   getNoteName,
+  getPreferFlats,
   getSoundingKey,
   isFlatKey,
+  respellNoteLabel,
+  respellNoteText,
+  respellParsedChord,
   SHARP_KEYS,
   transposeChord,
 } from "./capo/enharmonics.ts";
@@ -127,6 +131,7 @@ export {
   getLastPersistedCbaGripMode,
   getLastPersistedGroove,
   getLastPersistedJamFills,
+  getLastPersistedNoteSpelling,
   getLastPersistedSongId,
   getLastPersistedStradellaDisplayMode,
   getLastPersistedViewMode,
@@ -136,6 +141,7 @@ export {
   LAST_CBA_GRIP_MODE_STORAGE_KEY,
   LAST_GROOVE_STORAGE_KEY,
   LAST_JAM_FILLS_STORAGE_KEY,
+  LAST_NOTE_SPELLING_STORAGE_KEY,
   LAST_SONG_STORAGE_KEY,
   LAST_STRADELLA_DISPLAY_MODE_STORAGE_KEY,
   LAST_VIEW_STORAGE_KEY,
@@ -145,6 +151,7 @@ export {
   persistJamFills,
   persistLastSongId,
   persistLastViewMode,
+  persistNoteSpelling,
   persistStradellaDisplayMode,
   updateAppUrl,
 } from "./storage/urlState.ts";

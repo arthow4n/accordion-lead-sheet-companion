@@ -1,9 +1,9 @@
 import React from "react";
-import type { CbaButtonCoord, ChordDetail, ParsedChord } from "../types/index.ts";
+import type { CbaButtonCoord, ChordDetail, NoteSpelling, ParsedChord } from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
 import { generateCbaGrip } from "../lib/cba/grips.ts";
-import { parseChord } from "../lib/capo/transposition.ts";
-import { getNoteName } from "../lib/capo/enharmonics.ts";
+import { getPitchClass, parseChord } from "../lib/capo/transposition.ts";
+import { getNoteName, getPreferFlats, respellParsedChord } from "../lib/capo/enharmonics.ts";
 import { getCbaVisualRowOffset, getPitchClassAt } from "../lib/cba/grid.ts";
 import { computeCbaJamFills } from "../lib/cba/jamFills.ts";
 
@@ -13,6 +13,7 @@ export interface CbaMiniCardProps {
   active?: boolean;
   fontSizeClass?: string;
   jamFillsEnabled?: boolean;
+  noteSpelling?: NoteSpelling;
   className?: string;
 }
 
@@ -87,21 +88,25 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   active = false,
   fontSizeClass = "text-base",
   jamFillsEnabled = false,
+  noteSpelling = "auto",
   className = "",
 }) => {
-  const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, 0) : chord;
+  const chordDetail: ChordDetail = typeof chord === "string"
+    ? enrichChord(chord, 0, undefined, noteSpelling)
+    : chord;
   const soundingChord: ParsedChord = chordDetail.soundingChord ||
     chordDetail.originalChord ||
     parseChord(typeof chord === "string" ? chord : "C");
 
-  const chordName = soundingChord.raw || (typeof chord === "string" ? chord : "Chord");
-  const grip = chordDetail.cba || generateCbaGrip(soundingChord);
-  const notes = grip.notes || [];
+  const chordName = respellParsedChord(soundingChord, noteSpelling).raw ||
+    (typeof chord === "string" ? chord : "Chord");
+  const grip = chordDetail.cba || generateCbaGrip(soundingChord, 0, 5, 5, noteSpelling);
+  const rawNotes = grip.notes || [];
   const activeButtons: CbaButtonCoord[] = grip.buttonCoords || grip.buttons || [];
   const exitingButtons: CbaButtonCoord[] = grip.exitingCoords || [];
 
   // Jam Fills calculation
-  const jamFills = jamFillsEnabled ? computeCbaJamFills(soundingChord) : null;
+  const jamFills = jamFillsEnabled ? computeCbaJamFills(soundingChord, noteSpelling) : null;
   const jamFillPcs = new Set(jamFills?.pitchClasses || []);
 
   // Determine dynamic column range to display active AND ghost buttons (minimum 5 columns, with padding)
@@ -117,8 +122,10 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   }
 
   // Determine if note spelling should prefer flats
-  const preferFlats = notes.some((n) => n.includes("b")) ||
+  const autoPreferFlats = rawNotes.some((n) => n.includes("b")) ||
     Boolean(soundingChord?.root && soundingChord.root.includes("b"));
+  const preferFlats = getPreferFlats(noteSpelling, autoPreferFlats);
+  const notes = rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();

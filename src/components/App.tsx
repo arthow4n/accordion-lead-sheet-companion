@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import type { AccordionSize, ChordDetail, LeadSheetSong, ViewMode } from "../types/index.ts";
+import type {
+  AccordionSize,
+  ChordDetail,
+  LeadSheetSong,
+  NoteSpelling,
+  ViewMode,
+} from "../types/index.ts";
 import {
   deleteSong,
   exportSongbook,
@@ -23,10 +29,12 @@ import { UpdateToast } from "./UpdateToast.tsx";
 import {
   getInitialSong,
   getInitialViewMode,
+  getLastPersistedNoteSpelling,
   getSongFromUrl,
   getViewModeFromUrl,
   persistLastSongId,
   persistLastViewMode,
+  persistNoteSpelling,
   updateAppUrl,
 } from "../lib/storage/urlState.ts";
 
@@ -42,6 +50,9 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
   const [currentSong, setCurrentSong] = useState<LeadSheetSong>(initialSong);
   const [capo, setCapo] = useState<number>(initialSong?.capoFret ?? initialSong?.capo ?? 0);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+  const [noteSpelling, setNoteSpelling] = useState<NoteSpelling>(() =>
+    getLastPersistedNoteSpelling()
+  );
   const [fontSizeClass, setFontSizeClass] = useState<string>("text-base");
   const [accordionSize] = useState<AccordionSize>("120-bass");
   const [activeChord, setActiveChord] = useState<ChordDetail | string | null>(null);
@@ -98,6 +109,11 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     setViewMode(mode);
     persistLastViewMode(mode);
     updateAppUrl(currentSong, mode);
+  };
+
+  const handleChangeNoteSpelling = (spelling: NoteSpelling) => {
+    setNoteSpelling(spelling);
+    persistNoteSpelling(spelling);
   };
 
   const handleSelectSong = (song: LeadSheetSong) => {
@@ -193,6 +209,8 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
               song={currentSong}
               capo={capo}
               viewMode={viewMode}
+              noteSpelling={noteSpelling}
+              onChangeNoteSpelling={handleChangeNoteSpelling}
               onChangeCapo={setCapo}
               onUpdateSong={handleUpdateSong}
               fontSizeClass={fontSizeClass}
@@ -235,6 +253,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
         capo={capo}
         viewMode={viewMode}
         accordionSize={accordionSize}
+        noteSpelling={noteSpelling}
       />
 
       {/* Offline Songbook Slide-Over Drawer */}

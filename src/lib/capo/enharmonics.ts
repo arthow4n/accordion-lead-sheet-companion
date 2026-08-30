@@ -1,4 +1,4 @@
-import type { ParsedChord } from "../../types/index.ts";
+import type { NoteSpelling, ParsedChord } from "../../types/index.ts";
 import {
   FLAT_SPELLINGS,
   formatChord,
@@ -69,31 +69,87 @@ export function getNoteName(pitchClass: number, preferFlats = true): string {
   return preferFlats ? FLAT_SPELLINGS[pc] : SHARP_SPELLINGS[pc];
 }
 
+/** Resolve the requested spelling, delegating to the existing context heuristic in Auto mode. */
+export function getPreferFlats(
+  spelling: NoteSpelling,
+  autoPreferFlats: boolean,
+): boolean {
+  if (spelling === "flats") return true;
+  if (spelling === "sharps") return false;
+  return autoPreferFlats;
+}
+
+/**
+ * Re-spell a parsed chord for display without changing its pitch classes or chord quality.
+ * This deliberately runs after transposition and after any physical voicing solver.
+ */
+export function respellParsedChord(
+  chord: ParsedChord,
+  spelling: NoteSpelling = "auto",
+): ParsedChord {
+  if (spelling === "auto") return chord;
+
+  const result: ParsedChord = {
+    ...chord,
+    root: getNoteName(chord.rootPitchClass, spelling === "flats"),
+    bassNote: chord.bassPitchClass === undefined
+      ? undefined
+      : getNoteName(chord.bassPitchClass, spelling === "flats"),
+  };
+  result.raw = formatChord(result);
+  return result;
+}
+
+/** Re-spell a Stradella/CBA note label while preserving suffixes such as m, 7, dim, and _. */
+export function respellNoteLabel(
+  label: string,
+  spelling: NoteSpelling = "auto",
+): string {
+  if (spelling === "auto" || !label) return label;
+  const match = label.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+  if (!match) return label;
+  const note = getNoteName(getPitchClass(match[1]), spelling === "flats");
+  const spelledNote = match[1][0] === match[1][0].toLowerCase() ? note.toLowerCase() : note;
+  return `${spelledNote}${match[2]}`;
+}
+
+/** Re-spell note tokens in a solver explanation without touching interval text or words. */
+export function respellNoteText(
+  text: string,
+  spelling: NoteSpelling = "auto",
+): string {
+  if (spelling === "auto" || !text) return text;
+  return text.replace(/(^|[^A-Za-z#b])([A-Ga-g](?:#|b)?)(?=(_|m|7|d|[^A-Za-z#b]|$))/g, (
+    _match,
+    prefix: string,
+    note: string,
+  ) => `${prefix}${respellNoteLabel(note, spelling)}`);
+}
+
 /**
  * Calculate sounding key from written key and capo fret
  */
-export function getSoundingKey(writtenKey: string, capoFret: number): string {
+export function getSoundingKey(
+  writtenKey: string,
+  capoFret: number,
+  spelling: NoteSpelling = "auto",
+): string {
   const normFret = normalizeCapoFret(capoFret);
-  if (normFret === 0) return writtenKey;
 
   const isMinor = writtenKey.endsWith("m") && !writtenKey.endsWith("dim");
   const tonic = isMinor ? writtenKey.slice(0, -1) : writtenKey;
   const tonicPc = getPitchClass(tonic);
-  const soundingPc = transposePitchClass(tonicPc, normFret);
+  const soundingPc = normFret === 0 ? tonicPc : transposePitchClass(tonicPc, normFret);
+
+  if (spelling === "auto" && normFret === 0) return writtenKey;
 
   // Determine spelling for the new key tonic
   // Standard flat tonics: F (5), Bb (10), Eb (3), Ab (8), Db (1), Gb (6)
   // Standard minor flat tonics: Dm (2), Gm (7), Cm (0), Fm (5), Bbm (10), Ebm (3)
-  let preferFlats = false;
-  if (isMinor) {
-    if ([2, 7, 0, 5, 10, 3].includes(soundingPc)) {
-      preferFlats = true;
-    }
-  } else {
-    if ([5, 10, 3, 8, 1, 6].includes(soundingPc)) {
-      preferFlats = true;
-    }
-  }
+  const autoPreferFlats = isMinor
+    ? [2, 7, 0, 5, 10, 3].includes(soundingPc)
+    : [5, 10, 3, 8, 1, 6].includes(soundingPc);
+  const preferFlats = getPreferFlats(spelling, autoPreferFlats);
 
   const spelledTonic = getNoteName(soundingPc, preferFlats);
   return isMinor ? `${spelledTonic}m` : spelledTonic;

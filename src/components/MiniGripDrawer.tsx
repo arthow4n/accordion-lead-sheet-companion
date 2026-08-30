@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { Sparkles, X } from "lucide-react";
-import type { AccordionSize, ChordDetail, StradellaGrooveType, ViewMode } from "../types/index.ts";
+import type {
+  AccordionSize,
+  ChordDetail,
+  NoteSpelling,
+  StradellaGrooveType,
+  ViewMode,
+} from "../types/index.ts";
 import { enrichChord } from "../lib/parser/tokenizer.ts";
+import { respellParsedChord } from "../lib/capo/enharmonics.ts";
 import { generateCanonicalRootGrip } from "../lib/cba/grips.ts";
 import {
   getLastPersistedGroove,
@@ -18,6 +25,7 @@ export interface MiniGripDrawerProps {
   capo?: number;
   viewMode?: ViewMode;
   accordionSize?: AccordionSize;
+  noteSpelling?: NoteSpelling;
 }
 
 export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
@@ -27,6 +35,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
   capo = 0,
   viewMode = "stradella",
   accordionSize = "120-bass",
+  noteSpelling = "auto",
 }) => {
   const [groove, setGroove] = useState<StradellaGrooveType>(() => getLastPersistedGroove());
   const [jamFills, setJamFills] = useState<boolean>(() => getLastPersistedJamFills());
@@ -47,10 +56,16 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
   if (!isOpen || !chord) return null;
 
   // If chord is a plain string, enrich it with current capo
-  const chordDetail: ChordDetail = typeof chord === "string" ? enrichChord(chord, capo) : chord;
+  const chordDetail: ChordDetail = typeof chord === "string"
+    ? enrichChord(chord, capo, undefined, noteSpelling)
+    : chord;
 
-  const originalChordName = chordDetail.originalChord?.raw || "Chord";
-  const soundingChordName = chordDetail.soundingChord?.raw || originalChordName;
+  const originalChordName = chordDetail.originalChord
+    ? respellParsedChord(chordDetail.originalChord, noteSpelling).raw
+    : "Chord";
+  const soundingChordName = chordDetail.soundingChord
+    ? respellParsedChord(chordDetail.soundingChord, noteSpelling).raw
+    : originalChordName;
   const isTransposed = originalChordName !== soundingChordName || capo > 0;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -129,6 +144,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
                 soundingChord={chordDetail.soundingChord}
                 accordionSize={accordionSize}
                 grooveType={groove}
+                noteSpelling={noteSpelling}
               />
             </div>
           )}
@@ -169,6 +185,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
                     : undefined)}
                 soundingChord={chordDetail.soundingChord}
                 jamFillsEnabled={jamFills}
+                noteSpelling={noteSpelling}
               />
             </div>
           )}

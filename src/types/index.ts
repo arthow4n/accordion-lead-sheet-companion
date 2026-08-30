@@ -5,6 +5,9 @@
 
 export type ViewMode = "stradella" | "cba" | "guitar" | "dual";
 
+/** How accidental note names should be presented across the reader. */
+export type NoteSpelling = "auto" | "flats" | "sharps";
+
 export type ChordQuality =
   | "major"
   | "minor"
