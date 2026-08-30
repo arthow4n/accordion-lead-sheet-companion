@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { AccordionSize, ChordDetail, LeadSheetSong, ViewMode } from "../types/index.ts";
 import {
   deleteSong,
@@ -23,7 +23,6 @@ import { UpdateToast } from "./UpdateToast.tsx";
 import {
   getInitialSong,
   getInitialViewMode,
-  getLastPersistedViewMode,
   getSongFromUrl,
   getViewModeFromUrl,
   persistLastSongId,
@@ -31,15 +30,18 @@ import {
   updateAppUrl,
 } from "../lib/storage/urlState.ts";
 
-export default function App(): React.JSX.Element {
-  const initialSong = getInitialSong(PRESET_SONGS);
+interface AppProps {
+  initialSongs?: LeadSheetSong[];
+}
+
+export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): React.JSX.Element {
+  const availableSongs = initialSongs.length > 0 ? initialSongs : PRESET_SONGS;
+  const initialSong = getInitialSong(availableSongs);
   const initialViewMode = getInitialViewMode(initialSong);
-  const [songs, setSongs] = useState<LeadSheetSong[]>(PRESET_SONGS);
+  const [songs, setSongs] = useState<LeadSheetSong[]>(availableSongs);
   const [currentSong, setCurrentSong] = useState<LeadSheetSong>(initialSong);
   const [capo, setCapo] = useState<number>(initialSong?.capoFret ?? initialSong?.capo ?? 0);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
-  const [isSongbookReady, setIsSongbookReady] = useState(false);
-  const userSelectedSongIdRef = useRef<string | null>(null);
   const [fontSizeClass, setFontSizeClass] = useState<string>("text-base");
   const [accordionSize] = useState<AccordionSize>("120-bass");
   const [activeChord, setActiveChord] = useState<ChordDetail | string | null>(null);
@@ -62,44 +64,14 @@ export default function App(): React.JSX.Element {
     enabled: true,
   });
 
-  // Initialize Songbook from IndexedDB on startup while preserving URL/persisted song.
-  // This must complete before the sync effect below writes the initial state: a custom song
-  // cannot be resolved from PRESET_SONGS, and writing that fallback too early would erase its
-  // persisted ID (or replace a direct URL to it) before IndexedDB has loaded it.
-  useEffect(() => {
-    async function loadSongbook() {
-      try {
-        const loaded = await initPresets();
-        if (loaded && loaded.length > 0) {
-          setSongs(loaded);
-          const userSelectedSongId = userSelectedSongIdRef.current;
-          const target = userSelectedSongId
-            ? loaded.find((song) => song.id === userSelectedSongId) || getInitialSong(loaded)
-            : getInitialSong(loaded);
-          setCurrentSong(target);
-          setCapo(target.capoFret ?? target.capo ?? 0);
-          const urlView = getViewModeFromUrl();
-          const storageView = getLastPersistedViewMode();
-          const resolvedView = urlView || storageView || target.viewMode || "stradella";
-          setViewMode(resolvedView);
-        }
-      } catch (err) {
-        console.warn("Failed to load IndexedDB songbook:", err);
-      } finally {
-        setIsSongbookReady(true);
-      }
-    }
-    loadSongbook();
-  }, []);
-
   // Synchronize URL and persistence with active song and view mode
   useEffect(() => {
-    if (isSongbookReady && currentSong?.id) {
+    if (currentSong?.id) {
       updateAppUrl(currentSong, viewMode);
       persistLastSongId(currentSong.id);
       persistLastViewMode(viewMode);
     }
-  }, [currentSong?.id, isSongbookReady, viewMode]);
+  }, [currentSong?.id, viewMode]);
 
   // Handle browser Back/Forward navigation
   useEffect(() => {
@@ -129,7 +101,6 @@ export default function App(): React.JSX.Element {
   };
 
   const handleSelectSong = (song: LeadSheetSong) => {
-    userSelectedSongIdRef.current = song.id;
     setCurrentSong(song);
     setCapo(song.capoFret ?? song.capo ?? 0);
     if (song.viewMode && !getViewModeFromUrl()) {

@@ -28,7 +28,12 @@
   </head>
   <body class="bg-zinc-950 text-zinc-100 min-h-screen antialiased select-none"
     style="background-color: #09090b; color: #fafafa;">
-    <div id="root" style="background-color: #09090b;"></div>
+    <div id="root" style="background-color: #09090b;" aria-busy="true">
+      <div id="app-loading"
+        style="display: grid; min-height: 100vh; place-items: center; color: #a1a1aa; font: 500 0.875rem/1.25rem system-ui, sans-serif;">
+        Loading songbook…
+      </div>
+    </div>
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
