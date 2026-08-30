@@ -19,6 +19,12 @@ export interface CompoundRule {
 }
 
 export const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
+  minorMajor7: {
+    chordRow: "minor",
+    chordPitchClassOffset: 0,
+    columnDelta: 0,
+    explanation: "Root minor chord; RH adds major 7",
+  },
   major7: {
     chordRow: "minor",
     chordPitchClassOffset: 4, // 3rd above root (e.g. C -> em)
@@ -54,6 +60,30 @@ export const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
     chordPitchClassOffset: 7, // 5th above root (e.g. C -> gm gives 1-5-b7-9)
     columnDelta: 1,
     explanation: "Fundamental bass + minor chord on 5th (1-5-b7-9)",
+  },
+  dominant11: {
+    chordRow: "minor",
+    chordPitchClassOffset: 7,
+    columnDelta: 1,
+    explanation: "Minor chord on 5th; RH adds 11",
+  },
+  minor11: {
+    chordRow: "major",
+    chordPitchClassOffset: 3,
+    columnDelta: -3,
+    explanation: "Major chord on b3; RH adds 11/9",
+  },
+  sevenSharpNine: {
+    chordRow: "seventh",
+    chordPitchClassOffset: 0,
+    columnDelta: 0,
+    explanation: "Root seventh chord; RH adds #9",
+  },
+  sevenSharpFive: {
+    chordRow: "seventh",
+    chordPitchClassOffset: 0,
+    columnDelta: 0,
+    explanation: "Root seventh chord; RH adds #5",
   },
   major9: {
     chordRow: "major",
@@ -114,6 +144,12 @@ export const COMPOUND_RULES: Partial<Record<ChordQuality, CompoundRule>> = {
     chordPitchClassOffset: 0,
     columnDelta: 0,
     explanation: "Fundamental bass + major chord (RH voices 9)",
+  },
+  add4: {
+    chordRow: "major",
+    chordPitchClassOffset: 0,
+    columnDelta: 0,
+    explanation: "Root major chord; RH adds 4/11",
   },
   augmented: {
     chordRow: "major",

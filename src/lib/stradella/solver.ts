@@ -8,6 +8,7 @@ import { normalizePitchClass, parseChord } from "../capo/transposition.ts";
 import { COMPOUND_QUALITIES, solveCompoundChord } from "./compound.ts";
 import { createStradellaButton, getStradellaColumn, isColumnOutOfRange } from "./layout.ts";
 import { solveSlashChord } from "./slash.ts";
+import { isBassOnlyQuality } from "./qualities.ts";
 
 /**
  * Solve Stradella left-hand bass and chord buttons for any parsed or raw chord
@@ -26,6 +27,23 @@ export function solveStradellaChord(
     parsed.bassPitchClass !== rootPc
   ) {
     return solveSlashChord(parsed, accordionSize);
+  }
+
+  // Power chords and dominant sus4 chords cannot safely use a standard
+  // Stradella chord button without adding a conflicting third.
+  if (isBassOnlyQuality(parsed.quality)) {
+    const bassBtn = createStradellaButton("bass", rootCol, parsed.root, 4);
+    const suppliedTone = parsed.quality === "power5" ? "5" : "7sus4";
+    return {
+      rootButton: bassBtn,
+      chordButton: undefined,
+      primaryBass: bassBtn.label,
+      isCounterBass: false,
+      fingering: "4",
+      explanation: `Fundamental bass ${bassBtn.label} only; RH supplies ${suppliedTone}`,
+      columnOffset: rootCol,
+      isOutOfRange: isColumnOutOfRange(rootCol, accordionSize),
+    };
   }
 
   // 2. Compound / Extended chord check

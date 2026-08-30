@@ -125,7 +125,11 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
   const autoPreferFlats = rawNotes.some((n) => n.includes("b")) ||
     Boolean(soundingChord?.root && soundingChord.root.includes("b"));
   const preferFlats = getPreferFlats(noteSpelling, autoPreferFlats);
-  const notes = rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
+  // Keep the spelling generated for the grip in auto mode so an altered
+  // sharp is not flattened merely because another chord tone prefers flats.
+  const notes = noteSpelling === "auto"
+    ? rawNotes
+    : rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -201,18 +205,21 @@ export const CbaMiniCard: React.FC<CbaMiniCardProps> = ({
           {CBA_MINI_ROWS.map(({ rowNum, y, xOffset }) => {
             return displayCols.map((col, colIdx) => {
               const pc = getPitchClassAt(rowNum, col);
-              const noteName = getNoteName(pc, preferFlats);
-
-              // Direct active button in primary grip
-              const isPrimary = activeButtons.some(
+              const activeButton = activeButtons.find(
                 (b) => b.row === rowNum && b.column === col,
               );
+              const noteName = noteSpelling === "auto" && activeButton
+                ? activeButton.note
+                : getNoteName(pc, preferFlats);
+
+              // Direct active button in primary grip
+              const isPrimary = Boolean(activeButton);
 
               // Soft Warm Amber-Gold Root Note Beacon (Finger 1)
               const isRoot = isPrimary && (
                 (grip.rootButtonCoord && grip.rootButtonCoord.row === rowNum &&
                   grip.rootButtonCoord.column === col) ||
-                activeButtons.find((b) => b.row === rowNum && b.column === col)?.finger === 1
+                activeButton?.finger === 1
               );
 
               // Check if button is an entering tone in the voice leading transition

@@ -7,6 +7,7 @@ import {
   getStradellaColumn,
   isColumnOutOfRange,
 } from "./layout.ts";
+import { isBassOnlyQuality } from "./qualities.ts";
 
 /**
  * Solve slash chord using the Minimum Physical Button Distance Algorithm
@@ -45,13 +46,62 @@ export function solveSlashChord(
     useCounterBass = false;
   }
 
+  // Bass-only qualities must not be simplified with a chord button because
+  // the standard button would introduce a conflicting third.
+  if (isBassOnlyQuality(chord.quality)) {
+    const suppliedTone = chord.quality === "power5" ? "5" : "7sus4";
+
+    if (useCounterBass) {
+      const spelledBass = chord.bassNote ?? getNoteName(bassPc, counterCol < 0);
+      const bassBtn = createStradellaButton(
+        "counter-bass",
+        counterCol,
+        `${spelledBass}_`,
+        2,
+      );
+      return {
+        rootButton: bassBtn,
+        chordButton: undefined,
+        primaryBass: `${spelledBass}_`,
+        isCounterBass: true,
+        fingering: "2",
+        explanation:
+          `Counter-bass ${spelledBass}_ (Col ${counterCol}) only; RH supplies ${suppliedTone}`,
+        columnOffset: counterCol,
+        isOutOfRange: isColumnOutOfRange(counterCol, accordionSize),
+      };
+    }
+
+    const spelledBass = chord.bassNote ?? getNoteName(bassPc, fundCol < 0);
+    const bassBtn = createStradellaButton(
+      "bass",
+      fundCol,
+      spelledBass,
+      is5th ? 2 : 4,
+    );
+    return {
+      rootButton: bassBtn,
+      chordButton: undefined,
+      primaryBass: spelledBass,
+      isCounterBass: false,
+      fingering: is5th ? "2" : "4",
+      explanation:
+        `Fundamental bass ${spelledBass} (Col ${fundCol}) only; RH supplies ${suppliedTone}`,
+      columnOffset: fundCol,
+      isOutOfRange: isColumnOutOfRange(fundCol, accordionSize),
+    };
+  }
+
   // Determine chord button
   const chordRow = (chord.quality === "minor" || chord.quality === "minor7" ||
-      chord.quality === "minor9" || chord.quality === "minorSix")
+      chord.quality === "minor9" || chord.quality === "minorSix" ||
+      chord.quality === "minorMajor7" || chord.quality === "minor11")
     ? "minor"
     : (chord.quality === "dominant7" || chord.quality === "dominant9" ||
         chord.quality === "dominant13" || chord.quality === "sevenSharpEleven" ||
-        chord.quality === "sevenFlatNine" || chord.quality === "altered")
+        chord.quality === "sevenFlatNine" || chord.quality === "altered" ||
+        chord.quality === "dominant11" || chord.quality === "sevenSharpNine" ||
+        chord.quality === "sevenSharpFive")
     ? "seventh"
     : (chord.quality === "diminished" || chord.quality === "diminished7" ||
         chord.quality === "halfDiminished7")

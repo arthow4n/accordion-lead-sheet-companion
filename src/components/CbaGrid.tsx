@@ -58,7 +58,11 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
   const autoPreferFlats = rawNotes.some((n) => n.includes("b")) ||
     Boolean(parsedChord?.root && parsedChord.root.includes("b"));
   const preferFlats = getPreferFlats(noteSpelling, autoPreferFlats);
-  const notes = rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
+  // In auto mode, preserve the spelling selected by getChordNotes(). This is
+  // important for altered tones such as D# in C7#9 alongside Bb.
+  const notes = noteSpelling === "auto"
+    ? rawNotes
+    : rawNotes.map((note) => getNoteName(getPitchClass(note), preferFlats));
 
   const rows = CBA_ROWS_5;
 
@@ -106,11 +110,14 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
             >
               {displayCols.map((col) => {
                 const pc = getPitchClassAt(rowInfo.rowNumber, col);
-                const noteName = getNoteName(pc, preferFlats);
-
-                const isPrimary = activeButtons.some(
+                const activeButton = activeButtons.find(
                   (b) => b.row === rowInfo.rowNumber && b.column === col,
                 );
+                const noteName = noteSpelling === "auto" && activeButton
+                  ? activeButton.note
+                  : getNoteName(pc, preferFlats);
+
+                const isPrimary = Boolean(activeButton);
 
                 // Two-way shadow duplicate highlighting
                 const isAuxDuplicate = !isPrimary && activeButtons.some((b) => {
@@ -123,8 +130,7 @@ export const CbaGrid: React.FC<CbaGridProps> = ({
                 const isRoot = isPrimary && (
                   (grip?.rootButtonCoord && grip.rootButtonCoord.row === rowInfo.rowNumber &&
                     grip.rootButtonCoord.column === col) ||
-                  activeButtons.find((b) => b.row === rowInfo.rowNumber && b.column === col)
-                      ?.finger === 1
+                  activeButton?.finger === 1
                 );
 
                 // Entering Tone in voice leading transition

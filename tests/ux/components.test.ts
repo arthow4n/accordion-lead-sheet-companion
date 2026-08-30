@@ -711,6 +711,31 @@ Deno.test("UX-08e: MiniGripDrawer uses natural height without vertical scrolling
   assertEquals(html.includes("overflow-y-auto"), false);
 });
 
+Deno.test("UX-CHORD-COVERAGE: bass-only voicings show no phantom Stradella chord or groove", () => {
+  const chord = enrichChord("C5", 0);
+  const gridHtml = renderToStaticMarkup(
+    React.createElement(StradellaGrid, {
+      stradella: chord.stradella,
+      soundingChord: chord.soundingChord,
+      grooveType: "boom_chick",
+    }),
+  );
+  const miniCardHtml = renderToStaticMarkup(
+    React.createElement(StradellaMiniCard, { chord }),
+  );
+  const slashBassOnly = enrichChord("C7sus4/E", 0);
+  const slashMiniCardHtml = renderToStaticMarkup(
+    React.createElement(StradellaMiniCard, { chord: slashBassOnly }),
+  );
+
+  assertEquals(gridHtml.includes("Fundamental bass C only; RH supplies 5"), true);
+  assertEquals(gridHtml.includes("Folk Boom-Chick"), false);
+  assertEquals(miniCardHtml.includes("[C]"), true);
+  assertEquals(miniCardHtml.includes("+"), false);
+  assertEquals(slashMiniCardHtml.includes("[E_]") || slashMiniCardHtml.includes("[E♭_]"), true);
+  assertEquals(slashMiniCardHtml.includes("E_ + C7sus4/E"), false);
+});
+
 Deno.test("UX-09: URL query param song synchronization resolution", () => {
   const presets = createPresetSongs();
 

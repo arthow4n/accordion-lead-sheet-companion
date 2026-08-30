@@ -152,7 +152,9 @@ export const StradellaMiniCard: React.FC<StradellaMiniCardProps> = ({
   const svgWidth = 14 + (displayCols.length - 1) * colSpacing + 24;
 
   // Recipe display text (e.g. "B_ + C" or "C + em" or "G + G")
-  const recipeText = isCounterBass
+  const recipeText = !stradella.chordButton
+    ? displayActiveBassLabel
+    : isCounterBass
     ? `${displayActiveBassLabel} + ${displayActiveChordLabel || chordName}`
     : stradella.chordButton && stradella.chordButton.note !== activeBassLabel
     ? `${displayActiveBassLabel} + ${respellNoteLabel(stradella.chordButton.note, noteSpelling)}${

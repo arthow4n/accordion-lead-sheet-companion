@@ -157,7 +157,10 @@ export function classifyChordQuality(
   qualityStr: string,
   extra: string,
 ): ChordQuality {
-  const full = (qualityStr + extra).toLowerCase().trim().replace(/[\s_]+/g, "");
+  const full = normalizeUnicodeAccidentals(qualityStr + extra).toLowerCase().trim().replace(
+    /[\s_]+/g,
+    "",
+  );
 
   // Half-diminished 7th (e.g. m7b5, m7(b5), min7b5, ø, halfdim)
   if (
@@ -182,6 +185,46 @@ export function classifyChordQuality(
     full === "0"
   ) {
     return "diminished";
+  }
+
+  // Minor-major 7th (e.g. m(maj7), mMaj7, min(maj7), mM7)
+  // This must precede both generic major-7th and minor classification.
+  if (/^(?:m\(maj7\)|mmaj7|min\(maj7\)|mm7)$/.test(full)) {
+    return "minorMajor7";
+  }
+
+  // Dominant 7 sus4 (only the exact 7sus / 7sus4 spellings; 7sus2 is distinct)
+  if (/^7sus4?$/.test(full)) {
+    return "dominant7Sus4";
+  }
+
+  // Dominant 11 uses a practical four-note RH voicing.
+  if (full === "11") {
+    return "dominant11";
+  }
+
+  // Minor 11 uses a practical four-note RH voicing.
+  if (full === "m11" || full === "min11") {
+    return "minor11";
+  }
+
+  // Power chord: do not introduce a third through a major Stradella button.
+  if (full === "5") {
+    return "power5";
+  }
+
+  // Dominant 7 #9 and #5 are semantically distinct from the broad altered and
+  // augmented fallbacks below.
+  if (/^7(?:#9|\(#9\))$/.test(full)) {
+    return "sevenSharpNine";
+  }
+  if (/^(?:7(?:#5|\(#5\))|aug7|\+7)$/.test(full)) {
+    return "sevenSharpFive";
+  }
+
+  // Add 4 / add 11 share one practical RH and LH representation here.
+  if (full === "add4" || full === "add11") {
+    return "add4";
   }
 
   // Augmented / #5
@@ -312,10 +355,7 @@ export function classifyChordQuality(
   }
 
   // Add9 / Add2 / Add4
-  if (
-    full.startsWith("add9") || full.startsWith("add2") || full.startsWith("add4") ||
-    full.startsWith("add")
-  ) {
+  if (full.startsWith("add9") || full.startsWith("add2") || full.startsWith("add")) {
     return "add9";
   }
 
@@ -325,9 +365,7 @@ export function classifyChordQuality(
   }
 
   // Major Triad fallback
-  if (
-    full === "" || full === "maj" || full === "major" || full === "5" || full === "m"
-  ) {
+  if (full === "" || full === "maj" || full === "major" || full === "m") {
     return "major";
   }
 

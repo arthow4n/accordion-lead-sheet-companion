@@ -80,6 +80,12 @@ export function solveStradellaGroove(
     return null;
   }
 
+  // A bass-only voicing intentionally has no truthful chord/chop step. Do not
+  // synthesize a root-major label for it.
+  if (!voicing.chordButton) {
+    return null;
+  }
+
   const preset = STRADELLA_GROOVES.find((g) => g.id === grooveType) || STRADELLA_GROOVES[0];
 
   // 1. Identify Fundamental Bass button & column

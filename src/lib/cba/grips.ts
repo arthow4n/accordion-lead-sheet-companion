@@ -23,8 +23,18 @@ export function getChordPitchClasses(
 ): number[] {
   const root = normalizePitchClass(rootPc);
   switch (quality) {
+    case "power5":
+      return [root, (root + 7) % 12];
     case "minor":
       return [root, (root + 3) % 12, (root + 7) % 12];
+    case "minorMajor7":
+      return [root, (root + 3) % 12, (root + 7) % 12, (root + 11) % 12];
+    case "dominant7Sus4":
+      return [root, (root + 5) % 12, (root + 7) % 12, (root + 10) % 12];
+    case "dominant11":
+      return [root, (root + 10) % 12, (root + 2) % 12, (root + 5) % 12];
+    case "minor11":
+      return [root, (root + 3) % 12, (root + 10) % 12, (root + 5) % 12];
     case "dominant7":
       return [root, (root + 4) % 12, (root + 7) % 12, (root + 10) % 12];
     case "major7":
@@ -52,6 +62,10 @@ export function getChordPitchClasses(
       return [root, (root + 4) % 12, (root + 6) % 12, (root + 10) % 12];
     case "sevenFlatNine":
       return [root, (root + 4) % 12, (root + 10) % 12, (root + 1) % 12];
+    case "sevenSharpNine":
+      return [root, (root + 4) % 12, (root + 10) % 12, (root + 3) % 12];
+    case "sevenSharpFive":
+      return [root, (root + 4) % 12, (root + 8) % 12, (root + 10) % 12];
     case "sixNine":
       return [root, (root + 4) % 12, (root + 9) % 12, (root + 2) % 12];
     case "altered":
@@ -62,6 +76,8 @@ export function getChordPitchClasses(
       return [root, (root + 2) % 12, (root + 7) % 12];
     case "add9":
       return [root, (root + 2) % 12, (root + 4) % 12, (root + 7) % 12];
+    case "add4":
+      return [root, (root + 4) % 12, (root + 5) % 12, (root + 7) % 12];
     case "augmented":
       return [root, (root + 4) % 12, (root + 8) % 12];
     case "major":
@@ -86,7 +102,11 @@ export function getChordNotes(
 
   return pitchClasses.map((pc) => {
     let preferFlats = false;
-    if (chord.quality === "sevenFlatNine" && pc === (rootPc + 1) % 12) {
+    if (chord.quality === "sevenSharpNine" && pc === (rootPc + 3) % 12) {
+      preferFlats = false;
+    } else if (chord.quality === "sevenSharpFive" && pc === (rootPc + 8) % 12) {
+      preferFlats = false;
+    } else if (chord.quality === "sevenFlatNine" && pc === (rootPc + 1) % 12) {
       preferFlats = true;
     } else if (chord.quality === "sevenSharpEleven" && pc === (rootPc + 6) % 12) {
       preferFlats = false;
@@ -308,6 +328,10 @@ export function generateCbaGrip(
     coords[1].finger = 2;
     coords[2].finger = 4;
     coords[3].finger = 5;
+  } else if (numNotes === 2) {
+    fingeringPattern = "1-2";
+    coords[0].finger = 1;
+    coords[1].finger = 2;
   }
 
   const { column: centroid, row: centroidRow } = computeCbaCentroid(coords);
@@ -387,7 +411,7 @@ export function generateCanonicalRootGrip(
   }
 
   const { column: centroid, row: centroidRow } = computeCbaCentroid(coords);
-  const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : "1-2-4";
+  const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : coords.length === 2 ? "1-2" : "1-2-4";
 
   return {
     chord: parsed.raw || parsed.root,

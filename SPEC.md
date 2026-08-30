@@ -366,23 +366,36 @@ enharmonic spellings based on the sounding key:
 
 ### 3.4 Complete Accordion Normalization & Compound Voicings
 
-| Chord Category      | Input Chord (Sounding) | Stradella LH Bass | Stradella LH Chord    | LH Fingering | CBA C-System RH Notes | RH CBA Fingering | Harmonic Analysis & Notes               |
-| :------------------ | :--------------------- | :---------------- | :-------------------- | :----------- | :-------------------- | :--------------- | :-------------------------------------- |
-| **Major**           | `C`                    | `C` (Fund)        | `c` (Major)           | `4 + 3`      | `C - E - G`           | `1 - 2 - 4`      | Standard major triad                    |
-| **Minor**           | `Cm`                   | `C` (Fund)        | `cm` (Minor)          | `4 + 3`      | `C - Eb - G`          | `1 - 2 - 4`      | Standard minor triad                    |
-| **Dominant 7th**    | `C7`                   | `C` (Fund)        | `c7` (7th)            | `4 + 3`      | `C - E - Bb`          | `1 - 2 - 4`      | Stradella omits 5th                     |
-| **Diminished**      | `Cdim` / `C°`          | `C` (Fund)        | `cdim` (Dim)          | `4 + 3`      | `C - Eb - F# - A`     | `1 - 2 - 3 - 4`  | Stradella dim is 1-b3-6                 |
-| **Major 7th**       | `Cmaj7`                | `C` (Fund)        | `em` (Minor on 3rd)   | `4 + 3`      | `E - G - B - C`       | `1 - 2 - 4 - 5`  | $C + (E-G-B) = 1-3-5-7$                 |
-| **Minor 7th**       | `Cm7`                  | `C` (Fund)        | `eb` (Major on b3)    | `4 + 3`      | `Eb - G - Bb - C`     | `1 - 2 - 4 - 5`  | $C + (Eb-G-Bb) = 1-b3-5-b7$             |
-| **Half-Diminished** | `Cm7b5` / `Cø`         | `C` (Fund)        | `ebm` (Minor on b3)   | `4 + 3`      | `Eb - Gb - Bb - C`    | `1 - 2 - 4 - 5`  | $C + (Eb-Gb-Bb) = 1-b3-b5-b7$           |
-| **6th**             | `C6`                   | `C` (Fund)        | `am` (Minor on 6th)   | `4 + 3`      | `A - C - E - G`       | `1 - 2 - 3 - 5`  | Alt: Counter $A\_ + c$ ($2+3$)          |
-| **Minor 6th**       | `Cm6`                  | `C` (Fund)        | `cdim` (Dim)          | `4 + 3`      | `C - Eb - G - A`      | `1 - 2 - 4 - 5`  | Diminished button gives 1-b3-6          |
-| **Dominant 9th**    | `C9`                   | `C` (Fund)        | `gm` (Minor on 5th)   | `4 + 3`      | `E - G - Bb - D`      | `1 - 2 - 3 - 5`  | $C + (G-Bb-D) = 1-5-b7-9$               |
-| **Major 9th**       | `Cmaj9`                | `C` (Fund)        | `g` (Major on 5th)    | `4 + 3`      | `E - G - B - D`       | `1 - 2 - 3 - 5`  | $C + (G-B-D) = 1-5-7-9$                 |
-| **Suspended 4th**   | `Csus4`                | `C` (Fund)        | `f` (Major on 4th)    | `4 + 3`      | `C - F - G`           | `1 - 3 - 4`      | $F/C = C\text{sus}4(\text{add}6)$ color |
-| **Suspended 2nd**   | `Csus2`                | `C` (Fund)        | `c` (Major) [RH pure] | `4 + 3`      | `C - D - G`           | `1 - 2 - 5`      | Pure sus2 voiced on RH                  |
-| **Add 9**           | `Cadd9`                | `C` (Fund)        | `c` (Major)           | `4 + 3`      | `C - D - E - G`       | `1 - 2 - 3 - 5`  | LH simple triad + RH adds 9             |
-| **Augmented**       | `Caug` / `C+`          | `C` (Fund)        | `c` (Fund) [RH pure]  | `4 + 3`      | `C - E - G#`          | `1 - 2 - 4`      | Pure augmented voiced on RH             |
+The standard Stradella seventh button is treated as the practical `1, 3, b7` voicing with its fifth
+omitted. Therefore `7#9` and `7#5` can safely use the root seventh button while the CBA supplies the
+altered tone. Power chords and dominant suspended-fourth chords are bass-only on the LH: a major,
+minor, or seventh button would add a conflicting third.
+
+| Chord Category      | Input Chord (Sounding) | Stradella LH Bass | Stradella LH Chord    | LH Fingering | CBA C-System RH Notes | RH CBA Fingering | Harmonic Analysis & Notes                |
+| :------------------ | :--------------------- | :---------------- | :-------------------- | :----------- | :-------------------- | :--------------- | :--------------------------------------- |
+| **Major**           | `C`                    | `C` (Fund)        | `c` (Major)           | `4 + 3`      | `C - E - G`           | `1 - 2 - 4`      | Standard major triad                     |
+| **Minor**           | `Cm`                   | `C` (Fund)        | `cm` (Minor)          | `4 + 3`      | `C - Eb - G`          | `1 - 2 - 4`      | Standard minor triad                     |
+| **Dominant 7th**    | `C7`                   | `C` (Fund)        | `c7` (7th)            | `4 + 3`      | `C - E - Bb`          | `1 - 2 - 4`      | Stradella omits 5th                      |
+| **Diminished**      | `Cdim` / `C°`          | `C` (Fund)        | `cdim` (Dim)          | `4 + 3`      | `C - Eb - F# - A`     | `1 - 2 - 3 - 4`  | Stradella dim is 1-b3-6                  |
+| **Major 7th**       | `Cmaj7`                | `C` (Fund)        | `em` (Minor on 3rd)   | `4 + 3`      | `E - G - B - C`       | `1 - 2 - 4 - 5`  | $C + (E-G-B) = 1-3-5-7$                  |
+| **Minor 7th**       | `Cm7`                  | `C` (Fund)        | `eb` (Major on b3)    | `4 + 3`      | `Eb - G - Bb - C`     | `1 - 2 - 4 - 5`  | $C + (Eb-G-Bb) = 1-b3-5-b7$              |
+| **Half-Diminished** | `Cm7b5` / `Cø`         | `C` (Fund)        | `ebm` (Minor on b3)   | `4 + 3`      | `Eb - Gb - Bb - C`    | `1 - 2 - 4 - 5`  | $C + (Eb-Gb-Bb) = 1-b3-b5-b7$            |
+| **6th**             | `C6`                   | `C` (Fund)        | `am` (Minor on 6th)   | `4 + 3`      | `A - C - E - G`       | `1 - 2 - 3 - 5`  | Alt: Counter $A\_ + c$ ($2+3$)           |
+| **Minor 6th**       | `Cm6`                  | `C` (Fund)        | `cdim` (Dim)          | `4 + 3`      | `C - Eb - G - A`      | `1 - 2 - 4 - 5`  | Diminished button gives 1-b3-6           |
+| **Dominant 9th**    | `C9`                   | `C` (Fund)        | `gm` (Minor on 5th)   | `4 + 3`      | `E - G - Bb - D`      | `1 - 2 - 3 - 5`  | $C + (G-Bb-D) = 1-5-b7-9$                |
+| **Major 9th**       | `Cmaj9`                | `C` (Fund)        | `g` (Major on 5th)    | `4 + 3`      | `E - G - B - D`       | `1 - 2 - 3 - 5`  | $C + (G-B-D) = 1-5-7-9$                  |
+| **Suspended 4th**   | `Csus4`                | `C` (Fund)        | `f` (Major on 4th)    | `4 + 3`      | `C - F - G`           | `1 - 3 - 4`      | $F/C = C\text{sus}4(\text{add}6)$ color  |
+| **Suspended 2nd**   | `Csus2`                | `C` (Fund)        | `c` (Major) [RH pure] | `4 + 3`      | `C - D - G`           | `1 - 2 - 5`      | Pure sus2 voiced on RH                   |
+| **Add 9**           | `Cadd9`                | `C` (Fund)        | `c` (Major)           | `4 + 3`      | `C - D - E - G`       | `1 - 2 - 3 - 5`  | LH simple triad + RH adds 9              |
+| **Power 5th**       | `C5`                   | `C` (Fund)        | —                     | `4`          | `C - G`               | `1 - 2`          | Bass-only LH; RH supplies the fifth      |
+| **Minor-major 7th** | `Cm(maj7)` / `CmM7`    | `C` (Fund)        | `cm` (Minor)          | `4 + 3`      | `C - Eb - G - B`      | `1 - 2 - 4 - 5`  | LH minor triad + RH adds major 7         |
+| **Dominant 7 sus4** | `C7sus4` / `C7sus`     | `C` (Fund)        | —                     | `4`          | `C - F - G - Bb`      | `1 - 2 - 4 - 5`  | Bass-only LH; RH supplies the suspension |
+| **Dominant 11th**   | `C11`                  | `C` (Fund)        | `gm` (Minor on 5th)   | `4 + 3`      | `C - Bb - D - F`      | `1 - 2 - 4 - 5`  | LH exact subset + RH supplies 11         |
+| **Minor 11th**      | `Cm11`                 | `C` (Fund)        | `eb` (Major on b3)    | `4 + 3`      | `C - Eb - Bb - F`     | `1 - 2 - 4 - 5`  | LH exact subset + RH supplies 11/9       |
+| **Dominant 7 #9**   | `C7#9` / `C7(#9)`      | `C` (Fund)        | `c7` (7th)            | `4 + 3`      | `C - E - Bb - D#`     | `1 - 2 - 4 - 5`  | Standard 7th subset + RH supplies #9     |
+| **Dominant 7 #5**   | `C7#5` / `Caug7`       | `C` (Fund)        | `c7` (7th)            | `4 + 3`      | `C - E - G# - Bb`     | `1 - 2 - 4 - 5`  | Standard 7th subset + RH supplies #5     |
+| **Add 4 / Add 11**  | `Cadd4` / `Cadd11`     | `C` (Fund)        | `c` (Major)           | `4 + 3`      | `C - E - F - G`       | `1 - 2 - 4 - 5`  | LH major triad + RH supplies 4/11        |
+| **Augmented**       | `Caug` / `C+`          | `C` (Fund)        | `c` (Fund) [RH pure]  | `4 + 3`      | `C - E - G#`          | `1 - 2 - 4`      | Pure augmented voiced on RH              |
 
 ---
 
@@ -735,6 +748,14 @@ export type ChordQuality =
   | "sus4"
   | "sus2"
   | "add9"
+  | "power5"
+  | "minorMajor7"
+  | "dominant7Sus4"
+  | "dominant11"
+  | "minor11"
+  | "sevenSharpNine"
+  | "sevenSharpFive"
+  | "add4"
   | "six"
   | "minorSix"
   | "altered"
@@ -912,6 +933,22 @@ matrices verifying music theory accuracy, layout stability, API security, and mo
 | `CBA-04` | `C Major (Root)`    | `C - E - G`    | `C: (Row 1, Col 4), E: (Row 2, Col 5), G: (Row 2, Col 6)`  | `1 - 2 - 4`           | Standard root shape         |
 | `CBA-05` | `C Major (1st Inv)` | `E - G - C`    | `E: (Row 2, Col 5), G: (Row 2, Col 6), C: (Row 1, Col 7)`  | `1 - 2 - 5`           | 1st inversion grip          |
 | `CBA-06` | `C Major (2nd Inv)` | `G - C - E`    | `G: (Row 2, Col 6), C: (Row 1, Col 7), E: (Row 2, Col 8)`  | `1 - 3 - 5`           | 2nd inversion grip          |
+
+---
+
+### 9.3.1 Mainstream Chord Coverage Regression Matrix
+
+The deterministic coverage additions are validated by the `CHORD-COVERAGE-*` tests in
+`tests/unit/chord_coverage.test.ts`:
+
+| Test ID                    | Scope                 | Required assertions                                                                            |
+| :------------------------- | :-------------------- | :--------------------------------------------------------------------------------------------- |
+| `CHORD-COVERAGE-PARSER-01` | Parser and tokenizer  | All locked aliases, Unicode `♯`, slash bass, normalized extensions and semantic qualities      |
+| `CHORD-COVERAGE-PARSER-02` | Precedence guards     | `Caug` / `C+` remain augmented and `C7sus2` remains sus2                                       |
+| `CHORD-COVERAGE-RH-01`     | CBA pitch sets        | Exact C-root interval sets plus transposition across all 12 roots                              |
+| `CHORD-COVERAGE-RH-02`     | CBA spelling and grip | Automatic `D#` / `G#` altered spellings, two-note `1-2` power grip and four-note extension cap |
+| `CHORD-COVERAGE-LH-01`     | Stradella recipes     | Exact compound recipes, bass-only voicings, and no groove fallback                             |
+| `CHORD-COVERAGE-LH-02`     | Slash semantics       | `Em(maj7)/D#` counter-bass minimum distance, row mapping, and 12-root range invariants         |
 
 ---
 

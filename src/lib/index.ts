@@ -46,6 +46,7 @@ export {
 
 export { solveSlashChord } from "./stradella/slash.ts";
 export { COMPOUND_QUALITIES, COMPOUND_RULES, solveCompoundChord } from "./stradella/compound.ts";
+export { BASS_ONLY_QUALITIES, isBassOnlyQuality } from "./stradella/qualities.ts";
 export { solveStradellaChord } from "./stradella/solver.ts";
 export {
   annotateStradellaTransitions,

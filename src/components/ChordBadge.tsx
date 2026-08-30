@@ -434,7 +434,8 @@ export const ChordBadge: React.FC<ChordBadgeProps> = ({
           <span className="text-emerald-400 font-bold tracking-tight">
             {soundingChordName}
           </span>
-          {chord.cba?.notes.length === 3 && chord.cba.fingeringPattern && (
+          {(chord.cba?.notes.length === 2 || chord.cba?.notes.length === 3) &&
+            chord.cba.fingeringPattern && (
             <span className={`${currentBadgeSize.subFont} text-emerald-300 font-mono font-normal`}>
               [{chord.cba.fingeringPattern}]
             </span>
