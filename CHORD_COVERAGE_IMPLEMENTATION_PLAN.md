@@ -6,7 +6,7 @@ This plan expands the deterministic chord engine so the LH Stradella and RH CBA 
 
 This is an implementation plan, not an instruction to redesign the application. Keep the existing architecture, UI conventions, note-spelling behavior, and Stradella/CBA interaction model unless a change is explicitly required below. Read `AGENTS.md` and `SPEC.md` before editing code.
 
-The score-scan feature in `SCORE_SCAN_IMPLEMENTATION_PLAN.md` should ideally be implemented after this plan, because a scanner is only useful if the deterministic engine does not silently misinterpret the chord it extracted.
+The score-scan feature in `SCORE_SCAN_IMPLEMENTATION_PLAN.md` should be considered **blocked for final acceptance until this chord-coverage milestone is complete**. It may be developed independently, but its final tests must not be weakened merely because a score-style chord such as `Em(maj7)/D#` is not yet supported.
 
 ## Current-state constraints
 
@@ -37,6 +37,12 @@ Relevant files:
 
 A critical rule for this work: **never accept a distinct chord spelling and then silently render the wrong chord tones.** A practical omission is acceptable and must be documented (for example, omitting the fifth from an extended RH voicing); introducing a non-chord tone as though it were exact is not.
 
+### Locked Stradella hardware model
+
+The existing application models a standard six-row Stradella system. For this milestone, continue using the standard dominant-seventh button voicing in which the fifth is omitted: `1, 3, b7`. This is why a root dominant-7 button is a safe exact subset for `7#9` and `7#5`/augmented-7 chords. Do not add a French/root-omitted seventh-layout preference in this milestone.
+
+Reference for the standard system: `https://www.accordions.com/index/art/stradella.shtml`.
+
 ## Locked target vocabulary
 
 Implement exactly these semantic additions/fixes for this milestone. Do not broaden the task into a complete jazz-chord dictionary.
@@ -49,12 +55,12 @@ Implement exactly these semantic additions/fixes for this milestone. Do not broa
 | Dominant 11 | `C11` | `dominant11` | Practical four-note RH voicing `1, b7, 9, 11` = `[0, 10, 2, 5]`; deliberately omit 3 and 5 | Root bass + minor chord on 5th, e.g. `C + Gm`; RH supplies 11. This is an exact subset of the extended harmony. |
 | Minor 11 | `Cm11`, `Cmin11` | `minor11` | Practical four-note RH voicing `1, b3, b7, 11` = `[0, 3, 10, 5]`; deliberately omit 5 and 9 | Root bass + major chord on b3, e.g. `C + Eb`; RH supplies 11/optional 9. |
 | Dominant 7 #9 | `C7#9`, `C7(#9)`, Unicode-sharp equivalents | `sevenSharpNine` | `1, 3, b7, #9` = `[0, 4, 10, 3]`; deliberately omit 5 | Root bass + root dominant-7 button; RH supplies #9. |
-| Dominant 7 #5 / augmented 7 | `C7#5`, `C7(#5)`, `Caug7`, `C+7`, Unicode-sharp equivalents | `sevenSharpFive` | `1, 3, #5, b7` = `[0, 4, 8, 10]` | Fundamental bass only; RH supplies the altered dominant. There is no safe single Stradella chord button that preserves these tones without adding a conflicting pitch. |
+| Dominant 7 #5 / augmented 7 | `C7#5`, `C7(#5)`, `Caug7`, `C+7`, Unicode-sharp equivalents | `sevenSharpFive` | `1, 3, #5, b7` = `[0, 4, 8, 10]` | Root bass + root dominant-7 button; on standard Stradella its `1,3,b7` tones are an exact subset and RH supplies #5. |
 | Add 4 / add 11 | `Cadd4`, `Cadd11` | `add4` | `1, 3, 4, 5` = `[0, 4, 5, 7]` | Root bass + root major chord; RH supplies 4/11. `add11` is an alias of the same practical quality for this app. |
 
 ### Explicit non-goals
 
-Do **not** add the following in this milestone unless an existing regression requires a tiny compatibility fix: `maj11`, `maj13`, `m13`, `maj7#11`, `maj7#5`, `m7#5`, arbitrary multi-alteration parsing, polychords, chord-scale analysis, or new jazz voicing modes.
+Do **not** add the following in this milestone unless an existing regression requires a tiny compatibility fix: `maj11`, `maj13`, `m13`, `maj7#11`, `maj7#5`, `m7#5`, `9sus4`, `9sus2`, arbitrary multi-alteration parsing, polychords, chord-scale analysis, French/root-omitted Stradella seventh layouts, or new jazz voicing modes.
 
 Do not change the existing meanings of working chord families merely to make a new test pass.
 
@@ -84,7 +90,7 @@ Use these exact names so downstream switches remain readable and consistent with
 Important precedence rules:
 
 - Detect `minorMajor7` before generic `major7` and before generic `minor`.
-- Detect `dominant7Sus4` before plain `sus4` and before plain `dominant7`.
+- Detect **exactly** `7sus` / `7sus4` as `dominant7Sus4` before plain `sus4` and before plain `dominant7`. Do not accidentally map `7sus2` to this quality.
 - Detect `sevenSharpNine` before generic `altered`.
 - Detect `sevenSharpFive` before generic `augmented` and generic `altered`.
 - Detect `dominant11` before any broad fallback that would treat `11` as `unknown` or another extension.
@@ -93,6 +99,8 @@ Important precedence rules:
 - Detect `power5` rather than treating the `5` suffix as a major triad.
 
 Preserve Unicode accidental normalization (`♯` -> `#`, `♭` -> `b`).
+
+Regression boundary: plain `Caug` / `C+` must remain the existing `augmented` triad quality; only the seventh-bearing aliases `Caug7` / `C+7` join `sevenSharpFive`.
 
 ### 3. Keep tokenizer validation in sync
 
@@ -130,7 +138,7 @@ In `getChordNotes()` when `noteSpelling === "auto"`:
 - `sevenSharpNine` must spell the altered tone as a sharp relative to the root. Example: `C7#9` shows `D#`, not `Eb`.
 - `sevenSharpFive` must spell the altered fifth as a sharp relative to the root. Example: `C7#5` shows `G#`, not `Ab`.
 
-Explicit user overrides (`flats` / `sharps`) may continue to override automatic spelling as they do today.
+Explicit user overrides (`flats` / `sharps`) may continue to override automatic spelling as they do today. Do not expand this milestone into a fully diatonic spelling engine for theoretical names such as E# or double accidentals; preserve the repository's existing note-spelling policy outside the two locked alterations above.
 
 ### 3. Two-note power-chord grip
 
@@ -146,12 +154,11 @@ Do not invent a third note solely to reuse triad UI.
 
 ### 1. Add an explicit bass-only strategy
 
-Three new qualities cannot be represented safely by a single standard Stradella chord button without adding a conflicting tone:
+Two new qualities cannot be represented safely by a single standard Stradella chord button without adding a conflicting tone:
 
 ```text
 power5
 dominant7Sus4
-sevenSharpFive
 ```
 
 Add a small shared predicate/constant under `src/lib/stradella/` (name at implementer discretion, e.g. `BASS_ONLY_QUALITIES`) so both normal and slash solvers can recognize these qualities.
@@ -162,7 +169,7 @@ For a non-slash bass-only quality, `solveStradellaChord()` must return:
 - `chordButton: undefined`;
 - `primaryBass` and `columnOffset` as usual;
 - a single-bass fingering such as `"4"`;
-- a clear explanation, for example `Fundamental bass C only; RH supplies 7#5`;
+- a clear explanation, for example `Fundamental bass C only; RH supplies 5` or `Fundamental bass C only; RH supplies 7sus4`;
 - correct range metadata.
 
 Do **not** fake a major chord button.
@@ -175,6 +182,7 @@ Add the following rules to `COMPOUND_RULES` where appropriate:
 - `dominant11`: root bass + minor chord on 5th (`+7 semitones`, Circle-of-Fifths `+1`); explanation says RH adds 11.
 - `minor11`: root bass + major chord on b3 (`+3 semitones`, existing b3 column delta); explanation says RH adds 11/9.
 - `sevenSharpNine`: root bass + root seventh chord (`offset 0`, seventh row); explanation says RH adds #9.
+- `sevenSharpFive`: root bass + root seventh chord (`offset 0`, seventh row); explanation says RH adds #5.
 - `add4`: root bass + root major chord (`offset 0`, major row); explanation says RH adds 4/11.
 
 These recipes must use only chord tones or deliberate omissions. Do not add a non-chord tone merely to create a visually busier LH diagram.
@@ -183,9 +191,9 @@ These recipes must use only chord tones or deliberate omissions. Do not add a no
 
 `src/lib/stradella/slash.ts` currently maps quality to a chord row independently of the main solver. Update it so:
 
-- `power5`, `dominant7Sus4`, and `sevenSharpFive` remain bass-only even with a slash bass; the selected slash bass may be fundamental or counter-bass according to the existing minimum-distance algorithm, but `chordButton` stays absent.
+- `power5` and `dominant7Sus4` remain bass-only even with a slash bass; the selected slash bass may be fundamental or counter-bass according to the existing minimum-distance algorithm, but `chordButton` stays absent.
 - `minorMajor7` and `minor11` use the minor row when a simplified root chord button is appropriate.
-- `dominant11` and `sevenSharpNine` use the seventh row for slash-chord simplification; all those row tones are a subset of the theoretical chord.
+- `dominant11`, `sevenSharpNine`, and `sevenSharpFive` use the seventh row for slash-chord simplification; on the locked standard Stradella model those row tones are a subset of the theoretical chord.
 - `add4` uses the major row.
 
 Keep the current minimum-distance slash-bass algorithm unchanged.
@@ -230,15 +238,20 @@ Cm(maj7)
 CmMaj7
 Em(maj7)/D#
 C7sus4
+C7sus
 C11
 Cm11
 C7#9
 C7(#9)
 C7#5
+C7(#5)
 Caug7
+C+7
 Cadd4
 Cadd11
 ```
+
+Also add guard regressions proving plain `Caug` / `C+` remain `augmented`, and that `C7sus2` is not accidentally classified as `dominant7Sus4` by the new precedence rule.
 
 ### RH interval tests
 
@@ -262,13 +275,13 @@ Cm(maj7) -> C bass + Cm button
 C11      -> C bass + Gm button
 Cm11     -> C bass + Eb major button
 C7#9     -> C bass + C7 button
+C7#5     -> C bass + C7 button
 Cadd4    -> C bass + C major button
 C5       -> C bass only, no chordButton
 C7sus4   -> C bass only, no chordButton
-C7#5     -> C bass only, no chordButton
 ```
 
-For bass-only qualities, assert `solveStradellaGroove(...) === null` for an enabled groove.
+For bass-only qualities (`power5`, `dominant7Sus4`), assert `solveStradellaGroove(...) === null` for an enabled groove.
 
 For `Em(maj7)/D#`, assert the slash-bass choice and ensure the chord row is minor rather than major.
 
@@ -280,7 +293,7 @@ Run the existing parser, capo/enharmonic, Stradella, CBA, rendering and stress t
 
 After code/tests pass:
 
-- Update `SPEC.md` with the new `ChordQuality` semantics and test matrix IDs.
+- Update `SPEC.md` with the new `ChordQuality` semantics, the standard Stradella seventh-button assumption, and test matrix IDs.
 - Update README chord-coverage wording only if it currently makes a statement that becomes stale.
 - Do not add a giant chord dictionary to README.
 
@@ -298,16 +311,16 @@ After code/tests pass:
 
 - [ ] Read `AGENTS.md`, `SPEC.md`, this plan, and the existing parser/CBA/Stradella tests before editing.
 - [ ] Add the eight exact `ChordQuality` values listed in this plan; do not add unrelated chord families.
-- [ ] Update `parseChord()` / classification precedence and `isChordToken()` so every locked alias maps to the correct semantic quality.
+- [ ] Update `parseChord()` / classification precedence and `isChordToken()` so every locked alias maps to the correct semantic quality without changing `Caug`/`C+` or accidentally absorbing `7sus2`.
 - [ ] Add parser regressions including `Em(maj7)/D#` and ensure unsupported text is not accidentally accepted as a chord.
 - [ ] Implement the exact RH practical interval sets, alteration-aware auto-spelling, and truthful two-note `power5` fingering display.
-- [ ] Implement the LH exact-subset compound recipes and bass-only strategy exactly as specified.
+- [ ] Implement the LH exact-subset compound recipes and two-quality bass-only strategy exactly as specified, including `sevenSharpFive -> root 7th button` on the standard Stradella model.
 - [ ] Update slash-chord behavior for the new qualities without changing the existing minimum-distance bass algorithm.
 - [ ] Prevent `solveStradellaGroove()` from inventing a major chord when `chordButton` is absent.
 - [ ] Add/extend unit and stress tests across all 12 roots where specified; keep default tests hermetic and offline.
 - [ ] Run the repository quality gate from `AGENTS.md`: `deno fmt --check`, `deno lint`, `deno task test`, `deno task build`; because theory/UI output changes, also run the appropriate `deno task audit:ui` / targeted mobile visual audit required by `AGENTS.md`.
 - [ ] Update `SPEC.md` and any narrowly affected README wording, then confirm `git diff --check` and that no unrelated files/assets were added.
-- [ ] **Final review gate:** invoke a fresh, read-only reviewer subagent before declaring the work complete. Model this after the independent review-gate pattern in `arthow4n/did-it-become-what-you-like` (`AGENTS.md` and `.agents/skills/implementation-planning/SKILL.md`): give the reviewer this plan, `AGENTS.md`, the final diff, and test evidence; ask it to audit music-theory correctness across all 12 roots, parser precedence, LH/RH truthfulness, regressions, and test adequacy without editing code. The primary coding agent must fix all material findings, rerun affected checks, and only then commit/push the completed implementation.
+- [ ] **Final review gate:** invoke a fresh, read-only reviewer subagent before declaring the work complete. Model this after the independent review-gate pattern in `arthow4n/did-it-become-what-you-like` (`AGENTS.md` and `.agents/skills/implementation-planning/SKILL.md`): give the reviewer this plan, `AGENTS.md`, the final diff, and test evidence; ask it to audit music-theory correctness across all 12 roots, parser precedence, the standard Stradella seventh-button assumption, LH/RH truthfulness, regressions, and test adequacy without editing code. The primary coding agent must fix all material findings, rerun affected checks, and only then commit/push the completed implementation.
 
 ## Ready-to-use delegation prompt
 
