@@ -692,7 +692,7 @@ Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click
   assertEquals(propagationStopped, true);
 });
 
-Deno.test("UX-08e: MiniGripDrawer stays within the mobile occlusion budget", () => {
+Deno.test("UX-08e: MiniGripDrawer uses natural height without vertical scrolling", () => {
   const chordDetail = enrichChord("Cmaj7", 0);
   const html = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
@@ -706,9 +706,9 @@ Deno.test("UX-08e: MiniGripDrawer stays within the mobile occlusion budget", () 
   );
 
   assertExists(html);
-  // Natural responsive container
-  assertEquals(html.includes("max-h-[35vh]"), true);
-  assertEquals(html.includes("overflow-y-auto"), true);
+  // The shared sheet must size itself to the rendered Stradella/CBA content.
+  assertEquals(html.includes("max-h-[35vh]"), false);
+  assertEquals(html.includes("overflow-y-auto"), false);
 });
 
 Deno.test("UX-09: URL query param song synchronization resolution", () => {

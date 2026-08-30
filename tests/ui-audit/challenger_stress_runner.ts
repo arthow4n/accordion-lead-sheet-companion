@@ -392,13 +392,13 @@ async function runAdversarialSuite() {
   }
 
   // =========================================================================
-  // SECTION 2: 3x3 MINI-GRIP DRAWER OCCLUSION & ERGONOMICS ACROSS VIEWPORTS
+  // SECTION 2: MINI-GRIP DRAWER NATURAL HEIGHT & ERGONOMICS ACROSS VIEWPORTS
   // =========================================================================
   console.log(
     "\n================================================================================",
   );
   console.log(
-    "SECTION 2: 3x3 Mini-Grip Drawer Occlusion (<= 35%) & Touch Ergonomics (>= 44x44px)",
+    "SECTION 2: Mini-Grip Drawer Natural Height & Touch Ergonomics (>= 44x44px)",
   );
   console.log(
     "================================================================================",
@@ -456,9 +456,9 @@ async function runAdversarialSuite() {
       isOpen: boolean;
       sheetHeight: number;
       winHeight: number;
-      occlusionRatio: number;
-      maxAllowedHeight: number;
-      isWithinLimit: boolean;
+      contentHeight: number;
+      hasNaturalHeight: boolean;
+      allowsVerticalScroll: boolean;
       postScrollY: number;
       hasStradellaOrCba: boolean;
       hasCloseButton: boolean;
@@ -468,16 +468,19 @@ async function runAdversarialSuite() {
       const sheet = backdrop.querySelector('.rounded-t-2xl') || backdrop.lastElementChild;
       const rect = sheet ? sheet.getBoundingClientRect() : { height: 0 };
       const winH = window.innerHeight;
-      const ratio = rect.height / winH;
+      const style = sheet ? getComputedStyle(sheet) : null;
+      const allowsVerticalScroll = style?.overflowY === 'auto' || style?.overflowY === 'scroll';
+      const contentHeight = sheet ? sheet.scrollHeight : 0;
       const grid = backdrop.querySelector('table, svg, .grid, [class*="grid"], [class*="rounded"]');
       const closeBtn = document.querySelector('button[aria-label="Close Grip Drawer"]');
       return JSON.stringify({
         isOpen: true,
         sheetHeight: Math.round(rect.height),
         winHeight: winH,
-        occlusionRatio: Math.round(ratio * 1000) / 1000,
-        maxAllowedHeight: Math.round(winH * 0.35),
-        isWithinLimit: ratio <= 0.35,
+        contentHeight,
+        hasNaturalHeight: Boolean(sheet && style?.maxHeight === 'none' &&
+          !allowsVerticalScroll && sheet.clientHeight >= contentHeight),
+        allowsVerticalScroll,
         postScrollY: window.scrollY,
         hasStradellaOrCba: Boolean(grid),
         hasCloseButton: Boolean(closeBtn)
@@ -485,10 +488,8 @@ async function runAdversarialSuite() {
     })()`);
 
     recordAssertion(
-      `Viewport ${vp.label}: Mini-Grip Drawer occlusion <= 35% (${drawerCheck.sheetHeight}px / ${drawerCheck.winHeight}px = ${
-        (drawerCheck.occlusionRatio * 100).toFixed(1)
-      }% <= 35%)`,
-      drawerCheck.isOpen && drawerCheck.isWithinLimit,
+      `Viewport ${vp.label}: Mini-Grip Drawer takes natural height without vertical scrolling`,
+      drawerCheck.isOpen && drawerCheck.hasNaturalHeight && !drawerCheck.allowsVerticalScroll,
       drawerCheck,
     );
 

@@ -976,7 +976,7 @@ Tu mi [E7]devi seppel[Am]lir`;
       const flowStart = Date.now();
       const flow: FlowResult = {
         flowId: "FLOW-05",
-        name: "3x3 Mini-Grip Drawer Touch Ergonomics & Screen Occlusion (<= 35%)",
+        name: "Mini-Grip Drawer Natural Height & Touch Ergonomics",
         passed: true,
         durationMs: 0,
         assertions: [],
@@ -1131,19 +1131,21 @@ Tu mi [E7]devi seppel[Am]lir`;
           expected: "hitboxWidth >= 44px and hitboxHeight >= 44px",
         });
 
-        // 2. Open Mini-Grip Drawer by clicking a chord badge
-        await clickElement(".inline-flex.flex-col button");
-
-        const drawerMetrics = await evalJs<{
+        // 2. Verify both Mini-Grip Drawer layouts size to their own content.
+        type DrawerMetrics = {
           isOpen: boolean;
           hasDrawerHeader: boolean;
           hasVoicingGrid: boolean;
           hasCloseButton: boolean;
           drawerHeight: number;
           windowHeight: number;
-          occlusionRatio: number;
-          withinOcclusionThreshold: boolean;
-        }>(`(() => {
+          contentHeight: number;
+          hasNaturalHeight: boolean;
+          allowsVerticalScroll: boolean;
+        };
+
+        const measureDrawer = () =>
+          evalJs<DrawerMetrics>(`(() => {
           const backdrop = document.querySelector('.fixed.inset-0.z-50');
           if (!backdrop) {
             return JSON.stringify({
@@ -1153,73 +1155,81 @@ Tu mi [E7]devi seppel[Am]lir`;
               hasCloseButton: false,
               drawerHeight: 0,
               windowHeight: window.innerHeight,
-              occlusionRatio: 0,
-              withinOcclusionThreshold: false
+              contentHeight: 0,
+              hasNaturalHeight: false,
+              allowsVerticalScroll: false
             });
           }
-          
-          const sheet = backdrop.querySelector('.rounded-t-2xl') || backdrop.querySelector('[class*="max-h-"]') || backdrop.lastElementChild;
+
+          const sheet = backdrop.querySelector('.rounded-t-2xl') || backdrop.lastElementChild;
           const header = backdrop.querySelector('h2');
           const grid = backdrop.querySelector('table, svg, .grid, [class*="grid"], [class*="rounded"]');
           const closeBtn = document.querySelector('button[aria-label="Close Grip Drawer"]');
-          
+
           const sheetRect = sheet ? sheet.getBoundingClientRect() : { height: 0 };
-          const winHeight = window.innerHeight;
-          const ratio = sheetRect.height / winHeight;
-          
+          const style = sheet ? getComputedStyle(sheet) : null;
+          const allowsVerticalScroll = style?.overflowY === 'auto' || style?.overflowY === 'scroll';
+          const contentHeight = sheet ? sheet.scrollHeight : 0;
+
           return JSON.stringify({
             isOpen: true,
             hasDrawerHeader: Boolean(header),
             hasVoicingGrid: Boolean(grid),
             hasCloseButton: Boolean(closeBtn),
             drawerHeight: Math.round(sheetRect.height),
-            windowHeight: winHeight,
-            occlusionRatio: Math.round(ratio * 1000) / 1000,
-            withinOcclusionThreshold: ratio <= 0.35
+            windowHeight: window.innerHeight,
+            contentHeight,
+            hasNaturalHeight: Boolean(sheet && style?.maxHeight === 'none' &&
+              !allowsVerticalScroll && sheet.clientHeight >= contentHeight),
+            allowsVerticalScroll
           });
         })()`);
 
-        flow.assertions.push({
-          description: "Clicking chord badge opens Mini-Grip Drawer with voicing diagram",
-          passed: drawerMetrics.isOpen && drawerMetrics.hasDrawerHeader,
-          actual: drawerMetrics,
-          expected: { isOpen: true, hasDrawerHeader: true },
-        });
+        for (
+          const mode of [
+            { label: "Stradella", title: "Left Hand Stradella Bass Mode" },
+            { label: "CBA", title: "Right Hand CBA C-System Treble Mode" },
+          ]
+        ) {
+          await clickElement(`button[title='${mode.title}']`);
+          await clickElement(".inline-flex.flex-col button");
 
-        flow.assertions.push({
-          description:
-            "Mini-Grip Drawer screen occlusion complies with RUBRIC-03 (<= 35% viewport height)",
-          passed: drawerMetrics.withinOcclusionThreshold,
-          actual: {
-            drawerHeight: drawerMetrics.drawerHeight,
-            windowHeight: drawerMetrics.windowHeight,
-            occlusionRatio: drawerMetrics.occlusionRatio,
-          },
-          expected: "occlusionRatio <= 0.35 (drawerHeight / windowHeight <= 35%)",
-        });
+          const drawerMetrics = await measureDrawer();
+          flow.assertions.push({
+            description: `${mode.label} drawer opens with a voicing diagram`,
+            passed: drawerMetrics.isOpen && drawerMetrics.hasDrawerHeader &&
+              drawerMetrics.hasVoicingGrid,
+            actual: drawerMetrics,
+            expected: { isOpen: true, hasDrawerHeader: true, hasVoicingGrid: true },
+          });
 
-        flow.assertions.push({
-          description: "Mini-Grip Drawer renders voicing subgrid component",
-          passed: drawerMetrics.hasVoicingGrid,
-          actual: drawerMetrics.hasVoicingGrid,
-          expected: true,
-        });
+          flow.assertions.push({
+            description: `${mode.label} drawer takes natural height without vertical scrolling`,
+            passed: drawerMetrics.hasNaturalHeight && !drawerMetrics.allowsVerticalScroll,
+            actual: {
+              drawerHeight: drawerMetrics.drawerHeight,
+              contentHeight: drawerMetrics.contentHeight,
+              allowsVerticalScroll: drawerMetrics.allowsVerticalScroll,
+            },
+            expected: "max-height: none, overflow-y: visible, and no clipped scroll content",
+          });
 
-        // 3. Dismiss Drawer via close button
-        await clickElement("button[aria-label='Close Grip Drawer']");
+          if (mode.label === "CBA") {
+            const ssPath = await captureScreenshot("flow05_minigrip_drawer");
+            flow.screenshots.push(ssPath);
+          }
 
-        const isClosed = await evalJs<boolean>(
-          `(() => !document.querySelector('button[aria-label="Close Grip Drawer"]'))()`,
-        );
-        flow.assertions.push({
-          description: "Close button dismisses Mini-Grip Drawer cleanly",
-          passed: isClosed,
-          actual: { isClosed },
-          expected: { isClosed: true },
-        });
-
-        const ssPath = await captureScreenshot("flow05_minigrip_drawer");
-        flow.screenshots.push(ssPath);
+          await clickElement("button[aria-label='Close Grip Drawer']");
+          const isClosed = await evalJs<boolean>(
+            `(() => !document.querySelector('button[aria-label="Close Grip Drawer"]'))()`,
+          );
+          flow.assertions.push({
+            description: `${mode.label} drawer closes cleanly via its close button`,
+            passed: isClosed,
+            actual: { isClosed },
+            expected: { isClosed: true },
+          });
+        }
       } catch (err) {
         flow.passed = false;
         flow.error = err instanceof Error ? err.message : String(err);
