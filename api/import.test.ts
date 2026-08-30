@@ -425,12 +425,22 @@ Deno.test("API-09b: Upstream network failure returns 500 with JSON error message
     },
   );
 
-  const res = await handleRequest(req);
-  assertEquals(res.status, 500);
-  assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://arthow4n.github.io");
-  const json = await res.json();
-  assertEquals(json.success, false);
-  assertExists(json.error);
+  const originalFetch = globalThis.fetch;
+  try {
+    // Keep the default suite hermetic: this test verifies error handling, not DNS/socket behavior.
+    globalThis.fetch = () => {
+      throw new Error("simulated upstream network failure");
+    };
+
+    const res = await handleRequest(req);
+    assertEquals(res.status, 500);
+    assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://arthow4n.github.io");
+    const json = await res.json();
+    assertEquals(json.success, false);
+    assertExists(json.error);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 Deno.test("API-14: Ultimate Guitar parser DOM fallback when JSON store is missing", () => {

@@ -138,6 +138,45 @@ When modifying music theory engines (`src/lib/`):
   - Frontend: GitHub Pages via `.github/workflows/deploy.yml` with `denoland/setup-deno@v2`.
   - Backend Scraper: Deno Deploy via `console.deno.com` targeting `api/import.ts` with strict CORS
     allowlist (`https://arthow4n.github.io` and `http://localhost:*`).
+
+### 5.1 🔐 Explicit Local Permission Matrix
+
+Deno is deny-by-default. Grant only the permissions required by the command; do not replace these
+with `-A` / `--allow-all`. The task definitions in `deno.json` are the source of truth for normal
+use:
+
+| Command                               | Permissions                                                                                                                                     | Why they are needed                                                                                                                                                                                      |
+| :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deno fmt --check` / `deno lint`      | None                                                                                                                                            | Built-in Deno tooling reads the project through its CLI.                                                                                                                                                 |
+| `deno task test`                      | `--allow-read --allow-env=NODE_ENV`                                                                                                             | Tests read source and the generated `dist/` PWA files; React's Node compatibility layer reads `NODE_ENV`. Network access is intentionally not granted.                                                   |
+| `deno task test:live`                 | `--allow-read --allow-net --allow-env=RUN_LIVE_TESTS`                                                                                           | Opt-in scraper tests contact third-party tab sites and read `RUN_LIVE_TESTS`.                                                                                                                            |
+| `deno task serve:api`                 | `--allow-net`                                                                                                                                   | `Deno.serve` listens for requests and `api/import.ts` fetches approved upstream tab sites.                                                                                                               |
+| `deno task audit:ui`                  | `--allow-run --allow-read --allow-write --allow-env --allow-net`                                                                                | The audit runner starts Vite/`agent-browser`, reads the app, fetches the local server, and writes reports/screenshots.                                                                                   |
+| `deno task dev` / `deno task preview` | Vite task runtime access                                                                                                                        | Vite serves a network listener and reads the project; it may write its local dependency cache.                                                                                                           |
+| `deno task build`                     | Vite task runtime access; direct Deno fallback may additionally need `--allow-run`, `--allow-ffi`, and `--allow-sys=osRelease,homedir,uid,cpus` | Vite writes `dist/`, `vite.config.ts` runs `git rev-parse`, Rollup may load its native Node-API binding, and Vite/workbox inspect trusted host details for WSL, paths, identity, and worker parallelism. |
+
+The default test suite is hermetic: its upstream-failure case stubs `fetch` locally, so it does not
+need network permission. Its only environment access is the narrowly scoped `NODE_ENV` read needed
+by React. Only `test:live`, the API server, and browser/UI audit workflows are expected to make
+network requests.
+
+If a Deno command requests a permission unexpectedly, inspect it instead of approving everything:
+
+```bash
+DENO_TRACE_PERMISSIONS=1 <command>
+DENO_AUDIT_PERMISSIONS=.tmp/deno-permissions.json <command>
+```
+
+`--allow-ffi` is especially sensitive because it loads native code outside Deno's JavaScript
+sandbox; use it only for the trusted local Rollup build dependency. `--allow-run` is also sensitive:
+the UI audit needs it for the explicitly named local tools, while the app runtime does not.
+
+The `vite` development, preview, and build tasks are npm-backed subprocesses rather than Deno source
+files with flags in their command string. If a locked-down environment runs Vite directly through
+Deno, use the build permissions listed above; do not add those permissions to the test or browser
+runtime. A host tool may separately ask for approval to launch a subprocess; that is an
+execution-policy decision, not evidence that the application needs broader runtime permissions.
+
 - **Multi-Component Reactive Storage & Events (`src/lib/storage/urlState.ts`):**
   - Every LocalStorage preference helper must dispatch a matching
     `globalThis.dispatchEvent(new Event("..."))` on write, and React components listening to

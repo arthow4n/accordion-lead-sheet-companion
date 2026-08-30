@@ -614,7 +614,7 @@ In pure Deno 2, a single `deno.json` replaces `package.json`, `tsconfig.json`, `
     "build": "vite build",
     "preview": "vite preview",
     "serve:api": "deno serve --allow-net api/import.ts",
-    "test": "deno test --allow-read --allow-net",
+    "test": "deno test --allow-read --allow-env=NODE_ENV",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check"
