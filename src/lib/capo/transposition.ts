@@ -223,7 +223,10 @@ export function classifyChordQuality(
   }
 
   // Add 4 / add 11 share one practical RH and LH representation here.
-  if (full === "add4" || full === "add11") {
+  if (
+    full === "add4" || full === "add11" || full === "(add4)" || full === "(add11)" ||
+    full === "(4)" || full === "(11)"
+  ) {
     return "add4";
   }
 
@@ -355,7 +358,10 @@ export function classifyChordQuality(
   }
 
   // Add9 / Add2 / Add4
-  if (full.startsWith("add9") || full.startsWith("add2") || full.startsWith("add")) {
+  if (
+    full.startsWith("add9") || full.startsWith("add2") || full.startsWith("add") ||
+    full.startsWith("(add")
+  ) {
     return "add9";
   }
 
@@ -384,13 +390,18 @@ export function parseChord(rawChord: string): ParsedChord {
     const rootMatch = trimmed.match(/^([A-G][#b]?)(.*)$/i);
     if (rootMatch) {
       const rawRoot = rootMatch[1];
-      const root = normalizeRareRoot(rawRoot);
+      const formattedRoot = rawRoot.charAt(0).toUpperCase() + rawRoot.slice(1);
+      const root = normalizeRareRoot(formattedRoot);
       const rest = rootMatch[2];
       const slashIdx = rest.indexOf("/");
       let bassNote: string | undefined;
       let extension = rest;
       if (slashIdx !== -1) {
-        bassNote = normalizeRareRoot(rest.slice(slashIdx + 1).trim());
+        const rawBass = rest.slice(slashIdx + 1).trim();
+        const formattedBass = rawBass
+          ? rawBass.charAt(0).toUpperCase() + rawBass.slice(1)
+          : undefined;
+        bassNote = formattedBass ? normalizeRareRoot(formattedBass) : undefined;
         extension = rest.slice(0, slashIdx).trim();
       }
       const quality = classifyChordQuality(extension, "");
@@ -428,11 +439,13 @@ export function parseChord(rawChord: string): ParsedChord {
   }
 
   const rawRoot = match[1];
-  const root = normalizeRareRoot(rawRoot);
+  const formattedRoot = rawRoot.charAt(0).toUpperCase() + rawRoot.slice(1);
+  const root = normalizeRareRoot(formattedRoot);
   const qualityStr = match[2] || "";
   const extraExt = match[3] || "";
   const rawBass = match[5] || undefined;
-  const bassNote = rawBass ? normalizeRareRoot(rawBass) : undefined;
+  const formattedBass = rawBass ? rawBass.charAt(0).toUpperCase() + rawBass.slice(1) : undefined;
+  const bassNote = formattedBass ? normalizeRareRoot(formattedBass) : undefined;
   const fullExt = (qualityStr + extraExt).trim();
   const quality = classifyChordQuality(qualityStr, extraExt);
 

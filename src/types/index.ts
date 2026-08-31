@@ -223,3 +223,5 @@ export interface CbaJamFillScale {
   pitchClasses: number[]; // [9, 0, 2, 3, 4, 7]
   fillButtonCoords: CbaButtonCoord[]; // All matching buttons across 5 rows
 }
+
+export * from "./scan.ts";

@@ -45,7 +45,13 @@ hands-free stage controls.
   - 1-tap clipboard paste with automatic capo detection and 2-line / ChordPro parser.
   - 100% offline capability via Service Worker precache and IndexedDB local persistence
     (`idb-keyval`).
-  - SSRF-hardened serverless scraper edge API (`api/import.ts`) with strict domain allowlisting.
+- **📸 Temporary Score Photo & Chord Lookup:**
+  - **Photo Scan:** Upload a printed score page image to extract chords using Google Gemini
+    (`gemini-2.5-flash`) structured JSON output.
+  - **Manual Chord List:** Fast comma/newline chord list parsing with offline local normalization
+    (`C, G/B, Am7, C/D`, `Em(maj7)/D#`).
+  - Single-overlay modal: tapping any recognized chord chip immediately opens the focused Left-Hand
+    / Right-Hand `MiniGripDrawer`.
 
 ---
 
@@ -57,8 +63,8 @@ hands-free stage controls.
   [Tailwind CSS 4](https://tailwindcss.com), [Lucide React](https://lucide.dev)
 - **Offline & Storage:** [Vite PWA](https://vite-pwa-org.netlify.app/),
   [idb-keyval](https://github.com/jakearchibald/idb-keyval)
-- **Edge Scraper Proxy:** Deno Deploy serverless edge function (`api/import.ts`) with strict CORS
-  origin and domain allowlisting.
+- **Edge Scraper & Scan API:** Deno Deploy serverless edge function (`api/import.ts` dispatching to
+  `api/scan-chords.ts`) with strict CORS origin allowlisting and `@google/genai` integration.
 
 ---
 
@@ -71,14 +77,29 @@ Ensure you have [Deno 2](https://docs.deno.com/runtime/getting_started/installat
 deno --version
 ```
 
+### Local End-to-End Workflow
+
+For end-to-end testing of score photo scanning with the local edge server:
+
+```bash
+# Terminal 1: Run Deno API server (reads GOOGLE_GENAI_API_KEY)
+GOOGLE_GENAI_API_KEY=your_gemini_api_key deno task serve:api
+
+# Terminal 2: Run Vite development server pointed at local API
+VITE_API_BASE_URL=http://localhost:8000 deno task dev
+```
+
 ### Useful Commands
 
 ```bash
 # Start Vite development server (http://localhost:5173)
 deno task dev
 
-# Run all 182+ automated unit, component, and UX test suites (offline / local)
+# Run all 250+ automated unit, component, and UX test suites (offline / hermetic)
 deno task test
+
+# Run UI & ergonomic mobile browser audit with agent-browser
+deno task audit:ui
 
 # Run live external website scraper integration tests (on-demand opt-in)
 deno task test:live
@@ -145,9 +166,9 @@ The repository includes an automated GitHub Actions workflow at
    - **Build command:** _(leave empty)_
    - **Runtime configuration:** `Dynamic`
    - **Dynamic Entrypoint:** `api/import.ts`
-6. Under **Environment variables**, click **`Add/Edit environment variables`** and optionally
-   configure:
-   - `ALLOWED_ORIGINS`: `https://arthow4n.github.io,http://localhost:5173`
+6. Under **Environment variables**, configure:
+   - `GOOGLE_GENAI_API_KEY`: `<your_gemini_api_key>` (for photo score chord extraction)
+   - `ALLOWED_ORIGINS`: `https://arthow4n.github.io,http://localhost:5173` (optional)
 7. Click **`Create App`**.
 8. Deno Deploy will start the live deployment and provide your production edge URL (e.g.,
    `https://<your-app>.deno.net`).
@@ -171,16 +192,18 @@ deno run -A jsr:@deno/deployctl deploy --entrypoint=api/import.ts
 The codebase is strictly validated against exhaustive test matrices specified in
 [`SPEC.md`](SPEC.md):
 
-| Matrix        | Scope                                                                   | Count | Runner Command        |
-| :------------ | :---------------------------------------------------------------------- | :---- | :-------------------- |
-| **`CAPO-*`**  | Capo transpositions & flat/sharp enharmonics                            | 11    | `deno task test`      |
-| **`STRAD-*`** | Stradella bass solver, counter-bass, compound voicings                  | 23    | `deno task test`      |
-| **`CBA-*`**   | CBA C-System treble coordinates, grips & voice leading                  | 8     | `deno task test`      |
-| **`PARSE-*`** | Segmented tokenizer, 2-line sheets & ChordPro directives                | 6     | `deno task test`      |
-| **`API-*`**   | Deno Deploy CORS allowlist & mock site parsers                          | 18    | `deno task test`      |
-| **`UX-*`**    | Screen Wake Lock, rAF auto-scroll, Bluetooth pedal, IDB                 | 16    | `deno task test`      |
-| **`E2E-*`**   | Mobile viewport browser automation suite                                | 6     | `deno task test`      |
-| **`LIVE-*`**  | Real live external website scrapers (UG, Chordie, E-Chords, Cifra Club) | 4     | `deno task test:live` |
+| Matrix         | Scope                                                                   | Count | Runner Command        |
+| :------------- | :---------------------------------------------------------------------- | :---- | :-------------------- |
+| **`CAPO-*`**   | Capo transpositions & flat/sharp enharmonics                            | 11    | `deno task test`      |
+| **`STRAD-*`**  | Stradella bass solver, counter-bass, compound voicings                  | 23    | `deno task test`      |
+| **`CBA-*`**    | CBA C-System treble coordinates, grips & voice leading                  | 8     | `deno task test`      |
+| **`PARSE-*`**  | Segmented tokenizer, 2-line sheets & ChordPro directives                | 6     | `deno task test`      |
+| **`LOOKUP-*`** | Pure candidate normalizer & manual comma/newline chord list parser      | 9     | `deno task test`      |
+| **`SCAN-*`**   | Serverless score photo scan endpoint, error stage precedence & mock SDK | 16    | `deno task test`      |
+| **`API-*`**    | Deno Deploy CORS allowlist & mock site parsers                          | 25    | `deno task test`      |
+| **`UX-*`**     | Screen Wake Lock, rAF auto-scroll, Bluetooth pedal, IDB, Lookup UI      | 46    | `deno task test`      |
+| **`E2E-*`**    | Mobile viewport browser automation suite                                | 6     | `deno task test`      |
+| **`LIVE-*`**   | Real live external website scrapers (UG, Chordie, E-Chords, Cifra Club) | 4     | `deno task test:live` |
 
 ---
 

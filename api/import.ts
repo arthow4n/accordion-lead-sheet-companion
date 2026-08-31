@@ -16,6 +16,8 @@ import {
   parseTabHtml,
   parseUltimateGuitar,
 } from "./parsers/index.ts";
+import { getCorsHeaders } from "./cors.ts";
+import { handleScanChordsRequest } from "./scan-chords.ts";
 
 export type { TabImportResponse, TabSource };
 export {
@@ -23,6 +25,8 @@ export {
   decodeHtmlEntities,
   extractCapoFret,
   extractMetadataFromHtml,
+  getCorsHeaders,
+  handleScanChordsRequest,
   parseChordie,
   parseCifraClub,
   parseEChords,
@@ -32,41 +36,19 @@ export {
 };
 
 /**
- * Validates request Origin against authorized allowlist and returns appropriate CORS headers.
- * Returns null if origin is unauthorized.
- */
-export function getCorsHeaders(req: Request): HeadersInit | null {
-  const origin = req.headers.get("origin");
-
-  // Non-browser / direct CLI requests (curl, server-to-server) without Origin header
-  if (!origin) {
-    return {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    };
-  }
-
-  // Strict CORS allowlist: GitHub Pages production or local development hosts
-  const isAllowed = origin === "https://arthow4n.github.io" ||
-    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-
-  if (!isAllowed) {
-    return null;
-  }
-
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Vary": "Origin",
-  };
-}
-
-/**
- * Main HTTP request handler for the Deno Deploy edge scraper function.
+ * Main HTTP request handler for the Deno Deploy edge scraper & scan function.
  */
 export async function handleRequest(req: Request): Promise<Response> {
+  // Dispatch /api/scan-chords route
+  try {
+    const url = new URL(req.url);
+    if (url.pathname === "/api/scan-chords" || url.pathname.endsWith("/api/scan-chords")) {
+      return await handleScanChordsRequest(req);
+    }
+  } catch {
+    // If URL parsing fails, continue to standard import validation
+  }
+
   const corsHeaders = getCorsHeaders(req);
 
   // 1. Enforce strict CORS policy for browser requests with Origin header

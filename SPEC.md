@@ -24,6 +24,8 @@ left-hand bass/chord buttons and CBA C-System right-hand chord grips.
    - 2.3 [Input Formats & Tokenization Strategies](#23-input-formats--tokenization-strategies)
    - 2.4
      [Segmented Token Architecture (Preventing Font Drift)](#24-segmented-token-architecture-preventing-font-drift)
+   - 2.5
+     [Score Photo & Manual Chord Lookup Engine (`api/scan-chords.ts`)](#25-score-photo--manual-chord-lookup-engine-apiscan-chordsts)
 3. [Instrument & Music Theory Foundations](#3-instrument--music-theory-foundations)
    - 3.1 [Left Hand: Stradella Bass Mechanics](#31-left-hand-stradella-bass-mechanics)
    - 3.2 [Right Hand: CBA C-System Treble Mechanics](#32-right-hand-cba-c-system-treble-mechanics)
@@ -298,6 +300,63 @@ Each segment is rendered as a flex-column container
 (`display: inline-flex; flex-direction: column;`). This guarantees that chord badges stay
 permanently anchored directly above their exact lyric syllable at any screen width, font size, or
 zoom level.
+
+### 2.5 Score Photo & Manual Chord Lookup Engine (`api/scan-chords.ts`)
+
+A temporary, focused **Photo & Manual Chord Lookup** workflow allows musicians to extract and look
+up chord diagrams directly from printed/purchased score pages or quick chord lists without songbook
+persistence or full notation OCR.
+
+#### Dual Ingestion Modes:
+
+1. **Photo Scan:** Uploads a single score page image (`image/jpeg`, `image/png`, `image/webp`,
+   `image/heic`, `image/heif` up to 10 MiB) via `POST /api/scan-chords`, extracting explicitly
+   printed chord symbols through Google Gemini.
+2. **Manual Chord List:** Pastes/types chord symbols separated by commas and/or newlines (e.g.
+   `C, G/B, Am7, C/D` or `G(add2), Em, Em(maj7)/D#`), normalized locally without network calls.
+
+#### Serverless Endpoint Contract (`POST /api/scan-chords`):
+
+- **Deployment Topology:** Handled via entrypoint dispatch in `api/import.ts` targeting
+  `api/scan-chords.ts`.
+- **Model Configuration:** Deployed with `@google/genai` (pinned version `2.19.0`) using
+  `SCORE_SCAN_MODEL = "gemini-2.5-flash"`.
+- **Server API Key:** Configured via `GOOGLE_GENAI_API_KEY` on Deno Deploy.
+- **Request Format:** `multipart/form-data` with field `image=<File>`.
+- **Structured Schema:** `responseMimeType: "application/json"` with schema
+  `{ type: "OBJECT", properties: { chords: { type: "ARRAY", items: { type: "STRING" } } }, required: ["chords"] }`.
+- **Inline Image Processing:** Transmits base64-encoded image bytes directly without filesystem or
+  database persistence.
+- **Quota & Security Disclaimer:** Browser CORS allowlist protects client apps, but CORS does not
+  authenticate API requests against quota exhaustion. The backend employs strict input validation
+  (file size, MIME whitelist, length limits) to mitigate misuse.
+
+#### Stable Error Codes:
+
+| Error Code                       | HTTP Status | Description                                          |
+| :------------------------------- | :---------- | :--------------------------------------------------- |
+| `SCAN_METHOD_NOT_ALLOWED`        | 405         | Method not allowed (only POST, OPTIONS permitted)    |
+| `SCAN_ORIGIN_NOT_ALLOWED`        | 403         | Origin rejected by CORS allowlist                    |
+| `SCAN_BAD_CONTENT_TYPE`          | 400         | Content-Type is not multipart/form-data              |
+| `SCAN_MULTIPART_INVALID`         | 400         | Malformed multipart form data                        |
+| `SCAN_IMAGE_MISSING`             | 400         | Missing required `image` form field                  |
+| `SCAN_IMAGE_EMPTY`               | 400         | Uploaded image file has 0 bytes                      |
+| `SCAN_IMAGE_TOO_LARGE`           | 413         | Image file size exceeds 10 MiB ceiling               |
+| `SCAN_IMAGE_TYPE_UNSUPPORTED`    | 415         | File MIME type is not JPEG, PNG, WebP, HEIC, or HEIF |
+| `SCAN_API_KEY_MISSING`           | 500         | `GOOGLE_GENAI_API_KEY` is not set on the server      |
+| `SCAN_PROVIDER_RATE_LIMITED`     | 429         | Gemini free quota / rate limit reached               |
+| `SCAN_PROVIDER_REQUEST_FAILED`   | 502         | Provider network or upstream failure                 |
+| `SCAN_PROVIDER_RESPONSE_INVALID` | 502         | Model structured response missing or unparseable     |
+| `SCAN_NO_CHORDS_FOUND`           | 422         | No recognizable deterministic chords found           |
+| `SCAN_NETWORK_ERROR`             | (Client)    | Fetch transport error in the browser                 |
+| `SCAN_CLIENT_RESPONSE_INVALID`   | (Client)    | Malformed JSON response body received by browser     |
+
+#### Single-Overlay UX & Interaction Semantics:
+
+Tapping a recognized chord chip (`>= 44x44px` touch target) immediately closes the Import modal and
+opens the existing global `MiniGripDrawer` displaying Left-Hand (Stradella) and Right-Hand (CBA)
+diagrams in the active view mode. All scan/lookup state is strictly transient and discarded on modal
+close.
 
 ---
 

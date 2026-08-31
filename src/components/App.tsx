@@ -185,6 +185,14 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     setCurrentSong(song);
   };
 
+  const handleLookupChord = (chord: string) => {
+    setIsImportOpen(false);
+    if (autoScroll.isPlaying) {
+      autoScroll.stop();
+    }
+    setActiveChord(chord);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-zinc-100 selection:bg-blue-600 selection:text-white font-sans antialiased">
       {/* Sticky Top Capo & View Mode Bar */}
@@ -278,6 +286,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onSaveSong={handleSaveImportedSong}
+        onLookupChord={handleLookupChord}
       />
 
       {/* Floating PWA Update Ready Toast */}

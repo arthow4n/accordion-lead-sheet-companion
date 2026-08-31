@@ -4,7 +4,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "serve:api": "deno run --allow-net api/import.ts",
+    "serve:api": "deno run --allow-net --allow-env=GOOGLE_GENAI_API_KEY api/import.ts",
     "test": "deno test --allow-read --allow-env=NODE_ENV",
     "test:live": "RUN_LIVE_TESTS=1 deno test --config=tests/live/deno.json --allow-read --allow-net --allow-env=RUN_LIVE_TESTS tests/live/",
     "audit:ui": "deno run --allow-run --allow-read --allow-write --allow-env --allow-net tests/ui-audit/audit_runner.ts",
@@ -13,6 +13,7 @@
     "fmt:check": "deno fmt --check"
   },
   "imports": {
+    "@google/genai": "npm:@google/genai@2.19.0",
     "react": "npm:react@^19.0.0",
     "react/jsx-runtime": "npm:react@^19.0.0/jsx-runtime",
     "react-dom": "npm:react-dom@^19.0.0",
