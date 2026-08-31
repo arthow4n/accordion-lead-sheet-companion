@@ -12,7 +12,7 @@ import {
 import { normalizeChordLookupCandidates } from "../src/lib/lookup/index.ts";
 import { getCorsHeaders } from "./cors.ts";
 
-export const SCORE_SCAN_MODEL = "gemini-2.5-flash";
+export const SCORE_SCAN_MODEL = "gemini-3.5-flash-lite";
 
 export const SCORE_SCAN_PROMPT = "Inspect this image of a printed music score or lead sheet.\n" +
   "Return only chord symbols that are explicitly printed as chord symbols above/around the staff,\n" +

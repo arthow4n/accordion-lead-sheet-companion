@@ -47,7 +47,7 @@ hands-free stage controls.
     (`idb-keyval`).
 - **📸 Temporary Score Photo & Chord Lookup:**
   - **Photo Scan:** Upload a printed score page image to extract chords using Google Gemini
-    (`gemini-2.5-flash`) structured JSON output.
+    (`gemini-3.5-flash-lite`) structured JSON output.
   - **Manual Chord List:** Fast comma/newline chord list parsing with offline local normalization
     (`C, G/B, Am7, C/D`, `Em(maj7)/D#`).
   - Single-overlay modal: tapping any recognized chord chip immediately opens the focused Left-Hand

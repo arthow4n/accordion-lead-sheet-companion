@@ -320,7 +320,7 @@ persistence or full notation OCR.
 - **Deployment Topology:** Handled via entrypoint dispatch in `api/import.ts` targeting
   `api/scan-chords.ts`.
 - **Model Configuration:** Deployed with `@google/genai` (pinned version `2.19.0`) using
-  `SCORE_SCAN_MODEL = "gemini-2.5-flash"`.
+  `SCORE_SCAN_MODEL = "gemini-3.5-flash-lite"`.
 - **Server API Key:** Configured via `GOOGLE_GENAI_API_KEY` on Deno Deploy.
 - **Request Format:** `multipart/form-data` with field `image=<File>`.
 - **Structured Schema:** `responseMimeType: "application/json"` with schema
