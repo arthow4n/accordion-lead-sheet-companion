@@ -186,9 +186,9 @@ The codebase is strictly validated against exhaustive test matrices specified in
 
 ## Generative AI Usage Disclosure
 
-This is 100% vibe-coded, originally using Google Antigravity with Gemini 3.7 Flash, but may include
-other provider/platform's generative AI output in the future, and likely to be kept 100% vibe-coded
-as well.
+This is 100% vibe-coded, using Google Antigravity and ChatGPT Codex, but may include other
+provider/platform's generative AI output in the future, and likely to be kept 100% vibe-coded as
+well.
 
 ---
 
