@@ -164,3 +164,7 @@ export {
   getIsUpdateAvailable,
   initUpdateChecker,
 } from "./pwa/updateChecker.ts";
+
+// 7. Score domain contracts and pure timing/validation primitives
+export * from "./score/rational.ts";
+export * from "./score/validation.ts";

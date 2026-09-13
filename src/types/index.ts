@@ -155,6 +155,8 @@ export interface LeadSheetSong {
   source?: TabSource | string;
   rawText: string;
   lines: LeadSheetLine[] | ChordLyricSegment[][];
+  /** Optional score-reader document; classic lead-sheet lines remain the source of truth otherwise. */
+  score?: import("./score.ts").ScoreDocument;
   createdAt?: number;
   updatedAt: number;
 }
@@ -225,3 +227,4 @@ export interface CbaJamFillScale {
 }
 
 export * from "./scan.ts";
+export * from "./score.ts";
