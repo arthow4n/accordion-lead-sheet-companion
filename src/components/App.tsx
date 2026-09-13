@@ -18,6 +18,7 @@ import { PRESET_SONGS } from "../lib/storage/presets.ts";
 import { useWakeLock } from "../hooks/useWakeLock.ts";
 import { useAutoScroll } from "../hooks/useAutoScroll.ts";
 import { usePedalNavigation } from "../hooks/usePedalNavigation.ts";
+import { useScorePlayback } from "../hooks/useScorePlayback.ts";
 import { CapoBar } from "./CapoBar.tsx";
 import { LeadSheetReader } from "./LeadSheetReader.tsx";
 import { MiniGripDrawer } from "./MiniGripDrawer.tsx";
@@ -69,10 +70,17 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     autoResumeDelayMs: 3500,
   });
 
+  const scorePlayback = useScorePlayback(currentSong?.score);
+  const isScoreMode = Boolean(currentSong?.score);
+
   // Hardware Hook 3: Bluetooth Pedal Navigation
   usePedalNavigation({
     scrollFraction: 0.8,
-    enabled: true,
+    enabled: !isScoreMode,
+    onPageTurn: isScoreMode
+      ? (direction) =>
+        direction === "down" ? scorePlayback.nextMeasure() : scorePlayback.previousMeasure()
+      : undefined,
   });
 
   // Synchronize URL and persistence with active song and view mode
@@ -129,6 +137,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     persistLastSongId(song.id);
     autoScroll.stop();
     autoScroll.scrollToTop();
+    scorePlayback.reset();
   };
 
   const handleDeleteSong = async (id: string) => {
@@ -190,6 +199,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     if (autoScroll.isPlaying) {
       autoScroll.stop();
     }
+    if (scorePlayback.isPlaying) scorePlayback.stop();
     setActiveChord(chord);
   };
 
@@ -228,9 +238,14 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
                 if (autoScroll.isPlaying) {
                   autoScroll.stop();
                 }
+                if (scorePlayback.isPlaying) scorePlayback.stop();
                 setActiveChord(chord);
               }}
               selectedChord={activeChord}
+              scorePerformanceIndex={scorePlayback.performanceIndex}
+              scoreIsPlaying={scorePlayback.isPlaying}
+              onScoreNextMeasure={scorePlayback.nextMeasure}
+              onScorePreviousMeasure={scorePlayback.previousMeasure}
             />
           )
           : (
@@ -242,15 +257,16 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
 
       {/* Sticky Bottom Auto-Scroll Footer */}
       <AutoScrollFooter
-        isPlaying={autoScroll.isPlaying}
-        isTouchPaused={autoScroll.isTouchPaused}
-        speed={autoScroll.speed}
-        onTogglePlay={autoScroll.toggle}
-        onChangeSpeed={autoScroll.setSpeed}
-        onScrollToTop={autoScroll.scrollToTop}
+        isPlaying={isScoreMode ? scorePlayback.isPlaying : autoScroll.isPlaying}
+        isTouchPaused={isScoreMode ? scorePlayback.isTouchPaused : autoScroll.isTouchPaused}
+        speed={isScoreMode ? scorePlayback.speed : autoScroll.speed}
+        onTogglePlay={isScoreMode ? scorePlayback.toggle : autoScroll.toggle}
+        onChangeSpeed={isScoreMode ? scorePlayback.setSpeed : autoScroll.setSpeed}
+        onScrollToTop={isScoreMode ? scorePlayback.reset : autoScroll.scrollToTop}
         onScrollToBottom={autoScroll.scrollToBottom}
         fontSizeClass={fontSizeClass}
         onChangeFontSize={setFontSizeClass}
+        mode={isScoreMode ? "score" : "scroll"}
       />
 
       {/* Mini-Grip Drawer Bottom Sheet */}

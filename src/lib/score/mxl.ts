@@ -1,15 +1,23 @@
 import { unzipSync } from "fflate";
-import { type MusicXmlParseResult, parseMusicXml } from "./musicxml.ts";
+import { inspectMusicXmlSafety, type MusicXmlParseResult, parseMusicXml } from "./musicxml.ts";
 
 export const MXL_MAX_COMPRESSED_BYTES = 10 * 1024 * 1024;
 export const MXL_MAX_UNCOMPRESSED_BYTES = 32 * 1024 * 1024;
 export const MXL_MAX_ENTRIES = 128;
 
+function decodeUtf8(bytes: Uint8Array): string | undefined {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeEntryPath(path: string): string | undefined {
   if (!path || path.includes("\\") || path.includes("\0") || path.startsWith("/")) return undefined;
   const parts = path.split("/");
   if (parts.some((part) => part === "..")) return undefined;
-  const normalized = parts.filter(Boolean).join("/");
+  const normalized = parts.filter((part) => part && part !== ".").join("/");
   return normalized || undefined;
 }
 
@@ -220,7 +228,20 @@ export function parseMxl(bytes: Uint8Array): MusicXmlParseResult {
       }],
     };
   }
-  const rootResult = parseContainerXml(new TextDecoder().decode(container));
+  const containerXml = decodeUtf8(container);
+  if (!containerXml) {
+    return {
+      issues: [{
+        code: "mxl_invalid_encoding",
+        message: "MXL container.xml is not valid UTF-8.",
+        severity: "error",
+        blocksGuidance: true,
+      }],
+    };
+  }
+  const safetyIssue = inspectMusicXmlSafety(containerXml);
+  if (safetyIssue) return { issues: [safetyIssue] };
+  const rootResult = parseContainerXml(containerXml);
   if (rootResult.issue) {
     const message = rootResult.issue === "mxl_root_ambiguous"
       ? "MXL must contain exactly one container root score."
@@ -245,5 +266,16 @@ export function parseMxl(bytes: Uint8Array): MusicXmlParseResult {
       }],
     };
   }
-  return parseMusicXml(new TextDecoder().decode(scoreBytes));
+  const scoreXml = decodeUtf8(scoreBytes);
+  if (!scoreXml) {
+    return {
+      issues: [{
+        code: "mxl_invalid_encoding",
+        message: "MXL score XML is not valid UTF-8.",
+        severity: "error",
+        blocksGuidance: true,
+      }],
+    };
+  }
+  return parseMusicXml(scoreXml);
 }

@@ -7,8 +7,10 @@ import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ImportModal } from "../../src/components/ImportModal.tsx";
 import App from "../../src/components/App.tsx";
+import { LeadSheetReader } from "../../src/components/LeadSheetReader.tsx";
 import { PRESET_SONGS } from "../../src/lib/storage/presets.ts";
 import { parseChordLookupInput } from "../../src/lib/lookup/index.ts";
+import { rational } from "../../src/lib/score/rational.ts";
 
 Deno.test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => {
   const html = renderToStaticMarkup(
@@ -25,6 +27,42 @@ Deno.test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => 
   assertStringIncludes(html, "Manual Text");
   assertStringIncludes(html, "Lookup");
   assertStringIncludes(html, "Score file");
+});
+
+Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guidance", () => {
+  const html = renderToStaticMarkup(
+    <LeadSheetReader
+      song={{
+        id: "score-test",
+        title: "Score test",
+        capoFret: 0,
+        rawText: "",
+        lines: [],
+        updatedAt: 1,
+        score: {
+          schemaVersion: 1,
+          source: { kind: "musicxml", sanitizedXml: "<score-partwise/>" },
+          tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }],
+          sections: [],
+          measures: [{
+            id: "m1",
+            writtenIndex: 0,
+            melody: [],
+            harmonies: [{ id: "h1", offset: rational(0), raw: "C" }],
+            navigation: [],
+          }],
+          issues: [],
+        },
+      }}
+      capo={0}
+      viewMode="stradella"
+    />,
+  );
+  assertStringIncludes(html, "Score reader");
+  assertStringIncludes(html, "Measure 1");
+  assertStringIncludes(html, "Preview");
+  assertStringIncludes(html, "Learn");
+  assertStringIncludes(html, "Perform");
 });
 
 Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {

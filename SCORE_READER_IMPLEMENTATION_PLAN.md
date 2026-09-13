@@ -1,6 +1,6 @@
 # Score Reader and Accordion Guidance — Sequential Implementation Plan
 
-**Status:** Proposal; no feature implementation has started\
+**Status:** Execution in progress; M0–M2 and the first measure-aware playback slice are implemented\
 **Execution model:** One primary coding agent working sequentially\
 **Review model:** Four named checkpoints, each using one read-only `gpt-5.6-sol` (`medium`)
 sub-agent\
@@ -286,12 +286,16 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID  | Status   | Commit     | Checks                    | Review disposition | Notes                                                               |
-| --- | -------- | ---------- | ------------------------- | ------------------ | ------------------------------------------------------------------- |
-| M0  | complete | 464cb54    | fmt/lint/test/build green | N/A                | Baseline, provenance policy, authority record, and reuse inventory. |
-| M1A | complete | 2c8e738    | fmt/lint/test/build green | N/A                | Versioned contracts, rational timing, and validation.               |
-| M1B | complete | fad8be5    | fmt/lint/test/build green | N/A                | Songbook envelope, migrations, quarantine, and cleanup hooks.       |
-| M1C | complete | this slice | fmt/lint/test/build green | N/A                | Route, tempo, transposition, and shared harmony adapter.            |
+| ID  | Status   | Commit  | Checks                    | Review disposition  | Notes                                                                                                    |
+| --- | -------- | ------- | ------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
+| M0  | complete | 464cb54 | fmt/lint/test/build green | N/A                 | Baseline, provenance policy, authority record, and reuse inventory.                                      |
+| M1A | complete | 2c8e738 | fmt/lint/test/build green | N/A                 | Versioned contracts, rational timing, and validation.                                                    |
+| M1B | complete | fad8be5 | fmt/lint/test/build green | N/A                 | Songbook envelope, migrations, quarantine, and cleanup hooks.                                            |
+| M1C | complete | af09031 | fmt/lint/test/build green | N/A                 | Route, tempo, transposition, and shared harmony adapter.                                                 |
+| M2A | complete | d4523e0 | fmt/lint/test/build green | R1 corrective slice | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                   |
+| M2B | complete | d4523e0 | fmt/lint/test/build green | R1 corrective slice | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                     |
+| M2C | complete | caca12a | fmt/lint/test/build green | R1 corrective slice | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                           |
+| R1  | active   | —       | pending corrective gate   | pending             | Read-only architecture/security review returned blocking/high findings; corrective slice is in progress. |
 
 ### Required slice order
 

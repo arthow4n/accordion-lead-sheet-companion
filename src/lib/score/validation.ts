@@ -28,6 +28,13 @@ function isFiniteBox(box: ImageBox | undefined): boolean {
     box.height >= 0;
 }
 
+function isRational(value: unknown): value is { numerator: number; denominator: number } {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { numerator?: unknown; denominator?: unknown };
+  return Number.isSafeInteger(candidate.numerator) && Number.isSafeInteger(candidate.denominator) &&
+    candidate.denominator !== 0;
+}
+
 function isValidSource(source: ScoreDocument["source"]): boolean {
   if (!source || typeof source !== "object") return false;
   if (source.kind === "musicxml") return typeof source.sanitizedXml === "string";
@@ -47,6 +54,13 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   }
   let previousOffset = RATIONAL_ZERO;
   for (const event of measure.melody) {
+    if (
+      !event || typeof event !== "object" || !isRational(event.offset) ||
+      !isRational(event.duration) || typeof event.id !== "string"
+    ) {
+      issues.push(issue("invalid_event_shape", "Melody event has an invalid shape.", measure.id));
+      continue;
+    }
     if (
       compareRational(event.offset, RATIONAL_ZERO) < 0 ||
       (!event.grace && compareRational(event.duration, RATIONAL_ZERO) <= 0)
@@ -118,12 +132,23 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
     issues.push(issue("invalid_harmony_list", "Measure harmonies must be an array.", measure.id));
     return issues;
   }
+  if (!Array.isArray(measure.navigation)) {
+    issues.push(issue("invalid_navigation", "Measure navigation must be an array.", measure.id));
+    return issues;
+  }
   for (const harmony of measure.harmonies) {
-    if (!harmony.id || !harmony.raw.trim() || compareRational(harmony.offset, RATIONAL_ZERO) < 0) {
+    const harmonyId = harmony && typeof harmony === "object" && typeof harmony.id === "string"
+      ? harmony.id
+      : "(unknown)";
+    if (
+      !harmony || typeof harmony !== "object" || typeof harmony.id !== "string" ||
+      typeof harmony.raw !== "string" || !isRational(harmony.offset) ||
+      !harmony.raw.trim() || compareRational(harmony.offset, RATIONAL_ZERO) < 0
+    ) {
       issues.push(
         issue(
           "invalid_harmony_event",
-          `Harmony event ${harmony.id || "(unknown)"} is invalid.`,
+          `Harmony event ${harmonyId} is invalid.`,
           measure.id,
           true,
           "error",
@@ -167,6 +192,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   }
   for (const tempo of Array.isArray(document.tempoMap) ? document.tempoMap : []) {
     if (
+      !tempo || typeof tempo !== "object" || !isRational(tempo.offset) ||
       !Number.isFinite(tempo.bpm) || tempo.bpm <= 0 ||
       compareRational(tempo.offset, RATIONAL_ZERO) < 0
     ) {
@@ -174,6 +200,12 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
         issue("invalid_tempo", "Tempo events require a positive BPM and non-negative offset."),
       );
     }
+  }
+  if (!Array.isArray(document.sections)) {
+    issues.push(issue("invalid_sections", "Score sections must be an array."));
+  }
+  if (!Array.isArray(document.issues)) {
+    issues.push(issue("invalid_issue_list", "Score issues must be an array."));
   }
   if (!Array.isArray(document.measures)) {
     issues.push(issue("invalid_measures", "Score measures must be an array."));
@@ -184,6 +216,10 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   }
   const ids = new Set<string>();
   for (const measure of Array.isArray(document.measures) ? document.measures : []) {
+    if (!measure || typeof measure !== "object") {
+      issues.push(issue("invalid_measure", "Score measure has an invalid shape."));
+      continue;
+    }
     if (ids.has(measure.id)) {
       issues.push(
         issue("duplicate_measure_id", `Measure ID ${measure.id} is duplicated.`, measure.id),

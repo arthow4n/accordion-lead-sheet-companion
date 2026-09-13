@@ -11,6 +11,7 @@ export interface AutoScrollFooterProps {
   onScrollToBottom?: () => void;
   fontSizeClass?: string;
   onChangeFontSize?: (sizeClass: string) => void;
+  mode?: "scroll" | "score";
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
   onScrollToBottom,
   fontSizeClass = "text-base",
   onChangeFontSize,
+  mode = "scroll",
   className = "",
 }) => {
   const currentSpeedIdx = SPEED_STEPS.indexOf(speed) >= 0 ? SPEED_STEPS.indexOf(speed) : 2; // Default 1.0x
@@ -74,7 +76,11 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
                   : "bg-emerald-600 hover:bg-emerald-500 text-white"
                 : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
             }`}
-            aria-label={isPlaying ? "Pause Auto-Scroll" : "Start Auto-Scroll"}
+            aria-label={isPlaying
+              ? mode === "score" ? "Pause Score Playback" : "Pause Auto-Scroll"
+              : mode === "score"
+              ? "Start Score Playback"
+              : "Start Auto-Scroll"}
           >
             {isPlaying
               ? (
@@ -86,7 +92,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
               : (
                 <>
                   <Play className="w-4 h-4 fill-current" />
-                  <span>Auto-Scroll</span>
+                  <span>{mode === "score" ? "Play Score" : "Auto-Scroll"}</span>
                 </>
               )}
           </button>

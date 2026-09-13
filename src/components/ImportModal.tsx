@@ -18,7 +18,7 @@ import { LineRenderer } from "./LineRenderer.tsx";
 export interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveSong: (song: LeadSheetSong) => void;
+  onSaveSong: (song: LeadSheetSong) => void | Promise<void>;
   onLookupChord?: (chord: string) => void;
 }
 
@@ -52,6 +52,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [isParsingScore, setIsParsingScore] = useState(false);
   const [scoreFileName, setScoreFileName] = useState<string | null>(null);
   const [scoreIssues, setScoreIssues] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Reset transient lookup and error state when modal opens or closes
   useEffect(() => {
@@ -63,6 +64,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setIsScanning(false);
       setScanError(null);
       setIsParsingScore(false);
+      setIsSaving(false);
       setScoreFileName(null);
       setScoreIssues([]);
       setErrorMessage(null);
@@ -206,7 +208,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       const bytes = new Uint8Array(await file.arrayBuffer());
       const result = isMxl
         ? (await import("../lib/score/mxl.ts")).parseMxl(bytes)
-        : parseMusicXml(new TextDecoder().decode(bytes));
+        : parseMusicXml(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
       setScoreIssues(result.issues.map((item) => `${item.code}: ${item.message}`));
       if (!result.document) {
         setErrorMessage(result.issues[0]?.message || "Could not parse this score.");
@@ -303,10 +305,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     setInvalidManualTokens(result.invalid);
   };
 
-  const handleSave = () => {
-    if (previewSong && activeTab !== "lookup") {
-      onSaveSong(previewSong);
+  const handleSave = async () => {
+    if (!previewSong || activeTab === "lookup" || isSaving) return;
+    try {
+      setIsSaving(true);
+      await onSaveSong(previewSong);
       onClose();
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not save this song.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -720,10 +728,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
             <button
               type="button"
               onClick={handleSave}
-              disabled={!previewSong}
+              disabled={!previewSong || isSaving}
               className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
             >
-              Save to Songbook
+              {isSaving ? "Saving..." : "Save to Songbook"}
             </button>
           )}
         </footer>

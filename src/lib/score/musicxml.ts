@@ -10,7 +10,7 @@ import type {
   ScoreTimeSignature,
   TempoEvent,
 } from "../../types/score.ts";
-import { rational } from "./rational.ts";
+import { addRational, rational } from "./rational.ts";
 
 export const MUSICXML_MAX_BYTES = 10 * 1024 * 1024;
 export const MUSICXML_MAX_NODES = 100_000;
@@ -83,13 +83,15 @@ function inspectLimits(xml: string): ScoreIssue | undefined {
   }
   let depth = 0;
   let maxDepth = 0;
-  const tags = xml.match(/<\/?[A-Za-z_][^>]*>/g) || [];
+  // Count all tag-shaped tokens (including non-ASCII XML names) before DOM construction. This is
+  // intentionally conservative: text that resembles a tag may reject early, never bypass a cap.
+  const tags = xml.match(/<\/?[^!?][^>]*>/g) || [];
   if (tags.length > MUSICXML_MAX_NODES) {
     return issue("xml_node_limit", "MusicXML contains too many elements.");
   }
   for (const tag of tags) {
-    if (/^<\//.test(tag)) depth -= 1;
-    else if (!/\/\s*>$/.test(tag) && !/^<\?/.test(tag) && !/^<!/.test(tag)) {
+    if (/^<\s*\//.test(tag)) depth -= 1;
+    else if (!/\/\s*>$/.test(tag)) {
       depth += 1;
       maxDepth = Math.max(maxDepth, depth);
     }
@@ -98,6 +100,11 @@ function inspectLimits(xml: string): ScoreIssue | undefined {
     }
   }
   return undefined;
+}
+
+/** Run the bounded XML preflight for non-score XML such as an MXL container.xml file. */
+export function inspectMusicXmlSafety(xml: string): ScoreIssue | undefined {
+  return inspectLimits(xml);
 }
 
 function parseKey(attributes: Element): ScoreKeySignature | undefined {
@@ -166,6 +173,7 @@ function parseHarmony(
   const rootAlter = intText(child(root || element, "root-alter"));
   const kindElement = child(element, "kind");
   const suffix = chordKindSuffix(text(kindElement));
+  const hasDegree = children(element, "degree").length > 0;
   const raw = rootStep && suffix !== undefined
     ? `${rootStep}${accidental(rootAlter)}${suffix}`
     : text(kindElement) || "";
@@ -176,7 +184,7 @@ function parseHarmony(
     id: `h${index}`,
     offset,
     raw: bassStep ? `${raw}/${bassStep}${accidental(bassAlter)}` : raw,
-    unsupported: suffix === undefined,
+    unsupported: suffix === undefined || hasDegree,
   };
 }
 
@@ -194,7 +202,8 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
       const numbers = (ending.getAttribute("number") || "").split(/[ ,]+/).map(Number).filter(
         Number.isInteger,
       );
-      if (numbers.length) marks.push({ kind: "ending", numbers });
+      if (ending.getAttribute("type") === "stop") marks.push({ kind: "ending-stop" });
+      else if (numbers.length) marks.push({ kind: "ending", numbers });
     }
   }
   for (const direction of children(measureElement, "direction")) {
@@ -210,6 +219,10 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
       marks.push({ kind: "coda", id: sound.getAttribute("coda") || undefined });
     }
     if (sound?.hasAttribute("fine")) marks.push({ kind: "fine" });
+    const directionType = child(direction, "direction-type");
+    for (const segno of directionType ? children(directionType, "segno") : []) {
+      marks.push({ kind: "segno", id: segno.getAttribute("id") || undefined });
+    }
     const words = child(child(direction, "direction-type") || direction, "words");
     const value = text(words);
     if (value) marks.push({ kind: "text", text: value });
@@ -247,7 +260,14 @@ function parseNote(
   const octave = intText(child(pitch || note, "octave"), 4);
   const alter = intText(child(pitch || note, "alter"));
   const durationDivisions = grace ? 0 : intText(child(note, "duration"), 0);
-  const tie = child(note, "tie")?.getAttribute("type") as MelodyEvent["tie"];
+  const ties = children(note, "tie").map((element) => element.getAttribute("type"));
+  const tie = ties.includes("start") && ties.includes("stop")
+    ? "continue"
+    : ties.includes("start")
+    ? "start"
+    : ties.includes("stop")
+    ? "stop"
+    : undefined;
   return {
     id: `${measureId}-n${index}`,
     offset: rational(offsetDivisions, divisions),
@@ -299,9 +319,21 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
   let noteCounter = 0;
   let harmonyCounter = 0;
   const tempoMap: TempoEvent[] = [];
+  let documentOffset = rational(0);
+  const informationalConstructs = new Set<string>();
   for (const measureElement of children(part, "measure")) {
     const id = `m${measures.length + 1}`;
-    const attributes = child(measureElement, "attributes");
+    const attributesList = children(measureElement, "attributes");
+    const attributes = attributesList[0];
+    if (attributesList.length > 1) {
+      issues.push(
+        measureIssue(
+          "unsupported_mid_measure_attribute",
+          "Multiple attribute blocks in one measure are not supported.",
+          id,
+        ),
+      );
+    }
     if (attributes) {
       const measureElements = elementChildren(measureElement);
       const attributeIndex = measureElements.indexOf(attributes);
@@ -372,7 +404,15 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         const forwardDuration = intText(child(element, "duration"));
         if (forwardDuration < 0) {
           issues.push(issue("invalid_forward", "Forward duration must not be negative."));
-        } else offsetDivisions += forwardDuration;
+        } else if (forwardDuration > 0) {
+          melody.push({
+            id: `${id}-r${noteCounter++}`,
+            offset: rational(offsetDivisions, divisions),
+            duration: rational(forwardDuration, divisions),
+            rest: true,
+          });
+          offsetDivisions += forwardDuration;
+        }
       } else if (element.localName === "note") {
         const timeModification = child(element, "time-modification");
         if (timeModification) {
@@ -389,6 +429,9 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
               ),
             );
           }
+        }
+        for (const construct of ["beam", "notations", "lyric"]) {
+          if (child(element, construct)) informationalConstructs.add(construct);
         }
         if (child(element, "chord")) {
           issues.push(
@@ -421,13 +464,19 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           );
         }
       } else if (element.localName === "direction") {
-        const offset = rational(offsetDivisions, divisions);
+        const offset = addRational(documentOffset, rational(offsetDivisions, divisions));
         const tempo = parseTempo(element, offset, issues);
         if (tempo) tempoMap.push(tempo);
         if (child(child(element, "direction-type") || element, "octave-shift")) {
           issues.push(
             issue("unsupported_octave_shift", "Octave-shift directions are not supported."),
           );
+        }
+        const directionType = child(element, "direction-type");
+        for (const construct of ["dynamics", "words", "wedge", "metronome"]) {
+          if (directionType && child(directionType, construct)) {
+            informationalConstructs.add(construct);
+          }
         }
       }
     }
@@ -454,6 +503,18 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
       );
     }
     const printedNumber = Number.parseInt(measureElement.getAttribute("number") || "", 10);
+    const navigation = parseNavigation(measureElement);
+    if (
+      navigation.some((mark) => mark.kind === "dc") && navigation.some((mark) => mark.kind === "ds")
+    ) {
+      issues.push(
+        measureIssue(
+          "ambiguous_navigation",
+          "A measure cannot contain both D.C. and D.S. jumps.",
+          id,
+        ),
+      );
+    }
     measures.push({
       id,
       printedNumber: Number.isInteger(printedNumber) ? printedNumber : undefined,
@@ -462,11 +523,22 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
       time,
       melody,
       harmonies,
-      navigation: parseNavigation(measureElement),
+      navigation,
       confidence: 1,
     });
+    documentOffset = addRational(documentOffset, rational(offsetDivisions, divisions));
   }
   if (!sawTreble) issues.push(issue("unsupported_clef", "No supported treble clef was found."));
+  for (const construct of informationalConstructs) {
+    issues.push(
+      issue(
+        "ignored_notation",
+        `${construct} is preserved in the sanitized source but ignored for guidance.`,
+        "info",
+        false,
+      ),
+    );
+  }
   const title = text(child(root, "work")) || text(child(root, "movement-title"));
   const sections: ScoreSection[] = [];
   const document: ScoreDocument = {

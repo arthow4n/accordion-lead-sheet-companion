@@ -67,6 +67,7 @@ export type NavigationMark =
   | { kind: "repeat-start" }
   | { kind: "repeat-end"; repeatCount?: number }
   | { kind: "ending"; numbers: number[] }
+  | { kind: "ending-stop" }
   | { kind: "fine" }
   | { kind: "dc"; target?: "start" | "coda" }
   | { kind: "ds"; targetId?: string; target?: "segno" | "coda" }

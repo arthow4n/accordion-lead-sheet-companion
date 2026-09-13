@@ -87,6 +87,23 @@ Deno.test("song normalization preserves legacy records and rejects malformed sco
     normalizeSongRecord({ id: "bad", title: "Bad", rawText: "", lines: [], score: {} }),
     undefined,
   );
+  assertEquals(
+    normalizeSongRecord({
+      id: "bad-nested",
+      title: "Bad nested",
+      rawText: "",
+      lines: [],
+      score: {
+        schemaVersion: 1,
+        source: { kind: "musicxml", sanitizedXml: "<score-partwise/>" },
+        tempoMap: [],
+        sections: "not-an-array",
+        issues: null,
+        measures: [{ id: "m1", writtenIndex: 0, melody: [], harmonies: [], navigation: null }],
+      },
+    }),
+    undefined,
+  );
 });
 
 Deno.test("songbook import rejects malformed records instead of partially importing", async () => {
@@ -225,4 +242,43 @@ Deno.test("MXL parser resolves the container root and enforces entry safety", ()
 
   const unsafe = parseMxl(zipSync({ "../main.musicxml": new TextEncoder().encode(scoreXml) }));
   assertEquals(unsafe.issues[0].code, "mxl_unsafe_path");
+});
+
+Deno.test("MusicXML parser keeps the timeline global and normalizes forward silence", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign></clef></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>
+    </measure><measure number="2"><direction><sound tempo="120"/></direction><forward><duration>1</duration></forward>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>3</duration></note>
+    </measure></part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.document?.tempoMap[0], { offset: rational(4), bpm: 120, source: "explicit" });
+  assertEquals(result.document?.measures[1].melody[0].rest, true);
+  assertEquals(result.document?.measures[1].melody[0].duration, rational(1));
+});
+
+Deno.test("MusicXML parser rejects unbounded Unicode nesting and unsupported harmony degrees", () => {
+  const nested = `<score-partwise>${"<é>".repeat(130)}${"</é>".repeat(130)}</score-partwise>`;
+  assertEquals(parseMusicXml(nested).issues[0].code, "xml_depth_limit");
+  const degree = parseMusicXml(
+    `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+      <attributes><clef><sign>G</sign></clef></attributes><harmony><root><root-step>C</root-step></root><kind>major</kind><degree><degree-value>5</degree-value><degree-alter>1</degree-alter></degree></harmony>
+    </measure></part></score-partwise>`,
+  );
+  assertEquals(degree.issues.some((item) => item.code === "unsupported_harmony"), true);
+});
+
+Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", () => {
+  const scoreXml =
+    `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+    <attributes><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note>
+  </measure></part></score-partwise>`;
+  const archive = zipSync({
+    "META-INF/container.xml": new TextEncoder().encode(
+      `<container><rootfiles><rootfile full-path="scores/main.musicxml"/></rootfiles></container>`,
+    ),
+    "scores/./main.musicxml": new TextEncoder().encode(scoreXml),
+    "scores/main.musicxml": new TextEncoder().encode(scoreXml),
+  });
+  assertEquals(parseMxl(archive).issues[0].code, "mxl_unsafe_path");
 });

@@ -22,6 +22,7 @@ import type {
   StradellaGrooveType,
   ViewMode,
 } from "../types/index.ts";
+import type { ScoreMeasure } from "../types/score.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
@@ -44,8 +45,172 @@ import { annotateStradellaTransitions } from "../lib/stradella/transitions.ts";
 import { checkForAppUpdate } from "../lib/pwa/updateChecker.ts";
 import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
-import { isChordActive } from "./ChordBadge.tsx";
+import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
+import { enrichHarmonySequence } from "../lib/score/harmony.ts";
+import { expandPerformanceRoute } from "../lib/score/navigation.ts";
+import { rationalToNumber } from "../lib/score/rational.ts";
+import { createScoreRenderer } from "../lib/score/osmd.ts";
+
+function scorePitchLabel(
+  pitch: { step: string; alter: number; octave: number },
+  spelling: NoteSpelling,
+): string {
+  const accidental = spelling === "flats"
+    ? "b".repeat(Math.max(0, -pitch.alter))
+    : spelling === "sharps"
+    ? "#".repeat(Math.max(0, pitch.alter))
+    : pitch.alter < 0
+    ? "b".repeat(-pitch.alter)
+    : "#".repeat(pitch.alter);
+  return `${pitch.step}${accidental}${pitch.octave}`;
+}
+
+interface ScoreMeasureCardProps {
+  measure: ScoreMeasure;
+  performanceIndex?: number;
+  visit?: number;
+  active?: boolean;
+  viewMode: ViewMode;
+  noteSpelling: NoteSpelling;
+  cbaDisplayMode: CbaDisplayMode;
+  stradellaDisplayMode: StradellaDisplayMode;
+  onSelectChord?: (chord: ChordDetail | string) => void;
+  selectedChord?: ChordDetail | string | null;
+}
+
+const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
+  measure,
+  performanceIndex,
+  visit,
+  active = false,
+  viewMode,
+  noteSpelling,
+  cbaDisplayMode,
+  stradellaDisplayMode,
+  onSelectChord,
+  selectedChord,
+}) => {
+  const harmonies = enrichHarmonySequence(measure.harmonies, { noteSpelling });
+  return (
+    <article
+      data-score-performance-index={performanceIndex}
+      className={`rounded-2xl border p-3 sm:p-4 transition-colors scroll-mt-20 ${
+        active
+          ? "border-blue-400/80 bg-blue-950/30 ring-1 ring-blue-400/40"
+          : "border-zinc-800 bg-zinc-900/50"
+      }`}
+      aria-current={active ? "step" : undefined}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-black text-zinc-100">
+            Measure {measure.printedNumber ?? measure.writtenIndex + 1}
+          </span>
+          {visit && visit > 1 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-700/60">
+              pass {visit}
+            </span>
+          )}
+        </div>
+        {measure.time && (
+          <span className="text-[11px] font-mono text-zinc-400">
+            {measure.time.beats}/{measure.time.beatType}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 min-h-10" aria-label="Measure harmony">
+        {harmonies.length > 0
+          ? harmonies.map((harmony) => (
+            <ChordBadge
+              key={harmony.id}
+              chord={harmony.detail || harmony.raw}
+              viewMode={viewMode}
+              cbaDisplayMode={cbaDisplayMode}
+              stradellaDisplayMode={stradellaDisplayMode}
+              noteSpelling={noteSpelling}
+              onSelectChord={onSelectChord}
+              active={isChordActive(harmony.detail || harmony.raw, selectedChord)}
+            />
+          ))
+          : <span className="text-xs text-zinc-500">No chord symbol</span>}
+      </div>
+
+      <div
+        className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5"
+        aria-label="Measure melody"
+      >
+        {measure.melody.length > 0
+          ? measure.melody.map((event) => (
+            <span
+              key={event.id}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono border ${
+                event.rest
+                  ? "border-zinc-800 text-zinc-500 bg-zinc-950/60"
+                  : "border-zinc-700 text-zinc-200 bg-zinc-950"
+              }`}
+              title={`beat ${rationalToNumber(event.offset).toFixed(2)} · duration ${
+                rationalToNumber(event.duration).toFixed(2)
+              }`}
+            >
+              {event.rest ? "rest" : event.pitch ? scorePitchLabel(event.pitch, noteSpelling) : "?"}
+            </span>
+          ))
+          : <span className="text-xs text-zinc-500">No melody events</span>}
+      </div>
+      {measure.navigation.length > 0 && (
+        <div className="mt-2 text-[11px] text-zinc-500 truncate">
+          {measure.navigation.map((mark) => mark.kind === "text" ? mark.text : mark.kind).join(
+            " · ",
+          )}
+        </div>
+      )}
+    </article>
+  );
+};
+
+const ScoreNotation: React.FC<{ xml?: string }> = ({ xml }) => {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  React.useEffect(() => {
+    if (!xml || !containerRef.current) return;
+    let cancelled = false;
+    setStatus("loading");
+    const container = containerRef.current;
+    createScoreRenderer(container, { backend: "svg", strategy: "source-only" })
+      .then(async (renderer) => {
+        if (cancelled) return;
+        await renderer.load(xml);
+        if (cancelled) return;
+        renderer.render();
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+      container.replaceChildren();
+    };
+  }, [xml]);
+
+  if (!xml) return null;
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-white/95 p-2 overflow-x-auto">
+      <div ref={containerRef} className="min-w-[560px]" aria-label="Rendered score notation" />
+      {status === "loading" && (
+        <p className="px-2 py-1 text-[11px] text-zinc-500">Loading notation…</p>
+      )}
+      {status === "error" && (
+        <p className="px-2 py-1 text-[11px] text-amber-700">
+          Notation preview is unavailable; use the measure guidance below.
+        </p>
+      )}
+    </div>
+  );
+};
 
 const YouTubeIcon: React.FC<{ className?: string }> = ({ className = "w-3.5 h-3.5" }) => (
   <svg
@@ -70,6 +235,10 @@ export interface LeadSheetReaderProps {
   accordionSize?: AccordionSize;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
+  scorePerformanceIndex?: number;
+  scoreIsPlaying?: boolean;
+  onScoreNextMeasure?: () => void;
+  onScorePreviousMeasure?: () => void;
   className?: string;
 }
 
@@ -84,6 +253,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   fontSizeClass = "text-base",
   onSelectChord,
   selectedChord,
+  scorePerformanceIndex = 0,
+  scoreIsPlaying = false,
+  onScoreNextMeasure,
+  onScorePreviousMeasure,
   className = "",
 }) => {
   const defaultCapo = song.capoFret ?? song.capo ?? 0;
@@ -204,6 +377,36 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     );
     return annotateStradellaTransitions(withVoiceLeading);
   }, [song.lines, capo, song.originalKey, cbaGripMode, activeNoteSpelling]);
+
+  const scoreRoute = useMemo(
+    () => song.score ? expandPerformanceRoute(song.score) : null,
+    [song.score],
+  );
+  const scoreGuidanceBlocked = Boolean(
+    song.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
+  );
+  const scoreMeasures = useMemo(() => {
+    if (!song.score || !scoreRoute) return [];
+    return scoreRoute.measures.map((ref) => ({
+      ref,
+      measure: song.score!.measures.find((candidate) => candidate.id === ref.measureId),
+    })).filter((item): item is { ref: typeof scoreRoute.measures[number]; measure: ScoreMeasure } =>
+      Boolean(item.measure)
+    );
+  }, [scoreRoute, song.score]);
+  const [scoreView, setScoreView] = useState<"preview" | "learn" | "perform">("learn");
+
+  React.useEffect(() => {
+    setScoreView("learn");
+  }, [song.id]);
+
+  React.useEffect(() => {
+    if (!song.score || !scoreIsPlaying || typeof document === "undefined") return;
+    const card = document.querySelector(
+      `[data-score-performance-index="${scorePerformanceIndex}"]`,
+    );
+    card?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [scoreIsPlaying, scorePerformanceIndex, song.score]);
 
   // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
@@ -749,6 +952,127 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             ))}
           </div>
         </div>
+      )}
+
+      {song.score && scoreRoute && (
+        <section className="mb-5 space-y-3" aria-label="Score reader">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 sm:p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-black text-zinc-100">Score reader</h2>
+                <p className="text-[11px] text-zinc-400">
+                  {song.score.measures.length} written measures · {scoreRoute.measures.length}{" "}
+                  in performance order
+                </p>
+              </div>
+              <div
+                className="flex items-center gap-1 rounded-xl bg-zinc-950 p-0.5 border border-zinc-800"
+                role="group"
+                aria-label="Score view"
+              >
+                {(["preview", "learn", "perform"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setScoreView(mode)}
+                    className={`min-h-[44px] px-2.5 rounded-lg text-xs font-bold capitalize transition-colors ${
+                      scoreView === mode
+                        ? "bg-blue-600 text-white"
+                        : "text-zinc-400 hover:text-zinc-100"
+                    }`}
+                    aria-pressed={scoreView === mode}
+                  >
+                    {mode[0].toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {scoreRoute.issues.length > 0 && (
+              <div className="rounded-xl border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
+                Navigation needs review: {scoreRoute.issues[0].message}
+              </div>
+            )}
+            {scoreGuidanceBlocked && (
+              <div className="rounded-xl border border-rose-700/60 bg-rose-950/30 px-3 py-2 text-[11px] text-rose-200">
+                This score is source-only because recognition contains blocking issues. Generated
+                melody and accordion guidance is hidden until the source is corrected.
+              </div>
+            )}
+            {scoreView !== "preview" && (
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={onScorePreviousMeasure}
+                  disabled={!onScorePreviousMeasure || scorePerformanceIndex <= 0}
+                  className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
+                  aria-label="Previous measure"
+                >
+                  ← Previous
+                </button>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  {scorePerformanceIndex + 1} / {scoreRoute.measures.length}
+                  {scoreIsPlaying ? " · playing" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={onScoreNextMeasure}
+                  disabled={!onScoreNextMeasure ||
+                    scorePerformanceIndex >= scoreRoute.measures.length - 1}
+                  className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
+                  aria-label="Next measure"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
+
+          {song.score.source.kind === "musicxml" && (
+            <ScoreNotation xml={song.score.source.sanitizedXml} />
+          )}
+
+          {!scoreGuidanceBlocked && scoreView === "preview" && (
+            <div className="space-y-2">
+              {song.score.measures.map((measure) => (
+                <ScoreMeasureCard
+                  key={measure.id}
+                  measure={measure}
+                  viewMode={viewMode}
+                  noteSpelling={activeNoteSpelling}
+                  cbaDisplayMode={cbaDisplayMode}
+                  stradellaDisplayMode={stradellaDisplayMode}
+                  onSelectChord={onSelectChord}
+                  selectedChord={selectedChord}
+                />
+              ))}
+            </div>
+          )}
+
+          {!scoreGuidanceBlocked && scoreView !== "preview" && scoreMeasures.length > 0 && (
+            <div className="space-y-2">
+              {scoreMeasures
+                .slice(
+                  scoreView === "perform" ? scorePerformanceIndex : scorePerformanceIndex,
+                  scoreView === "perform" ? scorePerformanceIndex + 1 : scorePerformanceIndex + 2,
+                )
+                .map(({ ref, measure }) => (
+                  <ScoreMeasureCard
+                    key={`${ref.performanceIndex}-${measure.id}`}
+                    measure={measure}
+                    performanceIndex={ref.performanceIndex}
+                    visit={ref.visit}
+                    active={ref.performanceIndex === scorePerformanceIndex}
+                    viewMode={viewMode}
+                    noteSpelling={activeNoteSpelling}
+                    cbaDisplayMode={cbaDisplayMode}
+                    stradellaDisplayMode={stradellaDisplayMode}
+                    onSelectChord={onSelectChord}
+                    selectedChord={selectedChord}
+                  />
+                ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Lead Sheet Main Content */}
