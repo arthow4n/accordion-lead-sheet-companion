@@ -26,8 +26,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeScore(value: unknown): ScoreDocument | undefined {
   if (!isRecord(value) || value.schemaVersion !== 1 || !isRecord(value.source)) return undefined;
   const candidate = value as unknown as ScoreDocument;
-  const result = validateScoreDocument(candidate);
-  return result.valid ? candidate : undefined;
+  try {
+    const result = validateScoreDocument(candidate);
+    return result.valid ? candidate : undefined;
+  } catch {
+    // Imported JSON is untrusted; malformed nested values must be quarantined, not crash reads.
+    return undefined;
+  }
 }
 
 /** Normalize legacy and current song records without mutating the input. */

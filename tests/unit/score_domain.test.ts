@@ -10,6 +10,14 @@ import {
 } from "../../src/lib/score/transposition.ts";
 import { importSongbook, normalizeSongRecord } from "../../src/lib/storage/songbook.ts";
 import { enrichHarmonySequence } from "../../src/lib/score/harmony.ts";
+import { parseMusicXml } from "../../src/lib/score/musicxml.ts";
+import { parseMxl } from "../../src/lib/score/mxl.ts";
+import { zipSync } from "fflate";
+import { DOMParser as TestDomParser, XMLSerializer as TestXmlSerializer } from "@xmldom/xmldom";
+
+if (typeof globalThis.DOMParser === "undefined") {
+  Object.assign(globalThis, { DOMParser: TestDomParser, XMLSerializer: TestXmlSerializer });
+}
 
 const measure = (overrides: Partial<ScoreMeasure> = {}): ScoreMeasure => ({
   id: "m1",
@@ -156,4 +164,65 @@ Deno.test("timed harmony adapter reuses existing enrichment and stable offset or
   assertEquals(events[0].detail?.soundingChord.raw, "A/Db");
   assertEquals(events[1].detail?.soundingChord.raw, "D");
   assertEquals(events[2].issue, "invalid-chord");
+});
+
+Deno.test("MusicXML parser maps a monophonic treble score and preserves sanitized source", () => {
+  const xml = `<?xml version="1.0"?><score-partwise version="4.0">
+    <work><work-title>Example</work-title></work>
+    <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions><key><fifths>0</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <direction><sound tempo="120"/></direction>
+      <harmony><root><root-step>C</root-step></root><kind>major</kind></harmony>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><rest/><duration>3</duration><type>half</type></note>
+    </measure></part>
+  </score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues, []);
+  assertEquals(result.document?.title, "Example");
+  assertEquals(result.document?.measures[0].melody[0].pitch, { step: "G", alter: 0, octave: 4 });
+  assertEquals(result.document?.measures[0].melody[1].rest, true);
+  assertEquals(result.document?.measures[0].harmonies[0].raw, "C");
+  assertEquals(result.document?.tempoMap, [{ offset: rational(0), bpm: 120, source: "explicit" }]);
+  assertEquals(result.document?.source.kind, "musicxml");
+  assertEquals(
+    result.document?.source.kind === "musicxml" && result.document.source.sanitizedXml.length > 0,
+    true,
+  );
+});
+
+Deno.test("MusicXML parser rejects external entities, polyphony, and non-treble input", () => {
+  const external = parseMusicXml(
+    "<!DOCTYPE score [<!ENTITY x SYSTEM 'file:///tmp/x'>]><score-partwise/>",
+  );
+  assertEquals(external.issues[0].code, "xml_external_entity");
+  const polyphonic = parseMusicXml(
+    `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+    <attributes><clef><sign>F</sign></clef></attributes><note><pitch><step>C</step><octave>3</octave></pitch><duration>1</duration><voice>1</voice></note>
+    <note><pitch><step>E</step><octave>3</octave></pitch><duration>1</duration><voice>2</voice></note>
+  </measure></part></score-partwise>`,
+  );
+  assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_polyphony"), true);
+  assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_clef"), true);
+});
+
+Deno.test("MXL parser resolves the container root and enforces entry safety", () => {
+  const scoreXml =
+    `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+    <attributes><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note>
+  </measure></part></score-partwise>`;
+  const containerXml =
+    `<container><rootfiles><rootfile full-path="scores/main.musicxml"/></rootfiles></container>`;
+  const archive = zipSync({
+    "META-INF/container.xml": new TextEncoder().encode(containerXml),
+    "scores/main.musicxml": new TextEncoder().encode(scoreXml),
+  });
+  const result = parseMxl(archive);
+  assertEquals(result.issues, []);
+  assertEquals(result.document?.measures.length, 1);
+
+  const unsafe = parseMxl(zipSync({ "../main.musicxml": new TextEncoder().encode(scoreXml) }));
+  assertEquals(unsafe.issues[0].code, "mxl_unsafe_path");
 });

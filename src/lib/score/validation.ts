@@ -28,8 +28,20 @@ function isFiniteBox(box: ImageBox | undefined): boolean {
     box.height >= 0;
 }
 
+function isValidSource(source: ScoreDocument["source"]): boolean {
+  if (!source || typeof source !== "object") return false;
+  if (source.kind === "musicxml") return typeof source.sanitizedXml === "string";
+  return source.kind === "photo" &&
+    (source.persistence === "ephemeral" || source.persistence === "opted_in") &&
+    (source.assetId === undefined || typeof source.assetId === "string");
+}
+
 function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   const issues: ScoreIssue[] = [];
+  if (!Array.isArray(measure.melody)) {
+    issues.push(issue("invalid_melody", "Measure melody must be an array.", measure.id));
+    return issues;
+  }
   if (measure.melody.length > MAX_EVENTS_PER_MEASURE) {
     issues.push(issue("event_limit", "Measure contains too many melody events.", measure.id));
   }
@@ -37,7 +49,7 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   for (const event of measure.melody) {
     if (
       compareRational(event.offset, RATIONAL_ZERO) < 0 ||
-      compareRational(event.duration, RATIONAL_ZERO) <= 0
+      (!event.grace && compareRational(event.duration, RATIONAL_ZERO) <= 0)
     ) {
       issues.push(
         issue(
@@ -102,6 +114,10 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
   if (!isFiniteBox(measure.sourceBox)) {
     issues.push(issue("invalid_source_box", "Measure source geometry is invalid.", measure.id));
   }
+  if (!Array.isArray(measure.harmonies)) {
+    issues.push(issue("invalid_harmony_list", "Measure harmonies must be an array.", measure.id));
+    return issues;
+  }
   for (const harmony of measure.harmonies) {
     if (!harmony.id || !harmony.raw.trim() || compareRational(harmony.offset, RATIONAL_ZERO) < 0) {
       issues.push(
@@ -122,22 +138,34 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
 /** Validate a score without mutating it. */
 export function validateScoreDocument(document: ScoreDocument): ScoreValidationResult {
   const issues: ScoreIssue[] = [];
+  if (!document || typeof document !== "object") {
+    return {
+      valid: false,
+      issues: [issue("invalid_score", "Score document has an invalid shape.")],
+    };
+  }
   if (document.schemaVersion !== 1) {
     issues.push(issue("unsupported_schema", "Score schema version is not supported."));
   }
-  if (document.source.kind === "musicxml" && !document.source.sanitizedXml.trim()) {
-    issues.push(issue("missing_source", "MusicXML source is empty."));
+  if (!isValidSource(document.source)) {
+    issues.push(issue("invalid_source", "Score source has an invalid shape."));
+  } else {
+    if (document.source.kind === "musicxml" && !document.source.sanitizedXml.trim()) {
+      issues.push(issue("missing_source", "MusicXML source is empty."));
+    }
+    if (
+      document.source.kind === "photo" && document.source.persistence === "opted_in" &&
+      !document.source.assetId
+    ) {
+      issues.push(issue("missing_source_asset", "Opted-in photo source has no asset ID."));
+    }
   }
-  if (
-    document.source.kind === "photo" && document.source.persistence === "opted_in" &&
-    !document.source.assetId
-  ) {
-    issues.push(issue("missing_source_asset", "Opted-in photo source has no asset ID."));
-  }
-  if (!Number.isInteger(document.tempoMap.length) || document.tempoMap.length > 1024) {
+  if (!Array.isArray(document.tempoMap)) {
+    issues.push(issue("invalid_tempo_map", "Score tempo map must be an array."));
+  } else if (document.tempoMap.length > 1024) {
     issues.push(issue("tempo_limit", "Score tempo map exceeds the supported limit."));
   }
-  for (const tempo of document.tempoMap) {
+  for (const tempo of Array.isArray(document.tempoMap) ? document.tempoMap : []) {
     if (
       !Number.isFinite(tempo.bpm) || tempo.bpm <= 0 ||
       compareRational(tempo.offset, RATIONAL_ZERO) < 0
@@ -147,13 +175,15 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
       );
     }
   }
-  if (document.measures.length === 0) {
+  if (!Array.isArray(document.measures)) {
+    issues.push(issue("invalid_measures", "Score measures must be an array."));
+  } else if (document.measures.length === 0) {
     issues.push(issue("empty_score", "Score contains no measures."));
   } else if (document.measures.length > MAX_MEASURES) {
     issues.push(issue("measure_limit", "Score contains too many measures."));
   }
   const ids = new Set<string>();
-  document.measures.forEach((measure) => {
+  for (const measure of Array.isArray(document.measures) ? document.measures : []) {
     if (ids.has(measure.id)) {
       issues.push(
         issue("duplicate_measure_id", `Measure ID ${measure.id} is duplicated.`, measure.id),
@@ -161,7 +191,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     }
     ids.add(measure.id);
     issues.push(...validateMeasure(measure));
-  });
+  }
   return { valid: issues.every((candidate) => candidate.severity !== "error"), issues };
 }
 

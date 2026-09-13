@@ -169,5 +169,8 @@ export {
 export * from "./score/rational.ts";
 export * from "./score/navigation.ts";
 export * from "./score/harmony.ts";
+export * from "./score/musicxml.ts";
+export * from "./score/mxl.ts";
+export * from "./score/osmd.ts";
 export * from "./score/transposition.ts";
 export * from "./score/validation.ts";
