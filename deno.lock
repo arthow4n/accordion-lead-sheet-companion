@@ -12,6 +12,7 @@
     "npm:@types/react-dom@19": "19.2.4_@types+react@19.2.18",
     "npm:@types/react@19": "19.2.18",
     "npm:@vitejs/plugin-react@^4.3.4": "4.7.0_vite@6.4.3",
+    "npm:@xmldom/xmldom@*": "0.9.12",
     "npm:@xmldom/xmldom@0.9.12": "0.9.12",
     "npm:clsx@^2.1.1": "2.1.1",
     "npm:fflate@0.8.3": "0.8.3",

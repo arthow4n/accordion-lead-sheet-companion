@@ -117,6 +117,36 @@ Deno.test("score validation rejects malformed nested metadata and bounded collec
   assertEquals(result.issues.some((item) => item.code === "invalid_section_reference"), true);
 });
 
+Deno.test("score validation rejects duplicate and out-of-measure event timing", () => {
+  const result = validateScoreDocument(score({
+    measures: [
+      measure({
+        id: "m1",
+        writtenIndex: 0,
+        time: { beats: 4, beatType: 4 },
+        melody: [{
+          id: "duplicate",
+          offset: rational(9),
+          duration: rational(1),
+          rest: true,
+        }],
+        harmonies: [{ id: "duplicate", offset: rational(9), raw: "C" }],
+      }),
+      measure({
+        id: "m2",
+        writtenIndex: 1,
+        time: { beats: 4, beatType: 4 },
+        melody: [],
+      }),
+    ],
+  }));
+  assertEquals(result.valid, false);
+  assertEquals(result.issues.some((item) => item.code === "duplicate_event_id"), true);
+  assertEquals(result.issues.some((item) => item.code === "event_out_of_measure"), true);
+  assertEquals(result.issues.some((item) => item.code === "harmony_out_of_measure"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_measure_duration"), true);
+});
+
 Deno.test("event containment uses exact rational boundaries", () => {
   const event: MelodyEvent = {
     id: "n1",
@@ -366,6 +396,44 @@ Deno.test("MusicXML parser marks nested tuplets, duplicate navigation targets, a
     route?.measures.map((ref) => ref.measureId),
     ["m1", "m2", "m3", "m1", "m4", "m5"],
   );
+});
+
+Deno.test("MusicXML parser rejects malformed notes and preserves explicit volta navigation", () => {
+  const malformedXml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign></clef></attributes>
+      <note><pitch><step>H</step><alter>9</alter><octave>X</octave></pitch><duration>0</duration></note>
+    </measure>
+  </part></score-partwise>`;
+  const malformed = parseMusicXml(malformedXml);
+  assertEquals(malformed.issues.some((item) => item.code === "invalid_pitch"), true);
+  assertEquals(malformed.issues.some((item) => item.code === "invalid_event_duration"), true);
+
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign></clef></attributes>
+      <barline location="left"><repeat direction="forward"/></barline>
+      <note><rest/><duration>4</duration></note>
+    </measure>
+    <measure number="2"><barline location="right"><ending number="1" type="start"/></barline><note><rest/><duration>4</duration></note></measure>
+    <measure number="3"><barline location="right"><ending number="1" type="stop"/><repeat direction="backward"/></barline><note><rest/><duration>4</duration></note></measure>
+    <measure number="4"><barline location="right"><ending number="2" type="start"/></barline><note><rest/><duration>4</duration></note></measure>
+    <measure number="5"><barline location="right"><ending number="2" type="discontinue"/></barline><direction><direction-type><coda id="A"/><octave-shift type="up" size="8"/></direction-type></direction><note><rest/><duration>4</duration></note></measure>
+  </part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(
+    result.issues.some((item) => item.code === "unsupported_instrument_transposition"),
+    true,
+  );
+  assertEquals(
+    result.document?.measures[2].navigation.filter((mark) => mark.kind === "ending").length,
+    1,
+  );
+  assertEquals(
+    result.document?.measures[2].navigation.some((mark) => mark.kind === "ending-stop"),
+    true,
+  );
+  assertEquals(result.document?.measures[4].navigation.some((mark) => mark.kind === "coda"), true);
+  const route = result.document ? expandPerformanceRoute(result.document) : undefined;
+  assertEquals(route?.measures.map((ref) => ref.measureId), ["m1", "m2", "m3", "m1", "m4", "m5"]);
 });
 
 Deno.test("score harmony adapter applies transposition and selected CBA profile", () => {

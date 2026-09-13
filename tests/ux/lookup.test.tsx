@@ -114,6 +114,7 @@ Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () =
   assertStringIncludes(html, "Generated melody and accordion guidance is hidden");
   assertEquals(html.includes("in performance order"), false);
   assertEquals(html.includes("Previous measure"), false);
+  assertEquals(html.includes("Key unknown"), false);
 });
 
 Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {

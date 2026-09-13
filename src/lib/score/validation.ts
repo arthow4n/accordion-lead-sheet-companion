@@ -57,7 +57,8 @@ function isValidTime(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const time = value as Record<string, unknown>;
   return Number.isSafeInteger(time.beats) && Number(time.beats) > 0 &&
-    Number.isSafeInteger(time.beatType) && Number(time.beatType) > 0;
+    Number.isSafeInteger(time.beatType) && Number(time.beatType) > 0 &&
+    Number.isSafeInteger(Number(time.beats) * 4);
 }
 
 function isOptionalConfidence(value: unknown): boolean {
@@ -216,6 +217,50 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
 
 function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
   const issues = [...validateMelody(measure)];
+  const measureLength = measure.time && isValidTime(measure.time)
+    ? rational(measure.time.beats * 4, measure.time.beatType)
+    : undefined;
+  const eventIds = new Set<string>();
+  let latestTimedEnd = RATIONAL_ZERO;
+  const registerEventId = (id: unknown, source: ImageBox | undefined) => {
+    if (typeof id !== "string" || !id.trim()) return;
+    if (eventIds.has(id)) {
+      issues.push(
+        issue(
+          "duplicate_event_id",
+          `Event ID ${id} is duplicated.`,
+          measure.id,
+          true,
+          "error",
+          source,
+        ),
+      );
+    }
+    eventIds.add(id);
+  };
+  for (const event of Array.isArray(measure.melody) ? measure.melody : []) {
+    if (!event || typeof event !== "object") continue;
+    registerEventId(event.id, event.sourceBox);
+    if (!isRational(event.offset) || !isRational(event.duration)) continue;
+    const end = rational(
+      event.offset.numerator * event.duration.denominator +
+        event.duration.numerator * event.offset.denominator,
+      event.offset.denominator * event.duration.denominator,
+    );
+    if (compareRational(end, latestTimedEnd) > 0) latestTimedEnd = end;
+    if (measureLength && !isEventInsideMeasure(event, measureLength)) {
+      issues.push(
+        issue(
+          "event_out_of_measure",
+          `Melody event ${event.id} falls outside its measure time signature.`,
+          measure.id,
+          true,
+          "error",
+          event.sourceBox,
+        ),
+      );
+    }
+  }
   if (
     typeof measure.id !== "string" || !measure.id.trim() || measure.writtenIndex < 0 ||
     !Number.isSafeInteger(measure.writtenIndex) ||
@@ -275,6 +320,33 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
       ? harmony.id
       : "(unknown)";
     const sourceBox = harmony && typeof harmony === "object" ? harmony.sourceBox : undefined;
+    if (harmony && typeof harmony === "object") registerEventId(harmony.id, sourceBox);
+    if (harmony && typeof harmony === "object" && isRational(harmony.offset)) {
+      const end = harmony.duration && isRational(harmony.duration)
+        ? rational(
+          harmony.offset.numerator * harmony.duration.denominator +
+            harmony.duration.numerator * harmony.offset.denominator,
+          harmony.offset.denominator * harmony.duration.denominator,
+        )
+        : harmony.offset;
+      if (compareRational(end, latestTimedEnd) > 0) latestTimedEnd = end;
+      if (
+        measureLength &&
+        (compareRational(harmony.offset, RATIONAL_ZERO) < 0 ||
+          compareRational(end, measureLength) > 0)
+      ) {
+        issues.push(
+          issue(
+            "harmony_out_of_measure",
+            `Harmony event ${harmonyId} falls outside its measure time signature.`,
+            measure.id,
+            true,
+            "error",
+            sourceBox,
+          ),
+        );
+      }
+    }
     if (
       !harmony || typeof harmony !== "object" || typeof harmony.id !== "string" ||
       !harmony.id.trim() ||
@@ -295,6 +367,18 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
         ),
       );
     }
+  }
+  if (
+    measureLength && measure.writtenIndex > 0 &&
+    compareRational(latestTimedEnd, measureLength) !== 0
+  ) {
+    issues.push(
+      issue(
+        "invalid_measure_duration",
+        `Measure events end at ${latestTimedEnd.numerator}/${latestTimedEnd.denominator}, not at the expected measure boundary.`,
+        measure.id,
+      ),
+    );
   }
   return issues;
 }

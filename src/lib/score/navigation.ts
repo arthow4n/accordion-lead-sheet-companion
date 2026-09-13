@@ -53,6 +53,7 @@ export function expandPerformanceRoute(
   let index = 0;
   let truncated = false;
   let jumped = false;
+  let pendingEndingPassStart: number | undefined;
   while (index >= 0 && index < measures.length) {
     if (output.length >= maxSteps) {
       issues.push(
@@ -62,6 +63,11 @@ export function expandPerformanceRoute(
       break;
     }
     const measure = measures[index];
+    const endings = measure.navigation.filter((mark) => mark.kind === "ending");
+    if (pendingEndingPassStart !== undefined && endings.length === 0) {
+      repeatPasses.delete(pendingEndingPassStart);
+      pendingEndingPassStart = undefined;
+    }
     const start = [...repeatStarts.entries()].filter(([candidate]) =>
       candidate <= index
     ).pop()?.[0] ?? 0;
@@ -76,7 +82,6 @@ export function expandPerformanceRoute(
     }
     seenStates.add(state);
 
-    const endings = measure.navigation.filter((mark) => mark.kind === "ending");
     if (
       endings.length > 0 &&
       endings.every((mark) => mark.kind === "ending" && !mark.numbers.includes(pass))
@@ -92,7 +97,7 @@ export function expandPerformanceRoute(
           index = repeatStart;
           continue;
         }
-        repeatPasses.delete(repeatStart);
+        pendingEndingPassStart = repeatStart;
       }
       index += 1;
       continue;
@@ -121,7 +126,12 @@ export function expandPerformanceRoute(
         index = repeatStart;
         continue;
       }
-      repeatPasses.delete(repeatStart);
+      if (measure.navigation.some((mark) => mark.kind === "ending")) {
+        // Keep the exhausted pass alive while a following measure continues the final volta.
+        pendingEndingPassStart = repeatStart;
+      } else {
+        repeatPasses.delete(repeatStart);
+      }
     }
 
     let jumpIndex: number | undefined;

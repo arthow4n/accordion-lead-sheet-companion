@@ -21,6 +21,8 @@ export interface HarmonySequenceOptions {
   noteSpelling?: NoteSpelling;
   cbaMode?: CbaGripMode;
   accordionSize?: AccordionSize;
+  /** Carry CBA voice-leading state across measure-sized batches. */
+  initialCbaGrip?: CbaGrip;
 }
 
 export interface EnrichedHarmonyEvent extends HarmonyEvent {
@@ -52,7 +54,7 @@ export function enrichHarmonySequence(
   options: HarmonySequenceOptions = {},
 ): EnrichedHarmonyEvent[] {
   const transposition = options.transpositionSemitones || 0;
-  let previousGrip: CbaGrip | undefined;
+  let previousGrip: CbaGrip | undefined = options.initialCbaGrip;
   return events
     .map((event, index) => ({ event, index }))
     .sort((a, b) =>

@@ -161,6 +161,15 @@ export function useScorePlayback(document?: ScoreDocument): ScorePlaybackReturn 
         } else {
           deltaSeconds -= remaining * 60 / Math.max(1, tempo.bpm * speedRef.current);
           offsetRef.current = 0;
+          if (measure.manualHold) {
+            // A fermata/manual hold is an explicit human-controlled stop at the measure boundary.
+            // Keep the cursor on that measure so the player does not silently advance past it.
+            stop();
+            indexRef.current = index;
+            offsetRef.current = lengths[index];
+            deltaSeconds = 0;
+            break;
+          }
           indexRef.current += 1;
           if (indexRef.current >= lengths.length) {
             stop();

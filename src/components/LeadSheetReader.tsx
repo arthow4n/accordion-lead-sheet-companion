@@ -14,6 +14,7 @@ import {
 import type {
   AccordionSize,
   CbaDisplayMode,
+  CbaGrip,
   CbaGripMode,
   ChordDetail,
   LeadSheetLine,
@@ -56,7 +57,7 @@ import {
 import { expandPerformanceRoute } from "../lib/score/navigation.ts";
 import { rationalToNumber } from "../lib/score/rational.ts";
 import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
-import { transposeSpelledPitch } from "../lib/score/transposition.ts";
+import { spelledPitchToMidi, transposeSpelledPitch } from "../lib/score/transposition.ts";
 import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
 
 function scorePitchLabel(
@@ -86,7 +87,7 @@ function scorePitchLabel(
   const names = spelling === "flats"
     ? ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
     : ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const absoluteMidi = (derivedPitch.octave + 1) * 12 + pitchClass;
+  const absoluteMidi = spelledPitchToMidi(derivedPitch);
   const octave = Math.floor(absoluteMidi / 12) - 1;
   return `${names[pitchClass]}${octave}`;
 }
@@ -140,6 +141,7 @@ interface ScoreMeasureCardProps {
   performanceIndex?: number;
   visit?: number;
   active?: boolean;
+  isNext?: boolean;
   viewMode: ViewMode;
   noteSpelling: NoteSpelling;
   cbaDisplayMode: CbaDisplayMode;
@@ -157,6 +159,7 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
   performanceIndex,
   visit,
   active = false,
+  isNext = false,
   viewMode,
   noteSpelling,
   cbaDisplayMode,
@@ -187,7 +190,7 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-black text-zinc-100">
-            Measure {measure.printedNumber ?? measure.writtenIndex + 1}
+            {isNext ? "Next · " : ""}Measure {measure.printedNumber ?? measure.writtenIndex + 1}
           </span>
           {visit && visit > 1 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-700/60">
@@ -499,18 +502,21 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     const map = new Map<number, EnrichedHarmonyEvent[]>();
     if (scoreGuidanceBlocked || !scoreMeasures.length) return map;
     let previousColumn: number | undefined;
+    let previousCbaGrip: CbaGrip | undefined;
     for (const { ref, measure } of scoreMeasures) {
       const enriched = enrichHarmonySequence(measure.harmonies, {
         noteSpelling: activeNoteSpelling,
         transpositionSemitones: scoreTranspositionSemitones,
         cbaMode: cbaGripMode,
         accordionSize,
+        initialCbaGrip: previousCbaGrip,
       });
       const annotated = annotateHarmonyTransitions(enriched, previousColumn);
       map.set(ref.performanceIndex, annotated);
       const last = annotated.at(-1);
       const lastColumn = getStradellaMovementColumn(last?.detail);
       if (lastColumn !== undefined) previousColumn = lastColumn;
+      if (last?.detail?.cba) previousCbaGrip = last.detail.cba;
     }
     return map;
   }, [
@@ -1093,21 +1099,27 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     ? " · source-only preview"
                     : ` · ${scoreRoute?.measures.length ?? 0} in performance order`}
                 </p>
-                <p className="text-[11px] text-zinc-500">
-                  {scoreKeyLabel(song.score.key, activeNoteSpelling, scoreTranspositionSemitones)
-                    ? `Key ${
-                      scoreKeyLabel(song.score.key, activeNoteSpelling, scoreTranspositionSemitones)
-                    }`
-                    : "Key unknown"}
-                  {song.score.time
-                    ? ` · Meter ${song.score.time.beats}/${song.score.time.beatType}`
-                    : ""}
-                  {scoreTranspositionSemitones !== 0
-                    ? ` · ${
-                      scoreTranspositionSemitones > 0 ? "+" : ""
-                    }${scoreTranspositionSemitones} semitones`
-                    : ""}
-                </p>
+                {!scoreGuidanceBlocked && (
+                  <p className="text-[11px] text-zinc-500">
+                    {scoreKeyLabel(song.score.key, activeNoteSpelling, scoreTranspositionSemitones)
+                      ? `Key ${
+                        scoreKeyLabel(
+                          song.score.key,
+                          activeNoteSpelling,
+                          scoreTranspositionSemitones,
+                        )
+                      }`
+                      : "Key unknown"}
+                    {song.score.time
+                      ? ` · Meter ${song.score.time.beats}/${song.score.time.beatType}`
+                      : ""}
+                    {scoreTranspositionSemitones !== 0
+                      ? ` · ${
+                        scoreTranspositionSemitones > 0 ? "+" : ""
+                      }${scoreTranspositionSemitones} semitones`
+                      : ""}
+                  </p>
+                )}
               </div>
               <div
                 className="flex items-center gap-1 rounded-xl bg-zinc-950 p-0.5 border border-zinc-800"
@@ -1204,16 +1216,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
           {!scoreGuidanceBlocked && scoreView !== "preview" && scoreMeasures.length > 0 && (
             <div className="space-y-2">
               {scoreMeasures
-                .slice(
-                  scoreView === "perform" ? scorePerformanceIndex : scorePerformanceIndex,
-                  scoreView === "perform" ? scorePerformanceIndex + 1 : scorePerformanceIndex + 2,
-                )
+                .slice(scorePerformanceIndex, scorePerformanceIndex + 2)
                 .map(({ ref, measure }) => (
                   <ScoreMeasureCard
                     key={`${ref.performanceIndex}-${measure.id}`}
                     measure={measure}
                     performanceIndex={ref.performanceIndex}
                     visit={ref.visit}
+                    isNext={scoreView === "perform" && ref.performanceIndex > scorePerformanceIndex}
                     active={ref.performanceIndex === scorePerformanceIndex}
                     viewMode={viewMode}
                     noteSpelling={activeNoteSpelling}

@@ -64,6 +64,10 @@ function intText(element: Element | undefined, fallback = 0): number {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function isIntegerText(element: Element | undefined): boolean {
+  return /^[-+]?\d+$/.test(text(element));
+}
+
 function xmlIssueFromParser(doc: Document): ScoreIssue | undefined {
   const parserError = doc.getElementsByTagName("parsererror")[0];
   return parserError
@@ -208,12 +212,12 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
       const times = Number.parseInt(repeat.getAttribute("times") || "2", 10);
       marks.push({ kind: "repeat-end", repeatCount: Number.isFinite(times) ? times : 2 });
     }
-    const ending = child(barline, "ending");
-    if (ending) {
+    for (const ending of children(barline, "ending")) {
       const numbers = (ending.getAttribute("number") || "").split(/[ ,]+/).map(Number).filter(
         Number.isInteger,
       );
-      if (ending.getAttribute("type") === "stop") {
+      const endingType = ending.getAttribute("type");
+      if (endingType === "stop" || endingType === "discontinue") {
         if (numbers.length) marks.push({ kind: "ending", numbers });
         marks.push({ kind: "ending-stop" });
       } else if (numbers.length) marks.push({ kind: "ending", numbers });
@@ -235,6 +239,9 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
     const directionType = child(direction, "direction-type");
     for (const segno of directionType ? children(directionType, "segno") : []) {
       marks.push({ kind: "segno", id: segno.getAttribute("id") || undefined });
+    }
+    for (const coda of directionType ? children(directionType, "coda") : []) {
+      marks.push({ kind: "coda", id: coda.getAttribute("id") || undefined });
     }
     const words = child(child(direction, "direction-type") || direction, "words");
     const value = text(words);
@@ -431,10 +438,13 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     let eventLimitReported = false;
     for (const element of elementChildren(measureElement)) {
       if (element.localName === "forward") {
-        const forwardDuration = intText(child(element, "duration"));
-        if (forwardDuration < 0) {
-          issues.push(issue("invalid_forward", "Forward duration must not be negative."));
-        } else if (forwardDuration > 0 && eventCount < MUSICXML_MAX_EVENTS_PER_MEASURE) {
+        const durationElement = child(element, "duration");
+        const forwardDuration = intText(durationElement);
+        if (!isIntegerText(durationElement) || forwardDuration <= 0) {
+          issues.push(
+            measureIssue("invalid_forward", "Forward duration must be a positive integer.", id),
+          );
+        } else if (eventCount < MUSICXML_MAX_EVENTS_PER_MEASURE) {
           eventCount += 1;
           melody.push({
             id: `${id}-r${noteCounter++}`,
@@ -443,7 +453,7 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
             rest: true,
           });
           offsetDivisions += forwardDuration;
-        } else if (forwardDuration > 0 && !eventLimitReported) {
+        } else if (!eventLimitReported) {
           eventLimitReported = true;
           issues.push(measureIssue("event_limit", "Measure contains too many timed events.", id));
         }
@@ -502,12 +512,60 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         }
         if (child(element, "chord")) {
           issues.push(
-            issue("unsupported_polyphony", "Chord notes indicate multiple voices.", "error", true),
+            measureIssue(
+              "unsupported_polyphony",
+              "Chord notes indicate multiple voices.",
+              id,
+            ),
           );
         }
         const voice = text(child(element, "voice"));
         if (voice) voices.add(voice);
-        const event = parseNote(element, divisions, offsetDivisions, id, noteCounter++);
+        const eventIndex = noteCounter++;
+        const pitchElement = child(element, "pitch");
+        if (pitchElement) {
+          const stepElement = child(pitchElement, "step");
+          const alterElement = child(pitchElement, "alter");
+          const octaveElement = child(pitchElement, "octave");
+          const step = text(stepElement);
+          const alter = intText(alterElement);
+          const octave = intText(octaveElement);
+          if (
+            !["A", "B", "C", "D", "E", "F", "G"].includes(step) ||
+            (alterElement !== undefined &&
+              (!isIntegerText(alterElement) || alter < -2 || alter > 2)) ||
+            !isIntegerText(octaveElement) || !Number.isSafeInteger(octave)
+          ) {
+            issues.push(
+              measureIssue(
+                "invalid_pitch",
+                "MusicXML pitched note has an invalid step, alteration, or octave.",
+                id,
+              ),
+            );
+          }
+        }
+        const grace = child(element, "grace") !== undefined;
+        const durationElement = child(element, "duration");
+        if (!grace && (!isIntegerText(durationElement) || intText(durationElement) <= 0)) {
+          issues.push(
+            measureIssue(
+              "invalid_event_duration",
+              "MusicXML note duration must be a positive integer.",
+              id,
+            ),
+          );
+        }
+        if (child(element, "rest") && pitchElement) {
+          issues.push(
+            measureIssue(
+              "invalid_note_shape",
+              "A MusicXML note cannot contain both rest and pitch.",
+              id,
+            ),
+          );
+        }
+        const event = parseNote(element, divisions, offsetDivisions, id, eventIndex);
         if (!event.rest && !child(element, "pitch")) {
           issues.push(
             measureIssue(
@@ -568,9 +626,10 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           }
         }
         if (child(child(element, "direction-type") || element, "octave-shift")) {
-          issues.push(
-            issue("unsupported_octave_shift", "Octave-shift directions are not supported."),
-          );
+          issues.push(issue(
+            "unsupported_instrument_transposition",
+            "Octave-shift directions are not supported.",
+          ));
         }
         const directionType = child(element, "direction-type");
         for (const construct of ["dynamics", "words", "wedge", "metronome"]) {
