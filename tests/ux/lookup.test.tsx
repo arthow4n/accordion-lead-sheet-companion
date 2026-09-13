@@ -41,13 +41,22 @@ Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guida
         updatedAt: 1,
         score: {
           schemaVersion: 1,
+          key: { fifths: 0, mode: "major" },
+          time: { beats: 4, beatType: 4 },
+          transpositionSemitones: 2,
           source: { kind: "musicxml", sanitizedXml: "<score-partwise/>" },
           tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }],
           sections: [],
           measures: [{
             id: "m1",
             writtenIndex: 0,
-            melody: [],
+            melody: [{
+              id: "n1",
+              offset: rational(0),
+              duration: rational(1, 4),
+              pitch: { step: "C", alter: 0, octave: 4 },
+              rest: false,
+            }],
             harmonies: [{ id: "h1", offset: rational(0), raw: "C" }],
             navigation: [],
           }],
@@ -63,6 +72,8 @@ Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guida
   assertStringIncludes(html, "Preview");
   assertStringIncludes(html, "Learn");
   assertStringIncludes(html, "Perform");
+  assertStringIncludes(html, "Key D");
+  assertStringIncludes(html, "D4");
 });
 
 Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () => {

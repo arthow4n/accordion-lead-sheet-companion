@@ -11,6 +11,10 @@ import { compareRational, rational, RATIONAL_ZERO } from "./rational.ts";
 
 const MAX_MEASURES = 20_000;
 const MAX_EVENTS_PER_MEASURE = 10_000;
+const MAX_HARMONIES_PER_MEASURE = 1_024;
+const MAX_NAVIGATION_PER_MEASURE = 256;
+const MAX_SECTIONS = 1_024;
+const MAX_ISSUES = 4_096;
 
 function issue(
   code: string,
@@ -24,16 +28,41 @@ function issue(
 }
 
 function isFiniteBox(box: ImageBox | undefined): boolean {
-  if (!box) return true;
+  if (box === undefined) return true;
+  if (!box || typeof box !== "object") return false;
   return [box.x, box.y, box.width, box.height].every(Number.isFinite) && box.width >= 0 &&
-    box.height >= 0;
+    box.height >= 0 &&
+    (box.sourceWidth === undefined || (Number.isFinite(box.sourceWidth) && box.sourceWidth >= 0)) &&
+    (box.sourceHeight === undefined ||
+      (Number.isFinite(box.sourceHeight) && box.sourceHeight >= 0));
 }
 
 function isRational(value: unknown): value is { numerator: number; denominator: number } {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { numerator?: unknown; denominator?: unknown };
-  return Number.isSafeInteger(candidate.numerator) && Number.isSafeInteger(candidate.denominator) &&
-    candidate.denominator !== 0;
+  return typeof candidate.numerator === "number" && typeof candidate.denominator === "number" &&
+    Number.isSafeInteger(candidate.numerator) && Number.isSafeInteger(candidate.denominator) &&
+    candidate.denominator > 0;
+}
+
+function isValidKey(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const key = value as Record<string, unknown>;
+  return typeof key.fifths === "number" && Number.isSafeInteger(key.fifths) &&
+    key.fifths >= -12 && key.fifths <= 12 &&
+    (key.mode === "major" || key.mode === "minor");
+}
+
+function isValidTime(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const time = value as Record<string, unknown>;
+  return Number.isSafeInteger(time.beats) && Number(time.beats) > 0 &&
+    Number.isSafeInteger(time.beatType) && Number(time.beatType) > 0;
+}
+
+function isOptionalConfidence(value: unknown): boolean {
+  return value === undefined ||
+    (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1);
 }
 
 function isValidSource(source: ScoreDocument["source"]): boolean {
@@ -62,12 +91,14 @@ function isValidNavigationMark(value: unknown): value is NavigationMark {
       return mark.target === undefined || mark.target === "start" || mark.target === "coda";
     case "ds":
       return (mark.target === undefined || mark.target === "segno" || mark.target === "coda") &&
-        (mark.targetId === undefined || typeof mark.targetId === "string");
+        (mark.targetId === undefined ||
+          (typeof mark.targetId === "string" && mark.targetId.trim().length > 0));
     case "segno":
     case "coda":
-      return mark.id === undefined || typeof mark.id === "string";
+      return mark.id === undefined || (typeof mark.id === "string" && mark.id.trim().length > 0);
     case "to-coda":
-      return mark.targetId === undefined || typeof mark.targetId === "string";
+      return mark.targetId === undefined ||
+        (typeof mark.targetId === "string" && mark.targetId.trim().length > 0);
     case "text":
       return typeof mark.text === "string";
     default:
@@ -78,10 +109,13 @@ function isValidNavigationMark(value: unknown): value is NavigationMark {
 function isValidIssue(value: unknown): value is ScoreIssue {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Record<string, unknown>;
-  return typeof candidate.code === "string" && typeof candidate.message === "string" &&
+  return typeof candidate.code === "string" && candidate.code.trim().length > 0 &&
+    typeof candidate.message === "string" && candidate.message.trim().length > 0 &&
     (candidate.severity === "info" || candidate.severity === "warning" ||
       candidate.severity === "error") &&
     typeof candidate.blocksGuidance === "boolean" &&
+    (candidate.measureId === undefined ||
+      (typeof candidate.measureId === "string" && candidate.measureId.trim().length > 0)) &&
     isFiniteBox(candidate.sourceBox as ImageBox | undefined);
 }
 
@@ -103,6 +137,15 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
       issues.push(issue("invalid_event_shape", "Melody event has an invalid shape.", measure.id));
       continue;
     }
+    if (!event.id.trim() || (event.grace !== undefined && typeof event.grace !== "boolean")) {
+      issues.push(
+        issue(
+          "invalid_event_shape",
+          "Melody event has an invalid identity or grace flag.",
+          measure.id,
+        ),
+      );
+    }
     if (
       compareRational(event.offset, RATIONAL_ZERO) < 0 ||
       (!event.grace && compareRational(event.duration, RATIONAL_ZERO) <= 0)
@@ -123,7 +166,7 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
         issue("unsorted_events", "Melody events are not in chronological order.", measure.id),
       );
     }
-    if (!event.rest && !event.pitch) {
+    if ((!event.rest && !event.pitch) || (event.rest && event.pitch)) {
       issues.push(
         issue(
           "missing_pitch",
@@ -138,7 +181,8 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
     if (
       event.pitch &&
       (!["A", "B", "C", "D", "E", "F", "G"].includes(event.pitch.step) ||
-        event.pitch.alter < -2 || event.pitch.alter > 2 || !Number.isInteger(event.pitch.octave))
+        !Number.isInteger(event.pitch.alter) || event.pitch.alter < -2 || event.pitch.alter > 2 ||
+        !Number.isInteger(event.pitch.octave) || !Number.isSafeInteger(event.pitch.octave))
     ) {
       issues.push(
         issue(
@@ -151,6 +195,20 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
         ),
       );
     }
+    if (event.tie !== undefined && !["start", "continue", "stop"].includes(event.tie)) {
+      issues.push(
+        issue("invalid_tie", `Melody event ${event.id} has an invalid tie.`, measure.id),
+      );
+    }
+    if (!isOptionalConfidence(event.confidence) || !isFiniteBox(event.sourceBox)) {
+      issues.push(
+        issue(
+          "invalid_event_metadata",
+          `Melody event ${event.id} has invalid metadata.`,
+          measure.id,
+        ),
+      );
+    }
     previousOffset = event.offset;
   }
   return issues;
@@ -160,16 +218,27 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
   const issues = [...validateMelody(measure)];
   if (
     typeof measure.id !== "string" || !measure.id.trim() || measure.writtenIndex < 0 ||
-    !Number.isInteger(measure.writtenIndex)
+    !Number.isSafeInteger(measure.writtenIndex) ||
+    (measure.printedNumber !== undefined &&
+      (!Number.isSafeInteger(measure.printedNumber) || measure.printedNumber <= 0))
   ) {
     issues.push(issue("invalid_measure_identity", "Measure ID/index is invalid.", measure.id));
   }
   if (
-    measure.time &&
-    (!Number.isInteger(measure.time.beats) || measure.time.beats <= 0 ||
-      !Number.isInteger(measure.time.beatType) || measure.time.beatType <= 0)
+    measure.time !== undefined && !isValidTime(measure.time)
   ) {
     issues.push(issue("invalid_time_signature", "Measure time signature is invalid.", measure.id));
+  }
+  if (measure.key !== undefined && !isValidKey(measure.key)) {
+    issues.push(issue("invalid_key_signature", "Measure key signature is invalid.", measure.id));
+  }
+  if (
+    !isOptionalConfidence(measure.confidence) || !isFiniteBox(measure.sourceBox) ||
+    (measure.sourceAssetId !== undefined && typeof measure.sourceAssetId !== "string") ||
+    (measure.phraseId !== undefined && typeof measure.phraseId !== "string") ||
+    (measure.manualHold !== undefined && typeof measure.manualHold !== "boolean")
+  ) {
+    issues.push(issue("invalid_measure_metadata", "Measure metadata is invalid.", measure.id));
   }
   if (!isFiniteBox(measure.sourceBox)) {
     issues.push(issue("invalid_source_box", "Measure source geometry is invalid.", measure.id));
@@ -178,9 +247,17 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
     issues.push(issue("invalid_harmony_list", "Measure harmonies must be an array.", measure.id));
     return issues;
   }
+  if (measure.harmonies.length > MAX_HARMONIES_PER_MEASURE) {
+    issues.push(issue("harmony_limit", "Measure contains too many harmony events.", measure.id));
+  }
   if (!Array.isArray(measure.navigation)) {
     issues.push(issue("invalid_navigation", "Measure navigation must be an array.", measure.id));
     return issues;
+  }
+  if (measure.navigation.length > MAX_NAVIGATION_PER_MEASURE) {
+    issues.push(
+      issue("navigation_limit", "Measure contains too many navigation marks.", measure.id),
+    );
   }
   for (const mark of measure.navigation) {
     if (!isValidNavigationMark(mark)) {
@@ -200,8 +277,12 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
     const sourceBox = harmony && typeof harmony === "object" ? harmony.sourceBox : undefined;
     if (
       !harmony || typeof harmony !== "object" || typeof harmony.id !== "string" ||
+      !harmony.id.trim() ||
       typeof harmony.raw !== "string" || !isRational(harmony.offset) ||
-      !harmony.raw.trim() || compareRational(harmony.offset, RATIONAL_ZERO) < 0
+      !harmony.raw.trim() || compareRational(harmony.offset, RATIONAL_ZERO) < 0 ||
+      (harmony.duration !== undefined && !isRational(harmony.duration)) ||
+      !isOptionalConfidence(harmony.confidence) || !isFiniteBox(harmony.sourceBox) ||
+      (harmony.unsupported !== undefined && typeof harmony.unsupported !== "boolean")
     ) {
       issues.push(
         issue(
@@ -230,6 +311,24 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   if (document.schemaVersion !== 1) {
     issues.push(issue("unsupported_schema", "Score schema version is not supported."));
   }
+  if (document.title !== undefined && typeof document.title !== "string") {
+    issues.push(issue("invalid_title", "Score title must be text."));
+  }
+  if (
+    document.transpositionSemitones !== undefined &&
+    (!Number.isInteger(document.transpositionSemitones) ||
+      document.transpositionSemitones < -24 || document.transpositionSemitones > 24)
+  ) {
+    issues.push(
+      issue("invalid_transposition", "Score transposition must be an integer from -24 to 24."),
+    );
+  }
+  if (document.key !== undefined && !isValidKey(document.key)) {
+    issues.push(issue("invalid_key_signature", "Score key signature is invalid."));
+  }
+  if (document.time !== undefined && !isValidTime(document.time)) {
+    issues.push(issue("invalid_time_signature", "Score time signature is invalid."));
+  }
   if (!isValidSource(document.source)) {
     issues.push(issue("invalid_source", "Score source has an invalid shape."));
   } else {
@@ -251,7 +350,8 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   for (const tempo of Array.isArray(document.tempoMap) ? document.tempoMap : []) {
     if (
       !tempo || typeof tempo !== "object" || !isRational(tempo.offset) ||
-      !Number.isFinite(tempo.bpm) || tempo.bpm <= 0 ||
+      !Number.isFinite(tempo.bpm) || tempo.bpm <= 0 || tempo.bpm > 1_000 ||
+      !["explicit", "default", "user"].includes(tempo.source) ||
       compareRational(tempo.offset, RATIONAL_ZERO) < 0
     ) {
       issues.push(
@@ -262,19 +362,37 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   if (!Array.isArray(document.sections)) {
     issues.push(issue("invalid_sections", "Score sections must be an array."));
   } else {
+    if (document.sections.length > MAX_SECTIONS) {
+      issues.push(issue("section_limit", "Score contains too many sections."));
+    }
     for (const section of document.sections) {
       if (
         !section || typeof section !== "object" || typeof section.id !== "string" ||
-        typeof section.startMeasureId !== "string" ||
-        (section.endMeasureId !== undefined && typeof section.endMeasureId !== "string")
+        !section.id.trim() ||
+        typeof section.startMeasureId !== "string" || !section.startMeasureId.trim() ||
+        (section.endMeasureId !== undefined &&
+          (typeof section.endMeasureId !== "string" || !section.endMeasureId.trim())) ||
+        (section.label !== undefined && typeof section.label !== "string")
       ) {
         issues.push(issue("invalid_section", "Score section has an invalid shape."));
       }
     }
   }
+  const sectionIds = new Set<string>();
+  for (const section of Array.isArray(document.sections) ? document.sections : []) {
+    if (section && typeof section === "object" && typeof section.id === "string") {
+      if (sectionIds.has(section.id)) {
+        issues.push(issue("duplicate_section_id", `Section ID ${section.id} is duplicated.`));
+      }
+      sectionIds.add(section.id);
+    }
+  }
   if (!Array.isArray(document.issues)) {
     issues.push(issue("invalid_issue_list", "Score issues must be an array."));
   } else {
+    if (document.issues.length > MAX_ISSUES) {
+      issues.push(issue("issue_limit", "Score issue list exceeds the supported limit."));
+    }
     for (const scoreIssue of document.issues) {
       if (!isValidIssue(scoreIssue)) {
         issues.push(issue("invalid_issue", "Score issue has an invalid shape."));
@@ -312,6 +430,24 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     ids.add(measure.id);
     writtenIndexes.add(measure.writtenIndex);
     issues.push(...validateMeasure(measure));
+  }
+  const measureIds = new Set(
+    (Array.isArray(document.measures) ? document.measures : [])
+      .filter((measure): measure is ScoreMeasure => Boolean(measure && typeof measure === "object"))
+      .map((measure) => measure.id),
+  );
+  for (const section of Array.isArray(document.sections) ? document.sections : []) {
+    if (!section || typeof section !== "object") continue;
+    if (typeof section.startMeasureId === "string" && !measureIds.has(section.startMeasureId)) {
+      issues.push(
+        issue("invalid_section_reference", `Section ${section.id} starts at an unknown measure.`),
+      );
+    }
+    if (typeof section.endMeasureId === "string" && !measureIds.has(section.endMeasureId)) {
+      issues.push(
+        issue("invalid_section_reference", `Section ${section.id} ends at an unknown measure.`),
+      );
+    }
   }
   return { valid: issues.every((candidate) => candidate.severity !== "error"), issues };
 }

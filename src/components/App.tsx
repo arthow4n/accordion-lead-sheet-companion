@@ -71,14 +71,18 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     autoResumeDelayMs: 3500,
   });
 
+  const scoreHasBlockingIssues = Boolean(
+    currentSong?.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
+  );
   const scoreRoute = useMemo(
-    () => currentSong?.score ? expandPerformanceRoute(currentSong.score) : null,
-    [currentSong?.score],
+    () =>
+      currentSong?.score && !scoreHasBlockingIssues
+        ? expandPerformanceRoute(currentSong.score)
+        : null,
+    [currentSong?.score, scoreHasBlockingIssues],
   );
   const scoreGuidanceBlocked = Boolean(
-    currentSong?.score?.issues.some((issue) =>
-      issue.blocksGuidance && issue.severity === "error"
-    ) ||
+    scoreHasBlockingIssues ||
       scoreRoute?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
   );
   const scorePlayback = useScorePlayback(scoreGuidanceBlocked ? undefined : currentSong?.score);
@@ -87,7 +91,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
   // Hardware Hook 3: Bluetooth Pedal Navigation
   usePedalNavigation({
     scrollFraction: 0.8,
-    enabled: !isScoreMode || scoreGuidanceBlocked,
+    enabled: true,
     onPageTurn: isScoreMode && !scoreGuidanceBlocked
       ? (direction) =>
         direction === "down" ? scorePlayback.nextMeasure() : scorePlayback.previousMeasure()

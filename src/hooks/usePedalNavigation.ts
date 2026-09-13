@@ -38,15 +38,15 @@ export function usePedalNavigation({
         case " ": // Spacebar
         case "ArrowDown": {
           e.preventDefault();
-          globalThis.scrollBy({ top: scrollDistance, behavior: "smooth" });
           if (onPageTurn) onPageTurn("down");
+          else globalThis.scrollBy({ top: scrollDistance, behavior: "smooth" });
           break;
         }
         case "PageUp":
         case "ArrowUp": {
           e.preventDefault();
-          globalThis.scrollBy({ top: -scrollDistance, behavior: "smooth" });
           if (onPageTurn) onPageTurn("up");
+          else globalThis.scrollBy({ top: -scrollDistance, behavior: "smooth" });
           break;
         }
         default:

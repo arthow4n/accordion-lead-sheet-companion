@@ -23,7 +23,7 @@ import type {
   StradellaGrooveType,
   ViewMode,
 } from "../types/index.ts";
-import type { ScoreMeasure } from "../types/score.ts";
+import type { ScoreMeasure, SpelledPitch } from "../types/score.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
@@ -56,15 +56,22 @@ import {
 import { expandPerformanceRoute } from "../lib/score/navigation.ts";
 import { rationalToNumber } from "../lib/score/rational.ts";
 import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
+import { transposeSpelledPitch } from "../lib/score/transposition.ts";
 import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
 
 function scorePitchLabel(
-  pitch: { step: string; alter: number; octave: number },
+  pitch: SpelledPitch,
   spelling: NoteSpelling,
+  transpositionSemitones = 0,
 ): string {
-  if (spelling === "auto" || pitch.alter === 0) {
-    const accidental = pitch.alter < 0 ? "b".repeat(-pitch.alter) : "#".repeat(pitch.alter);
-    return `${pitch.step}${accidental}${pitch.octave}`;
+  const derivedPitch = transpositionSemitones === 0
+    ? pitch
+    : transposeSpelledPitch(pitch, transpositionSemitones, spelling);
+  if (spelling === "auto") {
+    const accidental = derivedPitch.alter < 0
+      ? "b".repeat(-derivedPitch.alter)
+      : "#".repeat(derivedPitch.alter);
+    return `${derivedPitch.step}${accidental}${derivedPitch.octave}`;
   }
   const naturalPitchClasses: Record<string, number> = {
     C: 0,
@@ -75,13 +82,57 @@ function scorePitchLabel(
     A: 9,
     B: 11,
   };
-  const pitchClass = ((naturalPitchClasses[pitch.step] + pitch.alter) % 12 + 12) % 12;
+  const pitchClass = ((naturalPitchClasses[derivedPitch.step] + derivedPitch.alter) % 12 + 12) % 12;
   const names = spelling === "flats"
     ? ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
     : ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const absoluteMidi = (pitch.octave + 1) * 12 + pitchClass;
+  const absoluteMidi = (derivedPitch.octave + 1) * 12 + pitchClass;
   const octave = Math.floor(absoluteMidi / 12) - 1;
   return `${names[pitchClass]}${octave}`;
+}
+
+function scoreKeyLabel(
+  key: { fifths: number; mode: "major" | "minor" } | undefined,
+  spelling: NoteSpelling,
+  transpositionSemitones = 0,
+): string | undefined {
+  if (!key || !Number.isInteger(key.fifths) || key.fifths < -7 || key.fifths > 7) return undefined;
+  const majorKeys = [
+    "Cb",
+    "Gb",
+    "Db",
+    "Ab",
+    "Eb",
+    "Bb",
+    "F",
+    "C",
+    "G",
+    "D",
+    "A",
+    "E",
+    "B",
+    "F#",
+    "C#",
+  ];
+  const minorKeys = [
+    "Abm",
+    "Ebm",
+    "Bbm",
+    "Fm",
+    "Cm",
+    "Gm",
+    "Dm",
+    "Am",
+    "Em",
+    "Bm",
+    "F#m",
+    "C#m",
+    "G#m",
+    "D#m",
+    "A#m",
+  ];
+  const source = (key.mode === "minor" ? minorKeys : majorKeys)[key.fifths + 7];
+  return getSoundingKey(source, transpositionSemitones, spelling);
 }
 
 interface ScoreMeasureCardProps {
@@ -186,7 +237,11 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
                 rationalToNumber(event.duration).toFixed(2)
               }`}
             >
-              {event.rest ? "rest" : event.pitch ? scorePitchLabel(event.pitch, noteSpelling) : "?"}
+              {event.rest
+                ? "rest"
+                : event.pitch
+                ? scorePitchLabel(event.pitch, noteSpelling, transpositionSemitones)
+                : "?"}
             </span>
           ))
           : <span className="text-xs text-zinc-500">No melody events</span>}
@@ -419,30 +474,35 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     return annotateStradellaTransitions(withVoiceLeading);
   }, [song.lines, capo, song.originalKey, cbaGripMode, activeNoteSpelling]);
 
+  const scoreHasBlockingIssues = Boolean(
+    song.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
+  );
+  const scoreTranspositionSemitones = song.score?.transpositionSemitones ?? 0;
   const scoreRoute = useMemo(
-    () => song.score ? expandPerformanceRoute(song.score) : null,
-    [song.score],
+    () => song.score && !scoreHasBlockingIssues ? expandPerformanceRoute(song.score) : null,
+    [scoreHasBlockingIssues, song.score],
   );
   const scoreGuidanceBlocked = Boolean(
-    song.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error") ||
+    scoreHasBlockingIssues ||
       scoreRoute?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
   );
   const scoreMeasures = useMemo(() => {
-    if (!song.score || !scoreRoute) return [];
+    if (!song.score || !scoreRoute || scoreGuidanceBlocked) return [];
     return scoreRoute.measures.map((ref) => ({
       ref,
       measure: song.score!.measures.find((candidate) => candidate.id === ref.measureId),
     })).filter((item): item is { ref: typeof scoreRoute.measures[number]; measure: ScoreMeasure } =>
       Boolean(item.measure)
     );
-  }, [scoreRoute, song.score]);
+  }, [scoreGuidanceBlocked, scoreRoute, song.score]);
   const scoreHarmonyByPerformance = useMemo(() => {
     const map = new Map<number, EnrichedHarmonyEvent[]>();
-    if (!scoreMeasures.length) return map;
+    if (scoreGuidanceBlocked || !scoreMeasures.length) return map;
     let previousColumn: number | undefined;
     for (const { ref, measure } of scoreMeasures) {
       const enriched = enrichHarmonySequence(measure.harmonies, {
         noteSpelling: activeNoteSpelling,
+        transpositionSemitones: scoreTranspositionSemitones,
         cbaMode: cbaGripMode,
         accordionSize,
       });
@@ -453,7 +513,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       if (lastColumn !== undefined) previousColumn = lastColumn;
     }
     return map;
-  }, [accordionSize, activeNoteSpelling, cbaGripMode, scoreMeasures]);
+  }, [
+    accordionSize,
+    activeNoteSpelling,
+    cbaGripMode,
+    scoreGuidanceBlocked,
+    scoreMeasures,
+    scoreTranspositionSemitones,
+  ]);
   const [scoreView, setScoreView] = useState<"preview" | "learn" | "perform">("learn");
 
   React.useEffect(() => {
@@ -1014,7 +1081,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
         </div>
       )}
 
-      {song.score && scoreRoute && (
+      {song.score && (scoreRoute || scoreGuidanceBlocked) && (
         <section className="mb-5 space-y-3" aria-label="Score reader">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 sm:p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1024,7 +1091,22 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   {song.score.measures.length} written measures
                   {scoreGuidanceBlocked
                     ? " · source-only preview"
-                    : ` · ${scoreRoute.measures.length} in performance order`}
+                    : ` · ${scoreRoute?.measures.length ?? 0} in performance order`}
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  {scoreKeyLabel(song.score.key, activeNoteSpelling, scoreTranspositionSemitones)
+                    ? `Key ${
+                      scoreKeyLabel(song.score.key, activeNoteSpelling, scoreTranspositionSemitones)
+                    }`
+                    : "Key unknown"}
+                  {song.score.time
+                    ? ` · Meter ${song.score.time.beats}/${song.score.time.beatType}`
+                    : ""}
+                  {scoreTranspositionSemitones !== 0
+                    ? ` · ${
+                      scoreTranspositionSemitones > 0 ? "+" : ""
+                    }${scoreTranspositionSemitones} semitones`
+                    : ""}
                 </p>
               </div>
               <div
@@ -1049,7 +1131,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 ))}
               </div>
             </div>
-            {scoreRoute.issues.length > 0 && (
+            {!scoreGuidanceBlocked && scoreRoute && scoreRoute.issues.length > 0 && (
               <div className="rounded-xl border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
                 Navigation needs review: {scoreRoute.issues[0].message}
               </div>
@@ -1072,14 +1154,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   ← Previous
                 </button>
                 <span className="text-[11px] font-mono text-zinc-400">
-                  {scorePerformanceIndex + 1} / {scoreRoute.measures.length}
+                  {scorePerformanceIndex + 1} / {scoreRoute?.measures.length ?? 0}
                   {scoreIsPlaying ? " · playing" : ""}
                 </span>
                 <button
                   type="button"
                   onClick={onScoreNextMeasure}
                   disabled={!onScoreNextMeasure ||
-                    scorePerformanceIndex >= scoreRoute.measures.length - 1}
+                    scorePerformanceIndex >= (scoreRoute?.measures.length ?? 1) - 1}
                   className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
                   aria-label="Next measure"
                 >
@@ -1095,7 +1177,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
               startMeasure={scoreView === "preview"
                 ? 0
                 : scoreMeasures[scorePerformanceIndex]?.measure.writtenIndex || 0}
-              measureCount={scoreView === "perform" ? 1 : 2}
+              measureCount={scoreView === "preview" ? 2 : 1}
             />
           )}
 
@@ -1111,7 +1193,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   stradellaDisplayMode={stradellaDisplayMode}
                   cbaMode={cbaGripMode}
                   accordionSize={accordionSize}
-                  transpositionSemitones={0}
+                  transpositionSemitones={scoreTranspositionSemitones}
                   onSelectChord={onSelectChord}
                   selectedChord={selectedChord}
                 />
@@ -1139,7 +1221,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     stradellaDisplayMode={stradellaDisplayMode}
                     cbaMode={cbaGripMode}
                     accordionSize={accordionSize}
-                    transpositionSemitones={0}
+                    transpositionSemitones={scoreTranspositionSemitones}
                     harmonyEvents={scoreHarmonyByPerformance.get(ref.performanceIndex)}
                     onSelectChord={onSelectChord}
                     selectedChord={selectedChord}

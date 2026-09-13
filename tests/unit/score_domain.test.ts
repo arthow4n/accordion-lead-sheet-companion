@@ -1,5 +1,13 @@
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
-import type { MelodyEvent, ScoreDocument, ScoreMeasure } from "../../src/types/score.ts";
+import type {
+  ImageBox,
+  MelodyEvent,
+  NavigationMark,
+  ScoreDocument,
+  ScoreKeySignature,
+  ScoreMeasure,
+  ScoreTimeSignature,
+} from "../../src/types/score.ts";
 import { addRational, compareRational, rational } from "../../src/lib/score/rational.ts";
 import { isEventInsideMeasure, validateScoreDocument } from "../../src/lib/score/validation.ts";
 import { expandPerformanceRoute, getTempoAtOffset } from "../../src/lib/score/navigation.ts";
@@ -60,6 +68,53 @@ Deno.test("score validation rejects missing pitches and invalid source state", (
   }));
   assertEquals(result.valid, false);
   assertEquals(result.issues.map((item) => item.code), ["missing_source_asset", "missing_pitch"]);
+});
+
+Deno.test("score validation rejects malformed nested metadata and bounded collections", () => {
+  const malformed = {
+    ...score(),
+    key: "C" as unknown as ScoreKeySignature,
+    time: "4/4" as unknown as ScoreTimeSignature,
+    transpositionSemitones: "2",
+    tempoMap: [{ offset: { numerator: 0, denominator: 0 }, bpm: 120, source: "bad" }],
+    sections: [{ id: "s1", label: 42, startMeasureId: "missing" }],
+    issues: [{
+      code: "bad",
+      message: "bad",
+      severity: "error",
+      blocksGuidance: true,
+      measureId: 7,
+    }],
+    measures: [measure({
+      key: "G" as unknown as ScoreKeySignature,
+      time: "4/4" as unknown as ScoreTimeSignature,
+      sourceBox: null as unknown as ImageBox,
+      melody: [{
+        id: "n1",
+        offset: rational(0),
+        duration: rational(1, 4),
+        rest: false,
+        pitch: { step: "C", alter: "0" as unknown as number, octave: 4 },
+        tie: "hold" as unknown as MelodyEvent["tie"],
+        confidence: 2,
+      }],
+      harmonies: [{
+        id: "h1",
+        offset: rational(0),
+        duration: { numerator: 1, denominator: 0 },
+        raw: "C",
+      }],
+      navigation: [null as unknown as NavigationMark],
+    })],
+  } as unknown as ScoreDocument;
+  const result = validateScoreDocument(malformed);
+  assertEquals(result.valid, false);
+  assertEquals(result.issues.some((item) => item.code === "invalid_key_signature"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_time_signature"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_tempo"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_issue"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_navigation_mark"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_section_reference"), true);
 });
 
 Deno.test("event containment uses exact rational boundaries", () => {
@@ -223,7 +278,7 @@ Deno.test("MusicXML parser rejects external entities, polyphony, and non-treble 
   </measure></part></score-partwise>`,
   );
   assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_polyphony"), true);
-  assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_clef"), true);
+  assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_score_shape"), true);
 });
 
 Deno.test("MXL parser resolves the container root and enforces entry safety", () => {
@@ -269,6 +324,61 @@ Deno.test("MusicXML parser rejects unbounded Unicode nesting and unsupported har
   assertEquals(degree.issues.some((item) => item.code === "unsupported_harmony"), true);
 });
 
+Deno.test("MusicXML parser bounds tempo directions and rejects unsupported notation states", () => {
+  const tempos = Array.from({ length: 1_025 }, () => '<direction><sound tempo="120"/></direction>')
+    .join("");
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+    <attributes><divisions>1</divisions><clef><sign>G</sign></clef><measure-style><measure-repeat type="start"/></measure-style></attributes>
+    ${tempos}<note><unpitched><display-step>C</display-step><display-octave>4</display-octave></unpitched><duration>1</duration></note>
+  </measure></part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues.some((item) => item.code === "tempo_limit"), true);
+  assertEquals(result.issues.some((item) => item.code === "unsupported_score_shape"), true);
+  assertEquals(
+    result.issues.some((item) =>
+      item.code === "ignored_notation" && item.message.includes("measure-repeat")
+    ),
+    true,
+  );
+  assertEquals(result.document?.tempoMap.length, 1_024);
+});
+
+Deno.test("MusicXML parser marks nested tuplets, duplicate navigation targets, and ending stops", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>4</divisions><clef><sign>G</sign></clef></attributes>
+      <barline location="left"><repeat direction="forward"/></barline>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification><notations><tuplet type="start"><tuplet type="start"/></tuplet></notations></note>
+    </measure>
+    <measure number="2"><barline location="right"><ending number="1" type="start"/></barline><note><rest/><duration>4</duration></note></measure>
+    <measure number="3"><barline location="right"><ending number="1" type="stop"/><repeat direction="backward"/></barline><note><rest/><duration>4</duration></note></measure>
+    <measure number="4"><direction><direction-type><segno id="A"/></direction-type></direction><note><rest/><duration>4</duration></note></measure>
+    <measure number="5"><direction><direction-type><segno id="A"/></direction-type></direction><note><rest/><duration>4</duration></note></measure>
+  </part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues.some((item) => item.code === "unsupported_tuplet"), true);
+  assertEquals(result.issues.some((item) => item.code === "ambiguous_navigation"), true);
+  assertEquals(
+    result.document?.measures[2].navigation.some((mark) => mark.kind === "ending"),
+    true,
+  );
+  const route = result.document ? expandPerformanceRoute(result.document) : undefined;
+  assertEquals(
+    route?.measures.map((ref) => ref.measureId),
+    ["m1", "m2", "m3", "m1", "m4", "m5"],
+  );
+});
+
+Deno.test("score harmony adapter applies transposition and selected CBA profile", () => {
+  const events = enrichHarmonySequence([{ id: "h1", offset: rational(0), raw: "C" }], {
+    transpositionSemitones: 2,
+    cbaMode: "root_3row",
+    accordionSize: "48-bass",
+    noteSpelling: "sharps",
+  });
+  assertEquals(events[0].detail?.soundingChord.raw, "D");
+  assertEquals(events[0]?.detail?.cba?.buttons?.every((button) => button.row <= 3), true);
+});
+
 Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", () => {
   const scoreXml =
     `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
@@ -286,14 +396,18 @@ Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", 
 
 Deno.test("OSMD adapter creates bounded public-API excerpts with carried attributes", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
-    <measure number="1"><attributes><divisions>1</divisions><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note></measure>
-    <measure number="2"><note><rest/><duration>1</duration></note></measure>
+    <measure number="1"><attributes><divisions>1</divisions><key><fifths>-2</fifths><mode>major</mode></key><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note></measure>
+    <measure number="2"><attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes><note><rest/><duration>1</duration></note></measure>
     <measure number="3"><note><rest/><duration>1</duration></note></measure>
   </part></score-partwise>`;
   const excerpt = createMusicXmlExcerpt(xml, 1, 2);
   assertEquals(Boolean(excerpt), true);
   assertEquals((excerpt?.match(/<measure\b/g) || []).length, 2);
   assertEquals(excerpt?.includes("<attributes>"), true);
+  assertEquals(excerpt?.includes("<divisions>1</divisions>"), true);
+  assertEquals(excerpt?.includes("<fifths>-2</fifths>"), true);
+  assertEquals(excerpt?.includes("<sign>G</sign>"), true);
+  assertEquals(excerpt?.includes("<beats>3</beats>"), true);
   assertEquals(createMusicXmlExcerpt(xml, 99, 2), undefined);
 });
 

@@ -16,6 +16,7 @@ export const MUSICXML_MAX_BYTES = 10 * 1024 * 1024;
 export const MUSICXML_MAX_NODES = 100_000;
 export const MUSICXML_MAX_DEPTH = 128;
 export const MUSICXML_MAX_EVENTS_PER_MEASURE = 10_000;
+export const MUSICXML_MAX_TEMPO_EVENTS = 1_024;
 
 export interface MusicXmlParseResult {
   document?: ScoreDocument;
@@ -212,8 +213,10 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
       const numbers = (ending.getAttribute("number") || "").split(/[ ,]+/).map(Number).filter(
         Number.isInteger,
       );
-      if (ending.getAttribute("type") === "stop") marks.push({ kind: "ending-stop" });
-      else if (numbers.length) marks.push({ kind: "ending", numbers });
+      if (ending.getAttribute("type") === "stop") {
+        if (numbers.length) marks.push({ kind: "ending", numbers });
+        marks.push({ kind: "ending-stop" });
+      } else if (numbers.length) marks.push({ kind: "ending", numbers });
     }
   }
   for (const direction of children(measureElement, "direction")) {
@@ -326,12 +329,16 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
   let key: ScoreKeySignature | undefined;
   let time: ScoreTimeSignature | undefined;
   let sawTreble = false;
+  let sawClef = false;
   let noteCounter = 0;
   let harmonyCounter = 0;
   const tempoMap: TempoEvent[] = [];
   let documentOffset = rational(0);
   const informationalConstructs = new Set<string>();
   let activeEndingNumbers: number[] | undefined;
+  let tempoLimitReported = false;
+  const segnoTargets = new Set<string>();
+  const codaTargets = new Set<string>();
   for (const measureElement of children(part, "measure")) {
     const id = `m${measures.length + 1}`;
     const attributesList = children(measureElement, "attributes");
@@ -385,9 +392,10 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         );
       }
       if (clef) {
+        sawClef = true;
         if (!isTrebleClef(attributes)) {
           issues.push(
-            issue("unsupported_clef", "Only treble (G) clef is supported.", "error", true),
+            issue("unsupported_score_shape", "Only a single treble (G) staff is supported."),
           );
         } else sawTreble = true;
       }
@@ -465,10 +473,20 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
             );
           }
         }
+        const notations = child(element, "notations");
+        const tuplets = notations ? Array.from(notations.getElementsByTagName("tuplet")) : [];
+        if (tuplets.length > 1 || (tuplets.length > 0 && !timeModification)) {
+          issues.push(
+            measureIssue(
+              "unsupported_tuplet",
+              "Nested or implicit tuplets are not supported; use one explicit time-modification.",
+              id,
+            ),
+          );
+        }
         for (const construct of ["beam", "notations", "lyric"]) {
           if (child(element, construct)) informationalConstructs.add(construct);
         }
-        const notations = child(element, "notations");
         for (const construct of ["articulations", "ornaments", "fermata", "dynamics"]) {
           if (notations && child(notations, construct)) informationalConstructs.add(construct);
         }
@@ -490,6 +508,15 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         const voice = text(child(element, "voice"));
         if (voice) voices.add(voice);
         const event = parseNote(element, divisions, offsetDivisions, id, noteCounter++);
+        if (!event.rest && !child(element, "pitch")) {
+          issues.push(
+            measureIssue(
+              "unsupported_score_shape",
+              "Unpitched notes are not supported in the melody guidance path.",
+              id,
+            ),
+          );
+        }
         melody.push(event);
         if (event.grace) pendingGrace = true;
         else pendingGrace = false;
@@ -521,9 +548,25 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           );
         }
       } else if (element.localName === "direction") {
+        if (eventCount >= MUSICXML_MAX_EVENTS_PER_MEASURE) {
+          if (!eventLimitReported) {
+            eventLimitReported = true;
+            issues.push(measureIssue("event_limit", "Measure contains too many timed events.", id));
+          }
+          continue;
+        }
+        eventCount += 1;
         const offset = addRational(documentOffset, rational(offsetDivisions, divisions));
         const tempo = parseTempo(element, offset, issues);
-        if (tempo) tempoMap.push(tempo);
+        if (tempo) {
+          if (tempoMap.length < MUSICXML_MAX_TEMPO_EVENTS) tempoMap.push(tempo);
+          else if (!tempoLimitReported) {
+            tempoLimitReported = true;
+            issues.push(
+              issue("tempo_limit", "MusicXML contains too many tempo events."),
+            );
+          }
+        }
         if (child(child(element, "direction-type") || element, "octave-shift")) {
           issues.push(
             issue("unsupported_octave_shift", "Octave-shift directions are not supported."),
@@ -563,13 +606,42 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     const navigation = parseNavigation(measureElement);
     const endingStart = navigation.find((mark) => mark.kind === "ending");
     const endingStop = navigation.some((mark) => mark.kind === "ending-stop");
-    if (!endingStart && activeEndingNumbers && !endingStop) {
+    if (!endingStart && activeEndingNumbers) {
       navigation.push({ kind: "ending", numbers: activeEndingNumbers });
     }
     if (endingStart?.kind === "ending") activeEndingNumbers = endingStart.numbers;
     if (endingStop) activeEndingNumbers = undefined;
-    if (child(measureElement, "measure-style")) {
+    if (
+      child(measureElement, "measure-style") || child(attributes || measureElement, "measure-style")
+    ) {
       informationalConstructs.add("measure-repeat");
+    }
+    for (const mark of navigation) {
+      if (mark.kind === "segno") {
+        const targetId = mark.id || "default";
+        if (segnoTargets.has(targetId)) {
+          issues.push(
+            measureIssue(
+              "ambiguous_navigation",
+              `Segno target '${targetId}' is duplicated.`,
+              id,
+            ),
+          );
+        }
+        segnoTargets.add(targetId);
+      } else if (mark.kind === "coda") {
+        const targetId = mark.id || "default";
+        if (codaTargets.has(targetId)) {
+          issues.push(
+            measureIssue(
+              "ambiguous_navigation",
+              `Coda target '${targetId}' is duplicated.`,
+              id,
+            ),
+          );
+        }
+        codaTargets.add(targetId);
+      }
     }
     if (
       navigation.some((mark) => mark.kind === "dc") && navigation.some((mark) => mark.kind === "ds")
@@ -595,7 +667,9 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     });
     documentOffset = addRational(documentOffset, rational(offsetDivisions, divisions));
   }
-  if (!sawTreble) issues.push(issue("unsupported_clef", "No supported treble clef was found."));
+  if (!sawTreble && !sawClef) {
+    issues.push(issue("unsupported_score_shape", "No supported treble clef was found."));
+  }
   for (const construct of informationalConstructs) {
     issues.push(
       issue(

@@ -40,22 +40,39 @@ export function createMusicXmlExcerpt(
   const measures = Array.from(part.getElementsByTagName("measure"));
   const selected = measures.slice(boundedStart, boundedStart + boundedCount);
   if (selected.length === 0) return undefined;
-  const excerptRoot = root.cloneNode(true) as Element;
-  const excerptPart = Array.from(excerptRoot.getElementsByTagName("part"))[0];
-  if (!excerptPart) return undefined;
+  const excerptRoot = root.cloneNode(false) as Element;
+  const excerptPart = part.cloneNode(false) as Element;
+  for (const rootChild of elementChildren(root)) {
+    if (rootChild.localName === "part-list") excerptRoot.appendChild(rootChild.cloneNode(true));
+    else if (rootChild.localName === "part") excerptRoot.appendChild(excerptPart);
+    else if (rootChild.localName === "work" || rootChild.localName === "movement-title") {
+      excerptRoot.appendChild(rootChild.cloneNode(true));
+    }
+  }
+  const inheritedAttributes = new Map<string, Element>();
+  for (const measure of measures.slice(0, boundedStart)) {
+    const attributes = elementChildren(measure).find((child) => child.localName === "attributes");
+    if (!attributes) continue;
+    for (const attribute of elementChildren(attributes)) {
+      inheritedAttributes.set(attribute.localName, attribute);
+    }
+  }
   for (const child of Array.from(excerptPart.childNodes)) excerptPart.removeChild(child);
-  const precedingAttributes = measures.slice(0, boundedStart).reverse().find((measure) =>
-    elementChildren(measure).some((child) => child.localName === "attributes")
-  );
   selected.forEach((measure, index) => {
     const clone = measure.cloneNode(true) as Element;
-    if (
-      index === 0 &&
-      !elementChildren(clone).some((child) => child.localName === "attributes")
-    ) {
-      const attributes = precedingAttributes &&
-        elementChildren(precedingAttributes).find((child) => child.localName === "attributes");
-      if (attributes) clone.insertBefore(attributes.cloneNode(true), clone.firstChild);
+    if (index === 0 && inheritedAttributes.size > 0) {
+      let attributes = elementChildren(clone).find((child) => child.localName === "attributes");
+      if (!attributes) {
+        attributes = clone.ownerDocument.createElementNS(
+          root.namespaceURI,
+          "attributes",
+        );
+        clone.insertBefore(attributes, clone.firstChild);
+      }
+      const present = new Set(elementChildren(attributes).map((child) => child.localName));
+      for (const [name, inherited] of inheritedAttributes) {
+        if (!present.has(name)) attributes.appendChild(inherited.cloneNode(true));
+      }
     }
     excerptPart.appendChild(clone);
   });

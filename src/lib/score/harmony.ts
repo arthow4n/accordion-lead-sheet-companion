@@ -1,5 +1,6 @@
 import type {
   AccordionSize,
+  CbaGrip,
   CbaGripMode,
   ChordDetail,
   NoteSpelling,
@@ -7,6 +8,7 @@ import type {
 } from "../../types/index.ts";
 import type { HarmonyEvent } from "../../types/score.ts";
 import { enrichChord } from "../parser/tokenizer.ts";
+import { optimizeVoiceLeading } from "../cba/voiceLeading.ts";
 import {
   computeStradellaTransition,
   getStradellaMovementColumn,
@@ -50,6 +52,7 @@ export function enrichHarmonySequence(
   options: HarmonySequenceOptions = {},
 ): EnrichedHarmonyEvent[] {
   const transposition = options.transpositionSemitones || 0;
+  let previousGrip: CbaGrip | undefined;
   return events
     .map((event, index) => ({ event, index }))
     .sort((a, b) =>
@@ -61,14 +64,26 @@ export function enrichHarmonySequence(
         return { ...event, issue: "invalid-chord" as const };
       }
       try {
+        const detail = enrichChord(
+          event.raw,
+          transposition,
+          options.keyContext,
+          options.noteSpelling || "auto",
+          options.cbaMode || "root_5row",
+          options.accordionSize || "120-bass",
+        );
+        if (options.cbaMode === "voice_led") {
+          detail.cba = optimizeVoiceLeading(
+            detail.soundingChord,
+            previousGrip,
+            5,
+            options.noteSpelling || "auto",
+          );
+          previousGrip = detail.cba;
+        }
         return {
           ...event,
-          detail: enrichChord(
-            event.raw,
-            transposition,
-            options.keyContext,
-            options.noteSpelling || "auto",
-          ),
+          detail,
         };
       } catch (_error) {
         return { ...event, issue: "invalid-chord" as const };

@@ -125,6 +125,8 @@ export interface ScoreMeasure {
 export interface ScoreDocument {
   schemaVersion: 1;
   title?: string;
+  /** Optional derived interval for displayed accordion guidance; source notation stays immutable. */
+  transpositionSemitones?: number;
   source: ScoreSource;
   key?: ScoreKeySignature;
   time?: ScoreTimeSignature;

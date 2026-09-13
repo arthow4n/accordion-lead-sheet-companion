@@ -1,4 +1,6 @@
 import type {
+  AccordionSize,
+  CbaGripMode,
   ChordDetail,
   ChordLyricSegment,
   LeadSheetLine,
@@ -78,11 +80,19 @@ export function enrichChord(
   capoFret = 0,
   keyContext?: string,
   noteSpelling: NoteSpelling = "auto",
+  cbaMode: CbaGripMode = "root_5row",
+  accordionSize: AccordionSize = "120-bass",
 ): ChordDetail & { raw: string } {
   const parsedOriginal = parseChord(rawChord);
   const parsedSounding = transposeChord(parsedOriginal, capoFret, keyContext);
-  const stradella = solveStradellaChord(parsedSounding);
-  const cba = generateCbaGrip(parsedSounding, 0, 5, 5, noteSpelling);
+  const stradella = solveStradellaChord(parsedSounding, accordionSize);
+  const cba = generateCbaGrip(
+    parsedSounding,
+    0,
+    5,
+    cbaMode === "root_3row" ? 3 : 5,
+    noteSpelling,
+  );
   const originalChord = respellParsedChord(parsedOriginal, noteSpelling);
   const soundingChord = respellParsedChord(parsedSounding, noteSpelling);
 
