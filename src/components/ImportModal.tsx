@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Camera, Clipboard, Globe, Loader2, Sparkles, Type, X } from "lucide-react";
+import { Camera, Clipboard, Globe, Loader2, Music, Sparkles, Type, X } from "lucide-react";
 import type {
   AllowedScanImageMimeType,
   LeadSheetLine,
@@ -10,6 +10,7 @@ import type {
 } from "../types/index.ts";
 import { ALLOWED_SCAN_IMAGE_MIME_TYPES, MAX_SCAN_IMAGE_SIZE_BYTES } from "../types/scan.ts";
 import { parseLeadSheetText } from "../lib/parser/tokenizer.ts";
+import { parseMusicXml } from "../lib/score/musicxml.ts";
 import { parseChordLookupInput } from "../lib/lookup/index.ts";
 import { getApiBaseUrl } from "../lib/api/config.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
@@ -32,7 +33,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onSaveSong,
   onLookupChord,
 }) => {
-  const [activeTab, setActiveTab] = useState<"url" | "clipboard" | "manual" | "lookup">("url");
+  const [activeTab, setActiveTab] = useState<"url" | "clipboard" | "manual" | "lookup" | "score">(
+    "url",
+  );
   const [rawText, setRawText] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
@@ -46,6 +49,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [invalidManualTokens, setInvalidManualTokens] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<ScanFrontendError | null>(null);
+  const [isParsingScore, setIsParsingScore] = useState(false);
+  const [scoreFileName, setScoreFileName] = useState<string | null>(null);
+  const [scoreIssues, setScoreIssues] = useState<string[]>([]);
 
   // Reset transient lookup and error state when modal opens or closes
   useEffect(() => {
@@ -56,6 +62,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setInvalidManualTokens([]);
       setIsScanning(false);
       setScanError(null);
+      setIsParsingScore(false);
+      setScoreFileName(null);
+      setScoreIssues([]);
       setErrorMessage(null);
       setPreviewSong(null);
       setRawText("");
@@ -171,6 +180,58 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     }
 
     setSelectedImage(file);
+  };
+
+  const handleScoreFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setScoreIssues([]);
+    setScoreFileName(null);
+    setPreviewSong(null);
+    setErrorMessage(null);
+    if (!file) return;
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+      setErrorMessage("Score file must be between 1 byte and 10 MiB.");
+      return;
+    }
+    const lowerName = file.name.toLowerCase();
+    const isMxl = lowerName.endsWith(".mxl") || file.type === "application/vnd.recordare.musicxml";
+    const isXml = lowerName.endsWith(".xml") || lowerName.endsWith(".musicxml") ||
+      file.type === "application/xml" || file.type === "text/xml";
+    if (!isMxl && !isXml) {
+      setErrorMessage("Unsupported score format. Choose MusicXML (.xml/.musicxml) or MXL (.mxl).");
+      return;
+    }
+    try {
+      setIsParsingScore(true);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const result = isMxl
+        ? (await import("../lib/score/mxl.ts")).parseMxl(bytes)
+        : parseMusicXml(new TextDecoder().decode(bytes));
+      setScoreIssues(result.issues.map((item) => `${item.code}: ${item.message}`));
+      if (!result.document) {
+        setErrorMessage(result.issues[0]?.message || "Could not parse this score.");
+        return;
+      }
+      const now = Date.now();
+      const title = result.document.title || file.name.replace(/\.(mxl|musicxml|xml)$/i, "");
+      setScoreFileName(file.name);
+      setPreviewSong({
+        id: `score_${now}_${Math.random().toString(36).slice(2, 9)}`,
+        title: title || "Imported Score",
+        capoFret: 0,
+        rawText: result.document.source.kind === "musicxml"
+          ? result.document.source.sanitizedXml
+          : "",
+        lines: [],
+        score: result.document,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not parse this score.");
+    } finally {
+      setIsParsingScore(false);
+    }
   };
 
   const handleScanChords = async () => {
@@ -349,6 +410,22 @@ export const ImportModal: React.FC<ImportModalProps> = ({
             <Camera className="w-3.5 h-3.5" />
             <span>Lookup</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("score");
+              setErrorMessage(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "score"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Music className="w-3.5 h-3.5" />
+            <span>Score file</span>
+          </button>
         </div>
 
         {/* Tab Body */}
@@ -418,6 +495,45 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                 rows={6}
                 className="w-full p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-mono text-zinc-200 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               />
+            </div>
+          )}
+
+          {/* MusicXML/MXL Tab */}
+          {activeTab === "score" && (
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-400">
+                Import a MusicXML or compressed MXL file for measure-aware melody and accordion
+                guidance. Unsupported constructs are preserved as source issues and never guessed.
+              </p>
+              <label className="flex items-center justify-center gap-2 p-4 bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
+                <Music className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-medium text-zinc-200">
+                  {isParsingScore ? "Parsing score..." : scoreFileName || "Choose MusicXML / MXL"}
+                </span>
+                <input
+                  type="file"
+                  accept=".xml,.musicxml,.mxl,application/xml,text/xml,application/vnd.recordare.musicxml"
+                  onChange={handleScoreFileChange}
+                  className="hidden"
+                  disabled={isParsingScore}
+                />
+              </label>
+              {previewSong?.score && activeTab === "score" && (
+                <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs space-y-1">
+                  <p className="font-semibold text-zinc-200">{previewSong.title}</p>
+                  <p className="text-zinc-400">
+                    {previewSong.score.measures.length} measures · {previewSong.score.time
+                      ? `${previewSong.score.time.beats}/${previewSong.score.time.beatType}`
+                      : "meter not specified"}
+                  </p>
+                  {scoreIssues.length > 0 && (
+                    <div className="pt-2 text-amber-300 space-y-1">
+                      <p className="font-semibold">Review issues</p>
+                      {scoreIssues.slice(0, 5).map((item) => <p key={item}>{item}</p>)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -560,7 +676,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           )}
 
           {/* Live Preview Area (for URL / Text tabs only) */}
-          {previewSong && activeTab !== "lookup" && (
+          {previewSong && activeTab !== "lookup" && activeTab !== "score" && (
             <div className="mt-4 pt-3 border-t border-zinc-800 space-y-3">
               <div className="flex items-center justify-between">
                 <div>

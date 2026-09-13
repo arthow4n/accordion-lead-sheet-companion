@@ -24,6 +24,7 @@ Deno.test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => 
   assertStringIncludes(html, "1-Tap Paste");
   assertStringIncludes(html, "Manual Text");
   assertStringIncludes(html, "Lookup");
+  assertStringIncludes(html, "Score file");
 });
 
 Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {
