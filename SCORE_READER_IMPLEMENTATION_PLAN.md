@@ -286,9 +286,12 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID | Status   | Commit     | Checks                    | Review disposition | Notes                                                                                             |
-| -- | -------- | ---------- | ------------------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
-| M0 | complete | this slice | fmt/lint/test/build green | N/A                | Baseline, provenance policy, authority record, and reuse inventory are committed with this slice. |
+| ID  | Status   | Commit     | Checks                    | Review disposition | Notes                                                               |
+| --- | -------- | ---------- | ------------------------- | ------------------ | ------------------------------------------------------------------- |
+| M0  | complete | 464cb54    | fmt/lint/test/build green | N/A                | Baseline, provenance policy, authority record, and reuse inventory. |
+| M1A | complete | 2c8e738    | fmt/lint/test/build green | N/A                | Versioned contracts, rational timing, and validation.               |
+| M1B | complete | fad8be5    | fmt/lint/test/build green | N/A                | Songbook envelope, migrations, quarantine, and cleanup hooks.       |
+| M1C | complete | this slice | fmt/lint/test/build green | N/A                | Route, tempo, transposition, and shared harmony adapter.            |
 
 ### Required slice order
 
@@ -367,39 +370,39 @@ at the relevant decision gate; it does not block earlier local work that is inde
 
 ### Milestone 1 — Score domain model and compatibility boundary
 
-- [ ] Add score-domain types under `src/types/` without changing the meaning of existing
+- [x] Add score-domain types under `src/types/` without changing the meaning of existing
       `LeadSheetSong.lines`.
-- [ ] Add optional `score?: ScoreDocument` support to `LeadSheetSong`.
-- [ ] Represent rational time, spelled pitches, measure offsets, ties, rests, harmonies, sections,
+- [x] Add optional `score?: ScoreDocument` support to `LeadSheetSong`.
+- [x] Represent rational time, spelled pitches, measure offsets, ties, rests, harmonies, sections,
       tempo events, grace-note policy, phrase IDs, manual holds, repeats, voltas/endings, jumps,
       fine/end markers, confidence, and resolvable source boxes.
-- [ ] Define written-order versus bounded performance-order contracts explicitly, including a
+- [x] Define written-order versus bounded performance-order contracts explicitly, including a
       maximum traversal count and deterministic diagnostics for malformed cycles.
-- [ ] Add a top-level songbook schema/version normalizer, record validation, bounded import sizes,
+- [x] Add a top-level songbook schema/version normalizer, record validation, bounded import sizes,
       quarantine/rejection of malformed scores, and explicit export semantics for embedded sources
       versus source references.
-- [ ] Define score/source deletion now: deletion removes derived caches and opted-in source assets;
+- [x] Define score/source deletion now: deletion removes derived caches and opted-in source assets;
       shared downloaded model artifacts remain under a separate cache-management control.
-- [ ] Specify and test the written-to-derived transposition invariant for melody, harmony, key,
+- [x] Specify and test the written-to-derived transposition invariant for melody, harmony, key,
       spelling, and both accordion engines; keep guitar capo semantics separate.
-- [ ] Add pure builders/selectors for current measure, next written measure, next performed measure,
+- [x] Add pure builders/selectors for current measure, next written measure, next performed measure,
       tempo at cursor, pickup count-in, phrase boundaries, and manual holds.
-- [ ] Add unit tests for pickups, meter changes, key changes, ties, repeat endings, and malformed
+- [x] Add unit tests for pickups, meter changes, key changes, ties, repeat endings, and malformed
       navigation graphs.
-- [ ] Refactor a shared pure
+- [x] Refactor a shared pure
       `enrichHarmonySequence(events, transposition, spelling, cbaMode, accordionSize, route)`
       primitive, then adapt both classic lead sheets and timed score harmonies to it. Do not
       duplicate capo, enharmonic, Stradella, or CBA chord logic.
-- [ ] Prove with tests that an adapted harmony sequence receives the same `ChordDetail`, Stradella
+- [x] Prove with tests that an adapted harmony sequence receives the same `ChordDetail`, Stradella
       transitions, and CBA chord grips as an equivalent parsed lead sheet.
-- [ ] Cover multiple/no chords per measure, pickups, slash chords, repeat boundaries, volta skips,
+- [x] Cover multiple/no chords per measure, pickups, slash chords, repeat boundaries, volta skips,
       and D.C./D.S. jumps so transitions follow performance order rather than written order.
 
 **Exit criteria**
 
-- [ ] Existing lead-sheet behavior is unchanged.
-- [ ] Score contracts and migrations have exhaustive pure tests.
-- [ ] Harmony reuse is demonstrated by equality tests.
+- [x] Existing lead-sheet behavior is unchanged.
+- [x] Score contracts and migrations have exhaustive pure tests.
+- [x] Harmony reuse is demonstrated by equality tests.
 
 ### Milestone 2 — MusicXML/MXL import before photograph recognition
 

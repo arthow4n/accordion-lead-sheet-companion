@@ -167,4 +167,7 @@ export {
 
 // 7. Score domain contracts and pure timing/validation primitives
 export * from "./score/rational.ts";
+export * from "./score/navigation.ts";
+export * from "./score/harmony.ts";
+export * from "./score/transposition.ts";
 export * from "./score/validation.ts";
