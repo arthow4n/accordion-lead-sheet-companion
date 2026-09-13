@@ -5,6 +5,7 @@ import type {
   ScoreDocument,
   ScoreIssue,
   ScoreMeasure,
+  ScoreTimeSignature,
   ScoreValidationResult,
 } from "../../types/score.ts";
 import { compareRational, rational, RATIONAL_ZERO } from "./rational.ts";
@@ -215,10 +216,14 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   return issues;
 }
 
-function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
+function validateMeasure(
+  measure: ScoreMeasure,
+  fallbackTime?: ScoreTimeSignature,
+): ScoreIssue[] {
   const issues = [...validateMelody(measure)];
-  const measureLength = measure.time && isValidTime(measure.time)
-    ? rational(measure.time.beats * 4, measure.time.beatType)
+  const activeTime = measure.time || fallbackTime;
+  const measureLength = activeTime && isValidTime(activeTime)
+    ? rational(activeTime.beats * 4, activeTime.beatType)
     : undefined;
   const eventIds = new Set<string>();
   let latestTimedEnd = RATIONAL_ZERO;
@@ -492,6 +497,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   }
   const ids = new Set<string>();
   const writtenIndexes = new Set<number>();
+  const fallbackTime = isValidTime(document.time) ? document.time : undefined;
   for (const measure of Array.isArray(document.measures) ? document.measures : []) {
     if (!measure || typeof measure !== "object") {
       issues.push(issue("invalid_measure", "Score measure has an invalid shape."));
@@ -513,7 +519,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     }
     ids.add(measure.id);
     writtenIndexes.add(measure.writtenIndex);
-    issues.push(...validateMeasure(measure));
+    issues.push(...validateMeasure(measure, fallbackTime));
   }
   const measureIds = new Set(
     (Array.isArray(document.measures) ? document.measures : [])
