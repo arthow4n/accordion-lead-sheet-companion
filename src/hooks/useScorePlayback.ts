@@ -101,6 +101,17 @@ export function useScorePlayback(document?: ScoreDocument): ScorePlaybackReturn 
 
   const start = useCallback(() => {
     if (!route || route.measures.length === 0) return;
+    const heldMeasure = measures[indexRef.current];
+    if (
+      heldMeasure?.manualHold &&
+      indexRef.current < lengths.length &&
+      offsetRef.current >= lengths[indexRef.current]
+    ) {
+      indexRef.current += 1;
+      offsetRef.current = 0;
+      setPerformanceIndex(indexRef.current);
+      setOffsetBeats(0);
+    }
     if (indexRef.current >= route.measures.length) {
       indexRef.current = 0;
       offsetRef.current = 0;
@@ -112,7 +123,7 @@ export function useScorePlayback(document?: ScoreDocument): ScorePlaybackReturn 
     setIsPlaying(true);
     setIsTouchPaused(false);
     lastTimestampRef.current = null;
-  }, [route]);
+  }, [lengths, measures, route]);
 
   const toggle = useCallback(() => {
     if (playingRef.current) stop();
@@ -155,7 +166,24 @@ export function useScorePlayback(document?: ScoreDocument): ScorePlaybackReturn 
         );
         const beatsAvailable = deltaSeconds * tempo.bpm / 60 * speedRef.current;
         const remaining = Math.max(0, lengths[index] - offsetRef.current);
-        if (beatsAvailable < remaining || remaining <= 0) {
+        if (remaining <= 0) {
+          if (measure.manualHold) {
+            stop();
+            indexRef.current = index;
+            offsetRef.current = lengths[index];
+            deltaSeconds = 0;
+            break;
+          }
+          offsetRef.current = 0;
+          indexRef.current += 1;
+          if (indexRef.current >= lengths.length) {
+            stop();
+            indexRef.current = Math.max(0, lengths.length - 1);
+            offsetRef.current = lengths.at(-1) || 0;
+            deltaSeconds = 0;
+            break;
+          }
+        } else if (beatsAvailable < remaining) {
           offsetRef.current += beatsAvailable;
           deltaSeconds = 0;
         } else {

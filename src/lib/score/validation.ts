@@ -67,6 +67,21 @@ function isOptionalConfidence(value: unknown): boolean {
     (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1);
 }
 
+function rationalEnd(
+  offset: { numerator: number; denominator: number },
+  duration: { numerator: number; denominator: number },
+): ReturnType<typeof rational> | undefined {
+  const numerator = offset.numerator * duration.denominator +
+    duration.numerator * offset.denominator;
+  const denominator = offset.denominator * duration.denominator;
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) return undefined;
+  try {
+    return rational(numerator, denominator);
+  } catch (_error) {
+    return undefined;
+  }
+}
+
 function isValidSource(source: ScoreDocument["source"]): boolean {
   if (!source || typeof source !== "object") return false;
   if (source.kind === "musicxml") return typeof source.sanitizedXml === "string";
@@ -247,11 +262,20 @@ function validateMeasure(
     if (!event || typeof event !== "object") continue;
     registerEventId(event.id, event.sourceBox);
     if (!isRational(event.offset) || !isRational(event.duration)) continue;
-    const end = rational(
-      event.offset.numerator * event.duration.denominator +
-        event.duration.numerator * event.offset.denominator,
-      event.offset.denominator * event.duration.denominator,
-    );
+    const end = rationalEnd(event.offset, event.duration);
+    if (!end) {
+      issues.push(
+        issue(
+          "invalid_event_timing",
+          `Melody event ${event.id} exceeds rational timing limits.`,
+          measure.id,
+          true,
+          "error",
+          event.sourceBox,
+        ),
+      );
+      continue;
+    }
     if (compareRational(end, latestTimedEnd) > 0) latestTimedEnd = end;
     if (measureLength && !isEventInsideMeasure(event, measureLength)) {
       issues.push(
@@ -328,12 +352,21 @@ function validateMeasure(
     if (harmony && typeof harmony === "object") registerEventId(harmony.id, sourceBox);
     if (harmony && typeof harmony === "object" && isRational(harmony.offset)) {
       const end = harmony.duration && isRational(harmony.duration)
-        ? rational(
-          harmony.offset.numerator * harmony.duration.denominator +
-            harmony.duration.numerator * harmony.offset.denominator,
-          harmony.offset.denominator * harmony.duration.denominator,
-        )
+        ? rationalEnd(harmony.offset, harmony.duration)
         : harmony.offset;
+      if (!end) {
+        issues.push(
+          issue(
+            "invalid_harmony_event",
+            `Harmony event ${harmonyId} exceeds rational timing limits.`,
+            measure.id,
+            true,
+            "error",
+            sourceBox,
+          ),
+        );
+        continue;
+      }
       if (compareRational(end, latestTimedEnd) > 0) latestTimedEnd = end;
       if (
         measureLength &&
@@ -547,11 +580,11 @@ export function isEventInsideMeasure(
   event: MelodyEvent,
   measureLength: { numerator: number; denominator: number },
 ): boolean {
-  const end = rational(
-    event.offset.numerator * event.duration.denominator +
-      event.duration.numerator * event.offset.denominator,
-    event.offset.denominator * event.duration.denominator,
-  );
+  if (
+    !isRational(event.offset) || !isRational(event.duration) || !isRational(measureLength)
+  ) return false;
+  const end = rationalEnd(event.offset, event.duration);
+  if (!end) return false;
   return compareRational(event.offset, RATIONAL_ZERO) >= 0 &&
     compareRational(end, measureLength) <= 0;
 }
