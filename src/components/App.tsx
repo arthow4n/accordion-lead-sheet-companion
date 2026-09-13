@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type {
   AccordionSize,
   ChordDetail,
@@ -19,6 +19,7 @@ import { useWakeLock } from "../hooks/useWakeLock.ts";
 import { useAutoScroll } from "../hooks/useAutoScroll.ts";
 import { usePedalNavigation } from "../hooks/usePedalNavigation.ts";
 import { useScorePlayback } from "../hooks/useScorePlayback.ts";
+import { expandPerformanceRoute } from "../lib/score/navigation.ts";
 import { CapoBar } from "./CapoBar.tsx";
 import { LeadSheetReader } from "./LeadSheetReader.tsx";
 import { MiniGripDrawer } from "./MiniGripDrawer.tsx";
@@ -70,14 +71,24 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
     autoResumeDelayMs: 3500,
   });
 
-  const scorePlayback = useScorePlayback(currentSong?.score);
+  const scoreRoute = useMemo(
+    () => currentSong?.score ? expandPerformanceRoute(currentSong.score) : null,
+    [currentSong?.score],
+  );
+  const scoreGuidanceBlocked = Boolean(
+    currentSong?.score?.issues.some((issue) =>
+      issue.blocksGuidance && issue.severity === "error"
+    ) ||
+      scoreRoute?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
+  );
+  const scorePlayback = useScorePlayback(scoreGuidanceBlocked ? undefined : currentSong?.score);
   const isScoreMode = Boolean(currentSong?.score);
 
   // Hardware Hook 3: Bluetooth Pedal Navigation
   usePedalNavigation({
     scrollFraction: 0.8,
-    enabled: !isScoreMode,
-    onPageTurn: isScoreMode
+    enabled: !isScoreMode || scoreGuidanceBlocked,
+    onPageTurn: isScoreMode && !scoreGuidanceBlocked
       ? (direction) =>
         direction === "down" ? scorePlayback.nextMeasure() : scorePlayback.previousMeasure()
       : undefined,
@@ -267,6 +278,7 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
         fontSizeClass={fontSizeClass}
         onChangeFontSize={setFontSizeClass}
         mode={isScoreMode ? "score" : "scroll"}
+        disabled={isScoreMode && scoreGuidanceBlocked}
       />
 
       {/* Mini-Grip Drawer Bottom Sheet */}

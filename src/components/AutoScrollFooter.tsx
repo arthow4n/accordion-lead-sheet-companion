@@ -12,6 +12,7 @@ export interface AutoScrollFooterProps {
   fontSizeClass?: string;
   onChangeFontSize?: (sizeClass: string) => void;
   mode?: "scroll" | "score";
+  disabled?: boolean;
   className?: string;
 }
 
@@ -35,6 +36,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
   fontSizeClass = "text-base",
   onChangeFontSize,
   mode = "scroll",
+  disabled = false,
   className = "",
 }) => {
   const currentSpeedIdx = SPEED_STEPS.indexOf(speed) >= 0 ? SPEED_STEPS.indexOf(speed) : 2; // Default 1.0x
@@ -69,13 +71,14 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
           <button
             type="button"
             onClick={onTogglePlay}
+            disabled={disabled}
             className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 cursor-pointer shadow-sm min-h-[38px] ${
               isPlaying
                 ? isTouchPaused
                   ? "bg-amber-600 text-black animate-pulse"
                   : "bg-emerald-600 hover:bg-emerald-500 text-white"
                 : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-            }`}
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
             aria-label={isPlaying
               ? mode === "score" ? "Pause Score Playback" : "Pause Auto-Scroll"
               : mode === "score"
@@ -102,7 +105,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
             <button
               type="button"
               onClick={handleSpeedDown}
-              disabled={currentSpeedIdx <= 0}
+              disabled={disabled || currentSpeedIdx <= 0}
               className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-sm font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded-lg active:bg-zinc-800 cursor-pointer select-none"
               aria-label="Decrease Scroll Speed"
             >
@@ -114,7 +117,7 @@ export const AutoScrollFooter: React.FC<AutoScrollFooterProps> = ({
             <button
               type="button"
               onClick={handleSpeedUp}
-              disabled={currentSpeedIdx >= SPEED_STEPS.length - 1}
+              disabled={disabled || currentSpeedIdx >= SPEED_STEPS.length - 1}
               className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-sm font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 rounded-lg active:bg-zinc-800 cursor-pointer select-none"
               aria-label="Increase Scroll Speed"
             >

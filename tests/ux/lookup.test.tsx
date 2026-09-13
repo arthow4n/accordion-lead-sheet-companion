@@ -65,6 +65,46 @@ Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guida
   assertStringIncludes(html, "Perform");
 });
 
+Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () => {
+  const html = renderToStaticMarkup(
+    <LeadSheetReader
+      song={{
+        id: "blocked-score",
+        title: "Blocked score",
+        capoFret: 0,
+        rawText: "",
+        lines: [],
+        updatedAt: 1,
+        score: {
+          schemaVersion: 1,
+          source: { kind: "musicxml", sanitizedXml: "<score-partwise/>" },
+          tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }],
+          sections: [],
+          measures: [{
+            id: "m1",
+            writtenIndex: 0,
+            melody: [],
+            harmonies: [{ id: "h1", offset: rational(0), raw: "C" }],
+            navigation: [],
+          }],
+          issues: [{
+            code: "unsupported_polyphony",
+            message: "Multiple voices",
+            severity: "error",
+            blocksGuidance: true,
+          }],
+        },
+      }}
+      capo={0}
+      viewMode="stradella"
+    />,
+  );
+  assertStringIncludes(html, "source-only preview");
+  assertStringIncludes(html, "Generated melody and accordion guidance is hidden");
+  assertEquals(html.includes("in performance order"), false);
+  assertEquals(html.includes("Previous measure"), false);
+});
+
 Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {
   const input = "C, G/B, Am7, C/D\nG(add2), Em, Em(maj7)/D#";
   const result = parseChordLookupInput(input);

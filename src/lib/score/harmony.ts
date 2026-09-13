@@ -1,17 +1,44 @@
-import type { ChordDetail, NoteSpelling } from "../../types/index.ts";
+import type {
+  AccordionSize,
+  CbaGripMode,
+  ChordDetail,
+  NoteSpelling,
+  StradellaTransition,
+} from "../../types/index.ts";
 import type { HarmonyEvent } from "../../types/score.ts";
 import { enrichChord } from "../parser/tokenizer.ts";
+import {
+  computeStradellaTransition,
+  getStradellaMovementColumn,
+} from "../stradella/transitions.ts";
 
 export interface HarmonySequenceOptions {
   /** Derived score transposition in semitones. Guitar capo remains a separate UI concern. */
   transpositionSemitones?: number;
   keyContext?: string;
   noteSpelling?: NoteSpelling;
+  cbaMode?: CbaGripMode;
+  accordionSize?: AccordionSize;
 }
 
 export interface EnrichedHarmonyEvent extends HarmonyEvent {
   detail?: ChordDetail;
   issue?: "invalid-chord";
+  stradellaTransition?: StradellaTransition;
+}
+
+/** Annotate an already performance-ordered sequence without changing event timing or spelling. */
+export function annotateHarmonyTransitions(
+  events: EnrichedHarmonyEvent[],
+  initialColumn?: number,
+): EnrichedHarmonyEvent[] {
+  let previousColumn: number | undefined = initialColumn;
+  return events.map((event) => {
+    const currentColumn = getStradellaMovementColumn(event.detail);
+    const stradellaTransition = computeStradellaTransition(previousColumn, currentColumn);
+    if (currentColumn !== undefined) previousColumn = currentColumn;
+    return { ...event, stradellaTransition };
+  });
 }
 
 /**

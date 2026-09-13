@@ -1,6 +1,7 @@
 import type {
   ImageBox,
   MelodyEvent,
+  NavigationMark,
   ScoreDocument,
   ScoreIssue,
   ScoreMeasure,
@@ -43,6 +44,47 @@ function isValidSource(source: ScoreDocument["source"]): boolean {
     (source.assetId === undefined || typeof source.assetId === "string");
 }
 
+function isValidNavigationMark(value: unknown): value is NavigationMark {
+  if (!value || typeof value !== "object") return false;
+  const mark = value as Record<string, unknown>;
+  if (typeof mark.kind !== "string") return false;
+  switch (mark.kind) {
+    case "repeat-start":
+    case "repeat-end":
+    case "ending-stop":
+    case "fine":
+      return mark.kind !== "repeat-end" || mark.repeatCount === undefined ||
+        (Number.isInteger(mark.repeatCount) && Number(mark.repeatCount) > 0);
+    case "ending":
+      return Array.isArray(mark.numbers) && mark.numbers.length > 0 &&
+        mark.numbers.every((number) => Number.isInteger(number) && Number(number) > 0);
+    case "dc":
+      return mark.target === undefined || mark.target === "start" || mark.target === "coda";
+    case "ds":
+      return (mark.target === undefined || mark.target === "segno" || mark.target === "coda") &&
+        (mark.targetId === undefined || typeof mark.targetId === "string");
+    case "segno":
+    case "coda":
+      return mark.id === undefined || typeof mark.id === "string";
+    case "to-coda":
+      return mark.targetId === undefined || typeof mark.targetId === "string";
+    case "text":
+      return typeof mark.text === "string";
+    default:
+      return false;
+  }
+}
+
+function isValidIssue(value: unknown): value is ScoreIssue {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.code === "string" && typeof candidate.message === "string" &&
+    (candidate.severity === "info" || candidate.severity === "warning" ||
+      candidate.severity === "error") &&
+    typeof candidate.blocksGuidance === "boolean" &&
+    isFiniteBox(candidate.sourceBox as ImageBox | undefined);
+}
+
 function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   const issues: ScoreIssue[] = [];
   if (!Array.isArray(measure.melody)) {
@@ -56,7 +98,7 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
   for (const event of measure.melody) {
     if (
       !event || typeof event !== "object" || !isRational(event.offset) ||
-      !isRational(event.duration) || typeof event.id !== "string"
+      !isRational(event.duration) || typeof event.id !== "string" || typeof event.rest !== "boolean"
     ) {
       issues.push(issue("invalid_event_shape", "Melody event has an invalid shape.", measure.id));
       continue;
@@ -95,7 +137,8 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
     }
     if (
       event.pitch &&
-      (event.pitch.alter < -2 || event.pitch.alter > 2 || !Number.isInteger(event.pitch.octave))
+      (!["A", "B", "C", "D", "E", "F", "G"].includes(event.pitch.step) ||
+        event.pitch.alter < -2 || event.pitch.alter > 2 || !Number.isInteger(event.pitch.octave))
     ) {
       issues.push(
         issue(
@@ -115,7 +158,10 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
 
 function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
   const issues = [...validateMelody(measure)];
-  if (!measure.id || measure.writtenIndex < 0 || !Number.isInteger(measure.writtenIndex)) {
+  if (
+    typeof measure.id !== "string" || !measure.id.trim() || measure.writtenIndex < 0 ||
+    !Number.isInteger(measure.writtenIndex)
+  ) {
     issues.push(issue("invalid_measure_identity", "Measure ID/index is invalid.", measure.id));
   }
   if (
@@ -136,10 +182,22 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
     issues.push(issue("invalid_navigation", "Measure navigation must be an array.", measure.id));
     return issues;
   }
+  for (const mark of measure.navigation) {
+    if (!isValidNavigationMark(mark)) {
+      issues.push(
+        issue(
+          "invalid_navigation_mark",
+          "Measure navigation contains an invalid mark.",
+          measure.id,
+        ),
+      );
+    }
+  }
   for (const harmony of measure.harmonies) {
     const harmonyId = harmony && typeof harmony === "object" && typeof harmony.id === "string"
       ? harmony.id
       : "(unknown)";
+    const sourceBox = harmony && typeof harmony === "object" ? harmony.sourceBox : undefined;
     if (
       !harmony || typeof harmony !== "object" || typeof harmony.id !== "string" ||
       typeof harmony.raw !== "string" || !isRational(harmony.offset) ||
@@ -152,7 +210,7 @@ function validateMeasure(measure: ScoreMeasure): ScoreIssue[] {
           measure.id,
           true,
           "error",
-          harmony.sourceBox,
+          sourceBox,
         ),
       );
     }
@@ -203,9 +261,25 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   }
   if (!Array.isArray(document.sections)) {
     issues.push(issue("invalid_sections", "Score sections must be an array."));
+  } else {
+    for (const section of document.sections) {
+      if (
+        !section || typeof section !== "object" || typeof section.id !== "string" ||
+        typeof section.startMeasureId !== "string" ||
+        (section.endMeasureId !== undefined && typeof section.endMeasureId !== "string")
+      ) {
+        issues.push(issue("invalid_section", "Score section has an invalid shape."));
+      }
+    }
   }
   if (!Array.isArray(document.issues)) {
     issues.push(issue("invalid_issue_list", "Score issues must be an array."));
+  } else {
+    for (const scoreIssue of document.issues) {
+      if (!isValidIssue(scoreIssue)) {
+        issues.push(issue("invalid_issue", "Score issue has an invalid shape."));
+      }
+    }
   }
   if (!Array.isArray(document.measures)) {
     issues.push(issue("invalid_measures", "Score measures must be an array."));
@@ -215,6 +289,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     issues.push(issue("measure_limit", "Score contains too many measures."));
   }
   const ids = new Set<string>();
+  const writtenIndexes = new Set<number>();
   for (const measure of Array.isArray(document.measures) ? document.measures : []) {
     if (!measure || typeof measure !== "object") {
       issues.push(issue("invalid_measure", "Score measure has an invalid shape."));
@@ -225,7 +300,17 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
         issue("duplicate_measure_id", `Measure ID ${measure.id} is duplicated.`, measure.id),
       );
     }
+    if (writtenIndexes.has(measure.writtenIndex)) {
+      issues.push(
+        issue(
+          "duplicate_written_index",
+          `Measure written index ${measure.writtenIndex} is duplicated.`,
+          measure.id,
+        ),
+      );
+    }
     ids.add(measure.id);
+    writtenIndexes.add(measure.writtenIndex);
     issues.push(...validateMeasure(measure));
   }
   return { valid: issues.every((candidate) => candidate.severity !== "error"), issues };

@@ -15,6 +15,7 @@ import { addRational, rational } from "./rational.ts";
 export const MUSICXML_MAX_BYTES = 10 * 1024 * 1024;
 export const MUSICXML_MAX_NODES = 100_000;
 export const MUSICXML_MAX_DEPTH = 128;
+export const MUSICXML_MAX_EVENTS_PER_MEASURE = 10_000;
 
 export interface MusicXmlParseResult {
   document?: ScoreDocument;
@@ -130,6 +131,15 @@ function parseTime(attributes: Element): ScoreTimeSignature | undefined {
 function isTrebleClef(attributes: Element): boolean {
   const sign = text(child(child(attributes, "clef") || attributes, "sign"));
   return sign === "G";
+}
+
+function hasNonZeroTranspose(attributes: Element): boolean {
+  const transpose = child(attributes, "transpose");
+  if (!transpose) return false;
+  return ["diatonic", "chromatic", "octave-change"].some((name) => {
+    const value = Number.parseInt(text(child(transpose, name)), 10);
+    return Number.isFinite(value) && value !== 0;
+  });
 }
 
 function accidental(alter: number): string {
@@ -321,6 +331,7 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
   const tempoMap: TempoEvent[] = [];
   let documentOffset = rational(0);
   const informationalConstructs = new Set<string>();
+  let activeEndingNumbers: number[] | undefined;
   for (const measureElement of children(part, "measure")) {
     const id = `m${measures.length + 1}`;
     const attributesList = children(measureElement, "attributes");
@@ -363,7 +374,16 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
       else if (child(attributes, "time")) {
         issues.push(issue("invalid_time_signature", "MusicXML time signature is invalid."));
       }
-      const clef = child(attributes, "clef");
+      const clefElements = children(attributes, "clef");
+      const clef = clefElements[0];
+      if (clefElements.length > 1) {
+        issues.push(
+          issue(
+            "unsupported_score_shape",
+            "Multiple clefs/staves are not supported in score reader v1.",
+          ),
+        );
+      }
       if (clef) {
         if (!isTrebleClef(attributes)) {
           issues.push(
@@ -377,7 +397,7 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           issue("unsupported_score_shape", "Multiple staves are not supported in score reader v1."),
         );
       }
-      if (child(attributes, "transpose")) {
+      if (hasNonZeroTranspose(attributes)) {
         issues.push(
           issue(
             "unsupported_instrument_transposition",
@@ -399,12 +419,15 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     let offsetDivisions = 0;
     const voices = new Set<string>();
     let pendingGrace = false;
+    let eventCount = 0;
+    let eventLimitReported = false;
     for (const element of elementChildren(measureElement)) {
       if (element.localName === "forward") {
         const forwardDuration = intText(child(element, "duration"));
         if (forwardDuration < 0) {
           issues.push(issue("invalid_forward", "Forward duration must not be negative."));
-        } else if (forwardDuration > 0) {
+        } else if (forwardDuration > 0 && eventCount < MUSICXML_MAX_EVENTS_PER_MEASURE) {
+          eventCount += 1;
           melody.push({
             id: `${id}-r${noteCounter++}`,
             offset: rational(offsetDivisions, divisions),
@@ -412,14 +435,26 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
             rest: true,
           });
           offsetDivisions += forwardDuration;
+        } else if (forwardDuration > 0 && !eventLimitReported) {
+          eventLimitReported = true;
+          issues.push(measureIssue("event_limit", "Measure contains too many timed events.", id));
         }
       } else if (element.localName === "note") {
+        if (eventCount >= MUSICXML_MAX_EVENTS_PER_MEASURE) {
+          if (!eventLimitReported) {
+            eventLimitReported = true;
+            issues.push(measureIssue("event_limit", "Measure contains too many timed events.", id));
+          }
+          continue;
+        }
+        eventCount += 1;
         const timeModification = child(element, "time-modification");
         if (timeModification) {
           const actual = intText(child(timeModification, "actual-notes"), Number.NaN);
           const normal = intText(child(timeModification, "normal-notes"), Number.NaN);
           if (
-            !Number.isInteger(actual) || !Number.isInteger(normal) || actual <= 0 || normal <= 0
+            !Number.isInteger(actual) || !Number.isInteger(normal) || actual <= 0 || normal <= 0 ||
+            actual > 16 || normal > 16
           ) {
             issues.push(
               measureIssue(
@@ -432,6 +467,20 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         }
         for (const construct of ["beam", "notations", "lyric"]) {
           if (child(element, construct)) informationalConstructs.add(construct);
+        }
+        const notations = child(element, "notations");
+        for (const construct of ["articulations", "ornaments", "fermata", "dynamics"]) {
+          if (notations && child(notations, construct)) informationalConstructs.add(construct);
+        }
+        const staff = text(child(element, "staff"));
+        if (staff && staff !== "1") {
+          issues.push(
+            measureIssue(
+              "unsupported_score_shape",
+              "Only staff 1 is supported in score reader v1.",
+              id,
+            ),
+          );
         }
         if (child(element, "chord")) {
           issues.push(
@@ -446,6 +495,14 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         else pendingGrace = false;
         offsetDivisions += event.duration.numerator * divisions / event.duration.denominator;
       } else if (element.localName === "harmony") {
+        if (eventCount >= MUSICXML_MAX_EVENTS_PER_MEASURE) {
+          if (!eventLimitReported) {
+            eventLimitReported = true;
+            issues.push(measureIssue("event_limit", "Measure contains too many timed events.", id));
+          }
+          continue;
+        }
+        eventCount += 1;
         const harmony = parseHarmony(
           element,
           rational(offsetDivisions, divisions),
@@ -504,6 +561,16 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     }
     const printedNumber = Number.parseInt(measureElement.getAttribute("number") || "", 10);
     const navigation = parseNavigation(measureElement);
+    const endingStart = navigation.find((mark) => mark.kind === "ending");
+    const endingStop = navigation.some((mark) => mark.kind === "ending-stop");
+    if (!endingStart && activeEndingNumbers && !endingStop) {
+      navigation.push({ kind: "ending", numbers: activeEndingNumbers });
+    }
+    if (endingStart?.kind === "ending") activeEndingNumbers = endingStart.numbers;
+    if (endingStop) activeEndingNumbers = undefined;
+    if (child(measureElement, "measure-style")) {
+      informationalConstructs.add("measure-repeat");
+    }
     if (
       navigation.some((mark) => mark.kind === "dc") && navigation.some((mark) => mark.kind === "ds")
     ) {

@@ -12,6 +12,7 @@ import { importSongbook, normalizeSongRecord } from "../../src/lib/storage/songb
 import { enrichHarmonySequence } from "../../src/lib/score/harmony.ts";
 import { parseMusicXml } from "../../src/lib/score/musicxml.ts";
 import { parseMxl } from "../../src/lib/score/mxl.ts";
+import { createMusicXmlExcerpt } from "../../src/lib/score/osmd.ts";
 import { zipSync } from "fflate";
 import { DOMParser as TestDomParser, XMLSerializer as TestXmlSerializer } from "@xmldom/xmldom";
 
@@ -99,7 +100,7 @@ Deno.test("song normalization preserves legacy records and rejects malformed sco
         tempoMap: [],
         sections: "not-an-array",
         issues: null,
-        measures: [{ id: "m1", writtenIndex: 0, melody: [], harmonies: [], navigation: null }],
+        measures: [{ id: "m1", writtenIndex: 0, melody: [], harmonies: [], navigation: [null] }],
       },
     }),
     undefined,
@@ -281,4 +282,28 @@ Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", 
     "scores/main.musicxml": new TextEncoder().encode(scoreXml),
   });
   assertEquals(parseMxl(archive).issues[0].code, "mxl_unsafe_path");
+});
+
+Deno.test("OSMD adapter creates bounded public-API excerpts with carried attributes", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note></measure>
+    <measure number="2"><note><rest/><duration>1</duration></note></measure>
+    <measure number="3"><note><rest/><duration>1</duration></note></measure>
+  </part></score-partwise>`;
+  const excerpt = createMusicXmlExcerpt(xml, 1, 2);
+  assertEquals(Boolean(excerpt), true);
+  assertEquals((excerpt?.match(/<measure\b/g) || []).length, 2);
+  assertEquals(excerpt?.includes("<attributes>"), true);
+  assertEquals(createMusicXmlExcerpt(xml, 99, 2), undefined);
+});
+
+Deno.test("MusicXML parser caps timed events before domain conversion", () => {
+  const notes = Array.from({ length: 10_001 }, () => "<note><rest/><duration>1</duration></note>")
+    .join("");
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
+    <attributes><divisions>1</divisions><clef><sign>G</sign></clef></attributes>${notes}
+  </measure></part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues.some((item) => item.code === "event_limit"), true);
+  assertEquals(result.document?.measures[0].melody.length, 10_000);
 });

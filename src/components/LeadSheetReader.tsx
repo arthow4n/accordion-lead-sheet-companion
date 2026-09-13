@@ -14,6 +14,7 @@ import {
 import type {
   AccordionSize,
   CbaDisplayMode,
+  CbaGripMode,
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
@@ -47,23 +48,40 @@ import { COMMIT_HASH, COMMIT_URL } from "../version.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { ChordBadge, isChordActive } from "./ChordBadge.tsx";
 import { CbaMiniCard } from "./CbaMiniCard.tsx";
-import { enrichHarmonySequence } from "../lib/score/harmony.ts";
+import {
+  annotateHarmonyTransitions,
+  type EnrichedHarmonyEvent,
+  enrichHarmonySequence,
+} from "../lib/score/harmony.ts";
 import { expandPerformanceRoute } from "../lib/score/navigation.ts";
 import { rationalToNumber } from "../lib/score/rational.ts";
-import { createScoreRenderer } from "../lib/score/osmd.ts";
+import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
+import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
 
 function scorePitchLabel(
   pitch: { step: string; alter: number; octave: number },
   spelling: NoteSpelling,
 ): string {
-  const accidental = spelling === "flats"
-    ? "b".repeat(Math.max(0, -pitch.alter))
-    : spelling === "sharps"
-    ? "#".repeat(Math.max(0, pitch.alter))
-    : pitch.alter < 0
-    ? "b".repeat(-pitch.alter)
-    : "#".repeat(pitch.alter);
-  return `${pitch.step}${accidental}${pitch.octave}`;
+  if (spelling === "auto" || pitch.alter === 0) {
+    const accidental = pitch.alter < 0 ? "b".repeat(-pitch.alter) : "#".repeat(pitch.alter);
+    return `${pitch.step}${accidental}${pitch.octave}`;
+  }
+  const naturalPitchClasses: Record<string, number> = {
+    C: 0,
+    D: 2,
+    E: 4,
+    F: 5,
+    G: 7,
+    A: 9,
+    B: 11,
+  };
+  const pitchClass = ((naturalPitchClasses[pitch.step] + pitch.alter) % 12 + 12) % 12;
+  const names = spelling === "flats"
+    ? ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
+    : ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const absoluteMidi = (pitch.octave + 1) * 12 + pitchClass;
+  const octave = Math.floor(absoluteMidi / 12) - 1;
+  return `${names[pitchClass]}${octave}`;
 }
 
 interface ScoreMeasureCardProps {
@@ -77,6 +95,10 @@ interface ScoreMeasureCardProps {
   stradellaDisplayMode: StradellaDisplayMode;
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
+  harmonyEvents?: EnrichedHarmonyEvent[];
+  cbaMode: CbaGripMode;
+  accordionSize: AccordionSize;
+  transpositionSemitones?: number;
 }
 
 const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
@@ -90,8 +112,17 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
   stradellaDisplayMode,
   onSelectChord,
   selectedChord,
+  harmonyEvents,
+  cbaMode,
+  accordionSize,
+  transpositionSemitones = 0,
 }) => {
-  const harmonies = enrichHarmonySequence(measure.harmonies, { noteSpelling });
+  const harmonies = harmonyEvents || enrichHarmonySequence(measure.harmonies, {
+    noteSpelling,
+    transpositionSemitones,
+    cbaMode,
+    accordionSize,
+  });
   return (
     <article
       data-score-performance-index={performanceIndex}
@@ -132,6 +163,7 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
               noteSpelling={noteSpelling}
               onSelectChord={onSelectChord}
               active={isChordActive(harmony.detail || harmony.raw, selectedChord)}
+              stradellaTransition={harmony.stradellaTransition}
             />
           ))
           : <span className="text-xs text-zinc-500">No chord symbol</span>}
@@ -170,19 +202,27 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
   );
 };
 
-const ScoreNotation: React.FC<{ xml?: string }> = ({ xml }) => {
+const ScoreNotation: React.FC<{ xml?: string; startMeasure?: number; measureCount?: number }> = ({
+  xml,
+  startMeasure = 0,
+  measureCount = 2,
+}) => {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const excerpt = useMemo(
+    () => xml ? createMusicXmlExcerpt(xml, startMeasure, measureCount) : undefined,
+    [measureCount, startMeasure, xml],
+  );
 
   React.useEffect(() => {
-    if (!xml || !containerRef.current) return;
+    if (!excerpt || !containerRef.current) return;
     let cancelled = false;
     setStatus("loading");
     const container = containerRef.current;
-    createScoreRenderer(container, { backend: "svg", strategy: "source-only" })
+    createScoreRenderer(container, { backend: "svg", strategy: "bounded-excerpt" })
       .then(async (renderer) => {
         if (cancelled) return;
-        await renderer.load(xml);
+        await renderer.load(excerpt);
         if (cancelled) return;
         renderer.render();
         setStatus("ready");
@@ -194,9 +234,9 @@ const ScoreNotation: React.FC<{ xml?: string }> = ({ xml }) => {
       cancelled = true;
       container.replaceChildren();
     };
-  }, [xml]);
+  }, [excerpt]);
 
-  if (!xml) return null;
+  if (!excerpt) return null;
   return (
     <div className="rounded-2xl border border-zinc-800 bg-white/95 p-2 overflow-x-auto">
       <div ref={containerRef} className="min-w-[560px]" aria-label="Rendered score notation" />
@@ -251,6 +291,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   onChangeCapo,
   onUpdateSong,
   fontSizeClass = "text-base",
+  accordionSize = "120-bass",
   onSelectChord,
   selectedChord,
   scorePerformanceIndex = 0,
@@ -383,7 +424,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     [song.score],
   );
   const scoreGuidanceBlocked = Boolean(
-    song.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
+    song.score?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error") ||
+      scoreRoute?.issues.some((issue) => issue.blocksGuidance && issue.severity === "error"),
   );
   const scoreMeasures = useMemo(() => {
     if (!song.score || !scoreRoute) return [];
@@ -394,6 +436,24 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       Boolean(item.measure)
     );
   }, [scoreRoute, song.score]);
+  const scoreHarmonyByPerformance = useMemo(() => {
+    const map = new Map<number, EnrichedHarmonyEvent[]>();
+    if (!scoreMeasures.length) return map;
+    let previousColumn: number | undefined;
+    for (const { ref, measure } of scoreMeasures) {
+      const enriched = enrichHarmonySequence(measure.harmonies, {
+        noteSpelling: activeNoteSpelling,
+        cbaMode: cbaGripMode,
+        accordionSize,
+      });
+      const annotated = annotateHarmonyTransitions(enriched, previousColumn);
+      map.set(ref.performanceIndex, annotated);
+      const last = annotated.at(-1);
+      const lastColumn = getStradellaMovementColumn(last?.detail);
+      if (lastColumn !== undefined) previousColumn = lastColumn;
+    }
+    return map;
+  }, [accordionSize, activeNoteSpelling, cbaGripMode, scoreMeasures]);
   const [scoreView, setScoreView] = useState<"preview" | "learn" | "perform">("learn");
 
   React.useEffect(() => {
@@ -961,8 +1021,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
               <div>
                 <h2 className="text-sm font-black text-zinc-100">Score reader</h2>
                 <p className="text-[11px] text-zinc-400">
-                  {song.score.measures.length} written measures · {scoreRoute.measures.length}{" "}
-                  in performance order
+                  {song.score.measures.length} written measures
+                  {scoreGuidanceBlocked
+                    ? " · source-only preview"
+                    : ` · ${scoreRoute.measures.length} in performance order`}
                 </p>
               </div>
               <div
@@ -998,7 +1060,7 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 melody and accordion guidance is hidden until the source is corrected.
               </div>
             )}
-            {scoreView !== "preview" && (
+            {!scoreGuidanceBlocked && scoreView !== "preview" && (
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -1028,7 +1090,13 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
           </div>
 
           {song.score.source.kind === "musicxml" && (
-            <ScoreNotation xml={song.score.source.sanitizedXml} />
+            <ScoreNotation
+              xml={song.score.source.sanitizedXml}
+              startMeasure={scoreView === "preview"
+                ? 0
+                : scoreMeasures[scorePerformanceIndex]?.measure.writtenIndex || 0}
+              measureCount={scoreView === "perform" ? 1 : 2}
+            />
           )}
 
           {!scoreGuidanceBlocked && scoreView === "preview" && (
@@ -1041,6 +1109,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   noteSpelling={activeNoteSpelling}
                   cbaDisplayMode={cbaDisplayMode}
                   stradellaDisplayMode={stradellaDisplayMode}
+                  cbaMode={cbaGripMode}
+                  accordionSize={accordionSize}
+                  transpositionSemitones={0}
                   onSelectChord={onSelectChord}
                   selectedChord={selectedChord}
                 />
@@ -1066,6 +1137,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     noteSpelling={activeNoteSpelling}
                     cbaDisplayMode={cbaDisplayMode}
                     stradellaDisplayMode={stradellaDisplayMode}
+                    cbaMode={cbaGripMode}
+                    accordionSize={accordionSize}
+                    transpositionSemitones={0}
+                    harmonyEvents={scoreHarmonyByPerformance.get(ref.performanceIndex)}
                     onSelectChord={onSelectChord}
                     selectedChord={selectedChord}
                   />
