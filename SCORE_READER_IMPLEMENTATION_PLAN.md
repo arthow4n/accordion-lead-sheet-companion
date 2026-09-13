@@ -2,7 +2,8 @@
 
 **Status:** Proposal; no feature implementation has started\
 **Execution model:** One primary coding agent working sequentially\
-**Review model:** One read-only `gpt-5.6-sol` (`medium`) review sub-agent only at named checkpoints\
+**Review model:** Four named checkpoints, each using one read-only `gpt-5.6-sol` (`medium`)
+sub-agent\
 **Primary outcome:** On the full OMR branch, a musician can photograph or import a printed
 melody-and-chord score, press Play, and receive measure-aware CBA and Stradella guidance without
 first operating a notation editor. The explicitly reduced no-OMR release is defined separately.
@@ -295,17 +296,18 @@ Use these as the initial ledger rows; split further when a diff stops being inde
 
 1. `M0`: baseline, provenance policy, authority record.
 2. `M1A`: score/source/time types and validators; `M1B`: storage migration and lifecycle; `M1C`:
-   route/transposition/harmony adapter; then `R1`.
+   route/transposition/harmony adapter.
 3. `M2A`: bounded XML/MXL parser; `M2B`: OSMD rendering spike and selected adapter; `M2C`: import UI
-   integration; then `R1B`.
+   integration; then combined architecture/import review `R1`.
 4. `M3A`: musical clock, route, loop, and pedal logic; `M3B`: preview/learn/perform UI; `M3C`: UX,
    accessibility, and browser audit.
 5. `M4A`: physical-keyboard mathematical specification and tests; then `R2`; `M4B`: geometry
    compatibility layer and solver; `M4C`: shared melody presentation.
 6. `M5A`: bounded page geometry worker; `M5B`: measure crop/boundary UI; `M5C`: manual timed chord
-   assignment and source lifecycle; then `R2B`.
+   assignment and source lifecycle.
 7. `M6A`: authority, model-input probe, frozen corpus and gates; `M6B`: reference/export/parity and
-   browser benchmarks; `M6C`: recorded branch decision.
+   browser benchmarks; `M6C`: recorded branch decision. On `OMR_NO_GO`, run combined photo/OMR
+   review `R3` here.
 8. On `OMR_GO`: `M7A` artifact/runtime loader, `M7B` model adapter/decode/parser, `M7C`
    cache/offline/failure UI and browser tests; then `R3`. On `OMR_NO_GO`, record skipped rows and go
    to the reduced portions of M8–M10.
@@ -399,15 +401,6 @@ at the relevant decision gate; it does not block earlier local work that is inde
 - [ ] Score contracts and migrations have exhaustive pure tests.
 - [ ] Harmony reuse is demonstrated by equality tests.
 
-#### Review checkpoint 1 — Architecture and regression boundary
-
-- [ ] Invoke the exact Section 5 reviewer contract.
-- [ ] Ask it to inspect the score schema, migration behavior, written/performance ordering, harmony
-      adapter, and risks of duplicating existing engines.
-- [ ] Resolve high/blocking findings and add regression tests.
-- [ ] Rerun the four mandatory checks.
-- [ ] Record the review disposition in the eventual commit/PR notes.
-
 ### Milestone 2 — MusicXML/MXL import before photograph recognition
 
 - [ ] Add MusicXML and MXL file choices to the existing import experience.
@@ -444,11 +437,12 @@ at the relevant decision gate; it does not block earlier local work that is inde
 - [ ] Unsupported inputs fail safely without corrupting the songbook.
 - [ ] No photograph or OMR dependency is required for this path.
 
-#### Review checkpoint 1B — Untrusted document and rendering review
+#### Review checkpoint 1 — Architecture, regression, and secure import
 
 - [ ] Invoke the Section 5 reviewer contract after Milestone 2.
-- [ ] Ask it to inspect XML/MXL limits and adversarial cases, sanitizer/source persistence, import
-      migrations, OSMD isolation, bounded rendering, and failure atomicity.
+- [ ] Ask it to inspect the score schema, storage migrations, source lifecycle, written/performance
+      ordering, transposition and harmony reuse, XML/MXL adversarial limits, OSMD isolation, bounded
+      rendering, and import failure atomicity.
 - [ ] Resolve high/blocking findings, rerun the four checks, and record the disposition.
 
 ### Milestone 3 — Measure-aware playing experience
@@ -583,15 +577,6 @@ mandated by `AGENTS.md` before production implementation.
 - [ ] The flow remains valuable even when no OMR model is installed.
 - [ ] Source-image privacy behavior is explicit and tested.
 
-#### Review checkpoint 2B — Photo privacy, safety, and lifecycle
-
-- [ ] Invoke the exact Section 5 reviewer contract after Milestone 5.
-- [ ] Ask it to inspect hostile image dimensions/metadata, decoding and OpenCV bounds, worker
-      cancellation, memory/object-URL cleanup, opt-in persistence, deletion/export behavior, fixture
-      provenance, and the manual chord-assignment contract.
-- [ ] Resolve high/blocking findings, rerun the four checks and photo smoke tests, and record the
-      disposition.
-
 ### Milestone 6 — OMR model evaluation and browser feasibility gate
 
 Do not integrate a production model until this milestone passes. Conduct model conversion tooling
@@ -684,10 +669,17 @@ outside the application runtime; generated weights must remain outside Git.
 
 #### Review checkpoint 3 — OMR, privacy, security, and performance
 
-- [ ] Invoke the exact Section 5 reviewer contract.
-- [ ] Ask it to inspect model adapter/preprocessing fidelity, worker isolation, model integrity,
-      GitHub Pages asset resolution, capability fallbacks, cache invalidation, memory cleanup,
-      offline behavior, licensing notices, and graceful fallback.
+- [ ] On `OMR_GO`, invoke the exact Section 5 reviewer contract after Milestone 7. On `OMR_NO_GO`,
+      invoke it immediately after the Milestone 6 branch decision; this remains one checkpoint, not
+      two reviews.
+- [ ] On both branches, ask it to inspect hostile image handling, OpenCV bounds, worker
+      cancellation, object-URL/memory cleanup, source persistence/deletion/export, fixture
+      provenance, and manual chord assignment.
+- [ ] On `OMR_GO`, additionally inspect model adapter/preprocessing fidelity, model integrity,
+      GitHub Pages asset resolution, capability fallbacks, cache invalidation, offline behavior,
+      licensing notices, and graceful fallback.
+- [ ] On `OMR_NO_GO`, additionally verify that OMR dependencies and product claims remain absent and
+      that guided-photo fallback behavior is complete.
 - [ ] Resolve high/blocking findings and add adversarial tests.
 - [ ] Rerun the four mandatory checks plus the opt-in local model smoke test.
 - [ ] Record the review disposition.
