@@ -1,7 +1,8 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import type { MelodyEvent, ScoreDocument, ScoreMeasure } from "../../src/types/score.ts";
 import { addRational, compareRational, rational } from "../../src/lib/score/rational.ts";
 import { isEventInsideMeasure, validateScoreDocument } from "../../src/lib/score/validation.ts";
+import { importSongbook, normalizeSongRecord } from "../../src/lib/storage/songbook.ts";
 
 const measure = (overrides: Partial<ScoreMeasure> = {}): ScoreMeasure => ({
   id: "m1",
@@ -54,4 +55,51 @@ Deno.test("event containment uses exact rational boundaries", () => {
   };
   assertEquals(isEventInsideMeasure(event, rational(1)), true);
   assertEquals(isEventInsideMeasure({ ...event, offset: rational(4, 5) }, rational(1)), false);
+});
+
+Deno.test("song normalization preserves legacy records and rejects malformed score payloads", () => {
+  const legacy = normalizeSongRecord({
+    id: "legacy",
+    title: "Legacy",
+    rawText: "C",
+    lines: [],
+    capoFret: 14,
+    updatedAt: 10,
+  });
+  assertEquals(legacy?.capoFret, 2);
+  assertEquals(legacy?.capo, 2);
+  assertEquals(
+    normalizeSongRecord({ id: "bad", title: "Bad", rawText: "", lines: [], score: {} }),
+    undefined,
+  );
+});
+
+Deno.test("songbook import rejects malformed records instead of partially importing", async () => {
+  await assertRejects(
+    () => importSongbook(JSON.stringify({ version: 2, songs: [{ id: "bad" }] }), "replace"),
+    Error,
+    "No valid songs",
+  );
+  await assertRejects(
+    () =>
+      importSongbook(
+        JSON.stringify({
+          version: 2,
+          songs: [
+            {
+              id: "good",
+              title: "Good",
+              rawText: "C",
+              lines: [],
+              capoFret: 0,
+              updatedAt: 1,
+            },
+            { id: "bad" },
+          ],
+        }),
+        "replace",
+      ),
+    Error,
+    "malformed record",
+  );
 });
