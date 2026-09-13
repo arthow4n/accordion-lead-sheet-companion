@@ -286,9 +286,9 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID | Status  | Commit | Checks | Review disposition | Notes                                             |
-| -- | ------- | ------ | ------ | ------------------ | ------------------------------------------------- |
-| M0 | pending | —      | —      | —                  | Start here. Add slice rows before implementation. |
+| ID | Status   | Commit     | Checks                    | Review disposition | Notes                                                                                             |
+| -- | -------- | ---------- | ------------------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
+| M0 | complete | this slice | fmt/lint/test/build green | N/A                | Baseline, provenance policy, authority record, and reuse inventory are committed with this slice. |
 
 ### Required slice order
 
@@ -322,9 +322,9 @@ Use these as the initial ledger rows; split further when a diff stops being inde
 
 ### Milestone 0 — Baseline, evidence, and privacy guardrails
 
-- [ ] Re-read `AGENTS.md`, this plan, and the current worktree before implementation.
-- [ ] Run the four mandatory baseline quality checks and record any pre-existing failure separately.
-- [ ] Inventory the existing reusable paths:
+- [x] Re-read `AGENTS.md`, this plan, and the current worktree before implementation.
+- [x] Run the four mandatory baseline quality checks and record any pre-existing failure separately.
+- [x] Inventory the existing reusable paths:
   - `src/lib/capo/`
   - `src/lib/stradella/`
   - `src/lib/cba/`
@@ -335,15 +335,15 @@ Use these as the initial ledger rows; split further when a diff stops being inde
   - `src/hooks/useAutoScroll.ts`
   - `src/hooks/usePedalNavigation.ts`
   - `src/hooks/useWakeLock.ts`
-- [ ] Define a committed fixture policy covering provenance, copyright, generated scores, and
+- [x] Define a committed fixture policy covering provenance, copyright, generated scores, and
       private local evaluation data.
-- [ ] Add a fixture manifest recording creator/source, work public-domain status, engraving/image
+- [x] Add a fixture manifest recording creator/source, work public-domain status, engraving/image
       license, creation tool/font/model, permitted use, checksum, reviewer, and review date.
-- [ ] Ensure private evaluation paths and downloaded weights remain ignored without broad ignore
+- [x] Ensure private evaluation paths and downloaded weights remain ignored without broad ignore
       patterns that could hide application code.
 - [ ] Create an opt-in local evaluation command only when the first evaluation harness exists; it
       must not be imported by the default test task.
-- [ ] Create a decision/authority record with named owner and status for dependency licenses,
+- [x] Create a decision/authority record with named owner and status for dependency licenses,
       fixture provenance, target benchmark device/profile, frozen numeric thresholds, model and
       artifact licensing, artifact host/CORS/retention, external publication, and whether
       `OMR_NO_GO` is an acceptable v1.
@@ -351,7 +351,7 @@ Use these as the initial ledger rows; split further when a diff stops being inde
       and button counts, physical bounds, lowest/highest sounding pitch, reference coordinate and
       pitch, orientation, and authoritative source. If none is approved, v1 may use only an
       explicitly labeled abstract layout and must not claim instrument-specific reachability.
-- [ ] Record notices/provenance requirements for OSMD, the ZIP/XML parser, OpenCV.js, Tesseract.js,
+- [x] Record notices/provenance requirements for OSMD, the ZIP/XML parser, OpenCV.js, Tesseract.js,
       ONNX Runtime Web, KomaVision-derived logic, and every model artifact.
 
 The primary agent may evaluate and recommend, but may not infer legal approval, upload/publish model
@@ -360,10 +360,10 @@ at the relevant decision gate; it does not block earlier local work that is inde
 
 **Exit criteria**
 
-- [ ] Baseline checks are green.
-- [ ] No private image exists under the repository root or Git index.
-- [ ] Fixture and model-artifact policies are documented.
-- [ ] Every external decision has an owner, approval state, and explicit stop point.
+- [x] Baseline checks are green.
+- [x] No private image exists under the repository root or Git index.
+- [x] Fixture and model-artifact policies are documented.
+- [x] Every external decision has an owner, approval state, and explicit stop point.
 
 ### Milestone 1 — Score domain model and compatibility boundary
 

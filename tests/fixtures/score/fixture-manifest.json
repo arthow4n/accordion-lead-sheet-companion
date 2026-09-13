@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [],
+  "policy": "docs/score-reader/fixture-policy.md"
+}

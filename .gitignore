@@ -151,7 +151,13 @@ tests/ui-audit/screenshots/*
 tests/ui-audit/reports/
 tests/ui-audit/reports/*
 
+# Score-reader private evaluation data and downloaded model artifacts (explicit paths only)
+.score-reader-local/
+.tmp/score-reader-eval/
+tests/fixtures/score/private/
+tests/fixtures/score/generated/
+models/score-reader/artifacts/
+
 # Skills lock
 skills-lock.json
-
 
