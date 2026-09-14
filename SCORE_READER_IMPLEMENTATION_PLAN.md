@@ -299,7 +299,7 @@ incomplete row rather than replaying completed work.
 | M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                 | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                     |
 | M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                 | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                   |
 | M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                 | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                        |
-| M4A | complete | pending | fmt/lint/test/build pending             | awaiting R2         | FR-1XB C-Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, and mathematical specification/tests are committed; user-authorized current app layout is the coordinate authority. |
+| M4A | complete | 755b0c4 | fmt/lint/test/build green (289 passing) | awaiting R2         | FR-1XB C-Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, and mathematical specification/tests are committed; user-authorized current app layout is the coordinate authority. |
 
 ### Required slice order
 
