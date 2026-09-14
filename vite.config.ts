@@ -44,7 +44,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        globIgnores: ["**/opencv*", "**/onnx*", "**/ort*", "**/*.wasm"],
+        globIgnores: [
+          "**/opencv*",
+          "**/onnx*",
+          "**/ort*",
+          "**/*.wasm",
+          "**/tesseract*",
+          "**/*.traineddata*",
+        ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

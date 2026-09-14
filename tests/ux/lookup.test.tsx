@@ -246,7 +246,7 @@ Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, 
   );
 
   assertStringIncludes(html, "Download Offline Music Recognition Model");
-  assertStringIncludes(html, "187.1 MB");
+  assertStringIncludes(html, "191.0 MB");
   assertStringIncludes(html, "100% On-Device");
   assertStringIncludes(html, "Download &amp; Start");
 });
