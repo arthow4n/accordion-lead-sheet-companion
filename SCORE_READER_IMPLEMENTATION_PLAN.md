@@ -108,42 +108,50 @@ recognition failure an unsupported page.
 
 ## 3. Decisions and selected stack
 
-| Concern                        | Decision                                                                                                                                             |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Application shell              | Keep React 19, Vite 6, Tailwind 4, and Deno 2.                                                                                                       |
-| Dependency declarations        | Add npm dependencies only through `deno.json`; never add `package.json`.                                                                             |
-| Canonical application data     | Add a compact TypeScript `ScoreDocument`; retain sanitized MusicXML as the render source for MusicXML imports.                                       |
-| Input experience               | One Score Reader accepts a photograph or digital score file; neither creates a user-visible mode.                                                    |
-| Score display                  | OpenSheetMusicDisplay (OSMD), SVG backend, using bounded one- or two-measure excerpts only. Never fall back to a full-score render.                  |
-| Photo preprocessing            | Lazy-loaded OpenCV.js in a worker; begin with geometric staff/barline slicing.                                                                       |
-| OMR runtime                    | `onnxruntime-web`; WASM baseline and WebGPU acceleration where supported.                                                                            |
-| Initial OMR candidate          | JAZZMUS melody-plus-chord model, subject to evaluation, license confirmation, ONNX export, and quantization gates.                                   |
-| Browser architecture reference | KomaVision's Apache-2.0 page-slicing and encoder/decoder pattern; reuse only with notices and a recorded provenance review.                          |
-| Local text OCR                 | Tesseract.js, limited to chord/header/navigation regions and loaded lazily.                                                                          |
-| Recognition policy             | OMR supplies candidates; deterministic validators and confidence decide what may be shown.                                                           |
-| Cloud policy                   | No cloud score recognition in the first release. Photographs and recognition remain on-device. Existing unrelated import behavior is unchanged.      |
-| Model distribution             | Do not commit weights. After all gates pass, publish immutable versioned artifacts to project-owned GitHub Releases; commit metadata, never weights. |
-| Model caching                  | Cache on demand at runtime; exclude model weights from the Workbox precache.                                                                         |
-| Source image privacy           | Hold the photo in memory during a scan. Persist only when the user explicitly requests it.                                                           |
+| Concern                        | Decision                                                                                                                                                                                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application shell              | Keep React 19, Vite 6, Tailwind 4, and Deno 2.                                                                                                                                                                                                                    |
+| Dependency declarations        | Add npm dependencies only through `deno.json`; never add `package.json`.                                                                                                                                                                                          |
+| Canonical application data     | Add a compact TypeScript `ScoreDocument`; retain sanitized MusicXML as the render source for MusicXML imports.                                                                                                                                                    |
+| Input experience               | One Score Reader accepts a photograph or digital score file; neither creates a user-visible mode.                                                                                                                                                                 |
+| Score display                  | OpenSheetMusicDisplay (OSMD), SVG backend, using bounded one- or two-measure excerpts only. Never fall back to a full-score render.                                                                                                                               |
+| Photo preprocessing            | `@techstark/opencv-js@5.0.0-release.1` (Apache-2.0), lazy-loaded in a worker; deterministic geometry performs page, staff, system, and barline slicing. Do not use Ultralytics code or weights.                                                                   |
+| OMR runtime                    | `onnxruntime-web@1.29.0` (MIT); single-thread WASM baseline and optional WebGPU acceleration.                                                                                                                                                                     |
+| Initial OMR candidate          | The JAZZMUS staff-level notation model at revision `b38466e738548cf4d3826a0426d709a711533618`, reconstructed with MIT source commit `643b49cf4772a58027e8f2cf924f2be637b31fc4`: MIT weights/config/source, exported to ONNX and evaluated under the frozen gates. |
+| Browser architecture reference | KomaVision's Apache-2.0 page-slicing and encoder/decoder pattern; reuse only with notices and a recorded provenance review.                                                                                                                                       |
+| Local text OCR                 | `tesseract.js@7.0.0` (Apache-2.0) with pinned `tessdata_fast` English data, required for bounded chord/header/navigation regions and tokens outside the JAZZMUS vocabulary.                                                                                       |
+| Recognition policy             | OMR supplies candidates; deterministic validators and confidence decide what may be shown.                                                                                                                                                                        |
+| Cloud policy                   | No cloud score recognition in the first release. Photographs and recognition remain on-device. Existing unrelated import behavior is unchanged.                                                                                                                   |
+| Model distribution             | Do not commit weights. After all gates pass, publish immutable versioned artifacts to project-owned GitHub Releases; commit metadata, never weights.                                                                                                              |
+| Model caching                  | Cache on demand at runtime; exclude model weights from the Workbox precache.                                                                                                                                                                                      |
+| Source image privacy           | Hold the photo in memory during a scan. Persist only when the user explicitly requests it.                                                                                                                                                                        |
+| Download-size policy           | Size is disclosed, not an acceptance gate. Show the exact manifest total before first use, explain that it is downloaded once for offline reuse, and provide progress, cancel, retry, and cache deletion.                                                         |
 
 ### Required recognition path
 
-This implementation plan evaluates JAZZMUS exported to ONNX as the first candidate because it
-produces both melody and chord tokens for lead sheets. Passing the Milestone 6 feasibility gate
-authorizes implementation of the browser pipeline; only the complete pipeline may be judged against
-the frozen release gates after local OCR/form fusion and correction behavior exist. Neither gate by
-itself authorizes external artifact publication.
+This implementation plan evaluates the pinned JAZZMUS staff-level model exported to ONNX as the
+first candidate because it produces both melody and chord tokens for lead sheets. Its vocabulary is
+embedded in the pinned config; no separate tokenizer artifact is required. The model vocabulary does
+not cover every v1 meter, key signature, or textual navigation token, so deterministic OpenCV
+geometry and bounded Tesseract recognition are required parts of the pipeline rather than optional
+fallbacks. Passing the Milestone 6 feasibility gate authorizes implementation of the browser
+pipeline; only the complete pipeline may be judged against the frozen release gates after local
+OCR/form fusion and correction behavior exist. Neither gate by itself authorizes external artifact
+publication.
 
-There is no reduced no-OMR release branch. If JAZZMUS cannot meet the approved accuracy,
-correction-effort, browser, or license gates, record `OMR_CANDIDATE_FAILED`, keep the existing
-manual photo workflow explicitly experimental, and stop before presenting photograph import as
-playable score recognition. MusicXML support may remain available, but it does not complete this
-plan's photograph requirement. Selecting another model requires a separately researched plan
-amendment; failure must never be reclassified as a successful manual-photo release.
+There is no reduced no-OMR release branch. The exact JAZZMUS notation artifacts have a documented
+MIT redistribution basis; the bundled `yolo_staff_detector.pt` and all Ultralytics code are
+explicitly excluded because Ultralytics applies AGPL-3.0 to its code and trained models by default.
+If the permitted JAZZMUS notation model cannot meet the approved accuracy, correction-effort, or
+browser gates, record `OMR_CANDIDATE_FAILED`, keep the existing manual photo workflow explicitly
+experimental, and stop before presenting photograph import as playable score recognition. MusicXML
+support may remain available, but it does not complete this plan's photograph requirement. The agent
+must mark this plan blocked rather than inventing a replacement-model branch or permitting a
+manual-photo release. A different recognizer is outside this plan.
 
-Homr is a useful accuracy benchmark, but its Python pipeline and AGPL-3.0 license make it unsuitable
-as the default code-integration path without a separate license decision. LEGATO is not a mobile
-candidate because its full model requires a large vision backbone and substantial GPU memory.
+Homr and the bundled Ultralytics detector are excluded from implementation and evaluation so their
+AGPL code or weights cannot enter this project. LEGATO is not the planned mobile candidate because
+its full model requires a large vision backbone and substantial GPU memory.
 
 ## 4. Architecture boundaries
 
@@ -314,24 +322,24 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID  | Status   | Commit  | Checks                                  | Review disposition                    | Notes                                                                                                                                                                                                                                                                                            |
-| --- | -------- | ------- | --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                                   | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                                                                                                                              |
-| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                                   | Versioned contracts, rational timing, and validation.                                                                                                                                                                                                                                            |
-| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                                   | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                                                                                                                                    |
-| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                                   | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                                                                                                                         |
-| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                                                                                                                           |
-| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                                                                                                                             |
-| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice                   | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                                                                                                                                   |
-| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                              | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer.                                                                                                        |
-| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                                   | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                                                                                            |
-| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                                                                                          |
-| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                                                                                               |
-| M4A | complete | 186e134 | fmt/lint/test/build green (292 passing) | R2 APPROVED (score_cba_domain_review) | FR‑1XB C‑Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, validated solver specification/tests, and explicit 1‑2‑4/2‑3‑5 regression evidence are committed; user-authorized current app layout is the coordinate authority.                          |
-| M4B | complete | 2e9dfd7 | fmt/lint/test/build green (299 passing) | N/A                                   | Deterministic CBA melody DP, hard diagnostics/locks/ties/resets, shared compact RH path map, and configurable assistance density are implemented without changing existing chord voice leading.                                                                                                  |
-| M5A | active   | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Conservative local photo preparation is implemented: camera/gallery validation, EXIF-aware bounded `ImageBitmap` decode, one-page geometry, cancellation, object-URL cleanup, and an in-memory ephemeral asset path. OpenCV worker/preprocessing remains pending authority and dependency gates. |
-| M5B | complete | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Manual page-boundary adjustment and mobile source-strip rendering use the versioned `ScorePhotoLayout`; no OMR crop/model assumptions are frozen.                                                                                                                                                |
-| M5C | complete | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Timed manual chord assignment (`Chord@beat`) is provenance-marked and reuses existing harmony guidance as correction/recovery scaffolding, not as the release workflow. Explicit opt-in persists the original image separately; ephemeral/missing-source behavior is visible.                    |
+| ID  | Status   | Commit  | Checks                                  | Review disposition                    | Notes                                                                                                                                                                                                                                                                                         |
+| --- | -------- | ------- | --------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                                   | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                                                                                                                           |
+| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                                   | Versioned contracts, rational timing, and validation.                                                                                                                                                                                                                                         |
+| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                                   | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                                                                                                                                 |
+| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                                   | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                                                                                                                      |
+| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                                                                                                                        |
+| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Lazy OSMD SVG adapter with the bounded-excerpt strategy selected by the completed spike.                                                                                                                                                                                                      |
+| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice                   | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                                                                                                                                |
+| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                              | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer.                                                                                                     |
+| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                                   | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                                                                                         |
+| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                                                                                       |
+| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                                                                                            |
+| M4A | complete | 186e134 | fmt/lint/test/build green (292 passing) | R2 APPROVED (score_cba_domain_review) | FR‑1XB C‑Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, validated solver specification/tests, and explicit 1‑2‑4/2‑3‑5 regression evidence are committed; user-authorized current app layout is the coordinate authority.                       |
+| M4B | complete | 2e9dfd7 | fmt/lint/test/build green (299 passing) | N/A                                   | Deterministic CBA melody DP, hard diagnostics/locks/ties/resets, shared compact RH path map, and configurable assistance density are implemented without changing existing chord voice leading.                                                                                               |
+| M5A | active   | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Conservative local photo preparation is implemented: camera/gallery validation, EXIF-aware bounded `ImageBitmap` decode, one-page geometry, cancellation, object-URL cleanup, and an in-memory ephemeral asset path. The approved OpenCV worker/preprocessing work remains to be implemented. |
+| M5B | complete | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Manual page-boundary adjustment and mobile source-strip rendering use the versioned `ScorePhotoLayout`; no OMR crop/model assumptions are frozen.                                                                                                                                             |
+| M5C | complete | e4fb5f2 | fmt/lint/test/build green (305 passing) | N/A                                   | Timed manual chord assignment (`Chord@beat`) is provenance-marked and reuses existing harmony guidance as correction/recovery scaffolding, not as the release workflow. Explicit opt-in persists the original image separately; ephemeral/missing-source behavior is visible.                 |
 
 ### Required slice order
 
@@ -354,8 +362,8 @@ Use these as the initial ledger rows; split further when a diff stops being inde
    creating a reduced release.
 8. After `OMR_CANDIDATE_FEASIBLE`: `M7A` local artifact/runtime loader, `M7B` model
    adapter/decode/parser, `M7C` cache/offline/failure UI and browser tests; then `R3`.
-9. `M8A`: bounded OCR if evidence requires it; `M8B`: confidence/form fusion. Cloud score
-   recognition is excluded from v1.
+9. `M8A`: mandatory bounded OCR for chords, headers, meter/key supplements, and navigation; `M8B`:
+   confidence/form fusion. Cloud score recognition is excluded from v1.
 10. `M9A`: issue queue and incremental recomputation; `M9B`: correction/locking/undo persistence.
 11. `M10A`: frozen-corpus evaluation plus integration/accessibility/storage hardening; `M10B`: docs
     and release evidence; then `R4`, exact artifact publication, production-host verification,
@@ -397,9 +405,11 @@ Use these as the initial ledger rows; split further when a diff stops being inde
 - [x] Record notices/provenance requirements for OSMD, the ZIP/XML parser, OpenCV.js, Tesseract.js,
       ONNX Runtime Web, KomaVision-derived logic, and every model artifact.
 
-The primary agent may evaluate and recommend, but may not infer legal approval, upload/publish model
-artifacts, acquire credentials, or choose a materially reduced product scope. Missing approval stops
-at the relevant decision gate; it does not block earlier local work that is independent of it.
+The product, dependency, artifact-hosting, model-license, privacy, and publication choices required
+by this plan are now recorded and approved. The implementation agent may make ordinary technical
+decisions within those boundaries and must not pause merely to reconfirm them. It may not choose a
+materially reduced product scope, publish artifacts before the recorded gates, or send private
+scores to a third party.
 
 **Exit criteria**
 
@@ -466,10 +476,8 @@ at the relevant decision gate; it does not block earlier local work that is inde
 - [x] Run an early OSMD spike comparing: bounded excerpt documents, a cached full render cropped by
       mapped system/measure boxes, and supported incremental rendering. Record the selected strategy
       and prove that current/next display does not depend on undocumented OSMD internals.
-- [x] If no OSMD strategy meets public-API stability, measure mapping, bounded work, and mobile
-      performance gates, stop for user direction. Authorized choices requiring explicit approval are
-      sanitized full-score OSMD display or a separately scoped minimal notation renderer; photo
-      inputs may continue to use source-image crops.
+- [x] Select bounded sanitized OSMD excerpts through public APIs; retain source-image crops for
+      photo inputs and do not introduce a full-score fallback or a separate notation renderer.
 - [x] Add cursor and measure-highlight tests at the abstraction boundary rather than snapshotting
       volatile SVG internals.
 
@@ -646,8 +654,23 @@ recognition.
 Do not integrate a production model until this milestone passes. Conduct model conversion tooling
 outside the application runtime; generated weights must remain outside Git.
 
-- [ ] Confirm in writing the redistribution and usage license for the exact model weights,
-      vocabulary, tokenizer, and required preprocessing—not only the source repository.
+- [x] Lock and record the exact redistribution basis: JAZZMUS revision
+      `b38466e738548cf4d3826a0426d709a711533618` publishes `model.safetensors` and `config.json`
+      under MIT. The config contains the vocabulary, so no tokenizer file is needed. Exclude
+      `yolo_staff_detector.pt` and Ultralytics code because their default AGPL-3.0 terms are not
+      accepted for this project. Do not download or use the gated CC-BY-NC-4.0 JAZZMUS dataset.
+- [x] Lock the separate MIT model implementation to ISMIR-Jazzmus commit
+      `643b49cf4772a58027e8f2cf924f2be637b31fc4`; the relevant source hashes are
+      `a864f6545caf78f237c83b38741c238d009cac4787016ef7e7aef2d94582d268` for `configuration_smt.py`
+      and `3c5e414a7fe0e51cc60541b84898f01c1aa713a594f78d94a10238fca9af4597` for `modeling_smt.py`.
+- [ ] Before loading the weights, create an isolated CPython 3.11.11 conversion environment with
+      direct pins `torch==2.6.0`, `transformers==5.3.0`, `safetensors==0.5.3`, `numpy==2.2.3`,
+      `einops==0.8.1`, `gin-config==0.5.0`, `onnx==1.17.0`, and `onnxscript==0.2.2`. Use `uv` to
+      generate a fully resolved hash-locked transitive manifest, record the Python/platform details,
+      and commit that manifest as conversion provenance. Do not install the upstream `predict` extra
+      or any Ultralytics package. If these exact pins cannot reconstruct and strictly load the
+      pinned state dictionary, record `OMR_CANDIDATE_FAILED`; do not vary versions until something
+      happens to load.
 - [ ] Build a local evaluation manifest that refers to private samples outside the repository and
       committed authored/public-domain samples inside it.
 - [ ] Establish ground truth for pitch, rhythm, chord symbols, key signature, meter, barlines,
@@ -672,24 +695,24 @@ outside the application runtime; generated weights must remain outside Git.
       pages produce a structured first draft and reach Play without mandatory note/chord entry;
       median review queue ≤3 measures/page, 95th percentile ≤6, maximum ≤8, and no page queues more
       than 20% of its measures; no review item requires re-entering an entire measure; cold WASM
-      processing ≤90 seconds/page; peak memory ≤512 MiB; and total first-use model, detector,
-      tokenizer, and vocabulary download ≤80 MiB. Any changed gate requires a plan amendment and a
-      fresh frozen evaluation—never post-hoc acceptance.
+      processing ≤90 seconds/page; and peak memory ≤512 MiB. Record the exact final first-use
+      download bytes, but do not reject an otherwise viable recognizer because of an arbitrary size
+      ceiling. Any changed accuracy, effort, performance, or memory gate requires a plan amendment
+      and a fresh frozen evaluation—never post-hoc acceptance.
 - [ ] Evaluate unmodified JAZZMUS on the separate development set against representative printed
       single-staff class sheets. Record every release metric for diagnosis, but do not make the
       final release decision until the complete M7–M9 pipeline exists.
-- [ ] Run homr only as a local comparison baseline; do not copy its AGPL implementation into this
-      project during evaluation.
 - [ ] Measure staff-detection yield, pitch error, rhythm error, chord exact match, navigation exact
       match, invalid-measure rate, processing time, peak memory, artifact bytes, review-queue
       measures, and correction operations per page.
-- [ ] Export the JAZZMUS encoder, initial decoder, cached decoder, and optional staff detector to
-      ONNX.
+- [ ] Export only the permitted JAZZMUS encoder, initial decoder, and cached decoder to ONNX. Build
+      staff/system/measure detection with the approved OpenCV geometry path; never convert, load, or
+      distribute the excluded YOLO detector.
 - [ ] Prove token-for-token parity between PyTorch and ONNX on a fixed authored corpus.
 - [ ] Quantize to INT8 and measure accuracy loss before accepting the smaller artifact.
 - [ ] Require quantized output to remain within 1 percentage point of reference note-event error and
-      chord exact match; otherwise ship the reference artifact only if its size/performance gates
-      pass.
+      chord exact match; otherwise ship the reference artifact if its browser performance and memory
+      gates pass, and disclose its measured download size.
 - [ ] Prove that all operators execute in `onnxruntime-web` WASM; treat WebGPU only as an optional
       acceleration.
 - [ ] Record browser versions, device CPU/RAM, artifact bytes, cold/warm runs, timeout rate, peak
@@ -705,30 +728,33 @@ outside the application runtime; generated weights must remain outside Git.
       SHA-256 verification, an expected GitHub Pages fetch URL, and retention of every artifact
       referenced by a supported app version. Use a repository-ignored local HTTP origin for M7–M10
       integration tests. Do not upload before the frozen complete-pipeline gates and R4 pass.
-- [ ] Record `OMR_CANDIDATE_FEASIBLE` only if the exact artifacts have an acceptable documented
-      redistribution basis, PyTorch/ONNX parity passes, the complete decoder executes in
-      single-thread WASM on both named devices, total first-use recognition artifacts are ≤80 MiB,
-      and development-set cold time/memory stay within ≤90 seconds/page and ≤512 MiB. Otherwise
-      record `OMR_CANDIDATE_FAILED`, preserve the evidence, and stop the photograph-recognition
-      release; never substitute mandatory manual transcription as the completion condition.
+- [ ] Record `OMR_CANDIDATE_FEASIBLE` only if PyTorch/ONNX parity passes, the complete decoder
+      executes in single-thread WASM on both named devices, and development-set cold time/memory
+      stay within ≤90 seconds/page and ≤512 MiB. Record and disclose artifact size without a size
+      rejection threshold. Otherwise record `OMR_CANDIDATE_FAILED`, preserve the evidence, and stop
+      the photograph-recognition release; never substitute mandatory manual transcription as the
+      completion condition.
 
 **Exit criteria**
 
 - [ ] `OMR_CANDIDATE_FEASIBLE` exists with frozen evidence before Milestone 7 begins; this is not a
       release accuracy decision.
-- [ ] The exact model weights, tokenizer, vocabulary, preprocessing, and converted artifacts have a
-      documented redistribution basis acceptable for the intended product; ambiguity fails the
-      candidate rather than becoming an open release question.
-- [ ] Model files are versioned, checksummed, absent from Git, within the 80 MiB download cap, and
-      available from a repository-ignored local HTTP origin for integration work.
+- [x] The exact upstream model weights and embedded vocabulary have an MIT redistribution basis; the
+      non-accepted YOLO artifact and dataset are excluded. Converted artifacts must retain that
+      provenance and the required notices.
+- [ ] Model files are versioned, checksummed, absent from Git, their exact download size is
+      recorded, and they are available from a repository-ignored local HTTP origin for integration
+      work.
 
 ### Milestone 7 — Browser OMR vertical slice
 
 - [ ] Add `onnxruntime-web` through `deno.json` only.
 - [ ] Implement a lazily created OMR Web Worker with typed request, progress, result, cancellation,
       timeout, and error contracts.
-- [ ] In production, download artifacts only after the user starts local recognition and confirms
-      the bounded first-use download. During M7–M10, exercise the same loader against the
+- [ ] In production, download artifacts only after the user starts local recognition and confirms a
+      first-use message stating the exact total size, that it is downloaded once and retained for
+      offline reuse, and how to delete it. Show per-download progress and provide cancel, retry, and
+      cache-management controls. During M7–M10, exercise the same loader against the
       repository-ignored local artifact origin selected in Milestone 6.
 - [ ] Verify manifest size and SHA-256 before opening an inference session.
 - [ ] Cache verified artifacts using a versioned runtime cache independent of the PWA precache.
@@ -773,10 +799,18 @@ outside the application runtime; generated weights must remain outside Git.
 
 ### Milestone 8 — Local text/form recognition and confidence fusion
 
-- [ ] Add Tesseract.js lazily only if frozen evidence shows JAZZMUS chord/form recognition is
-      insufficient.
+- [ ] Add `tesseract.js@7.0.0` lazily with `tessdata_fast` English data pinned at revision
+      `87416418657359cb625c412a48b6e1d6d41c29bd`; verify the 4,113,088-byte language artifact and
+      SHA-256 `7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2`.
+- [ ] Add that exact OCR language file and its Apache-2.0 notice to the recognition-artifact
+      manifest, local artifact origin, final GitHub Release set, displayed first-use byte total,
+      integrity verification, versioned runtime cache, offline test, and user-facing cache deletion.
+      Never let Tesseract fetch unmanifested language data from its default CDN.
 - [ ] OCR only bounded chord/section/direction regions; never run whole-page text OCR without a
       separately measured need.
+- [ ] Supplement JAZZMUS deterministically for v1 key signatures and meters absent from its
+      vocabulary, using staff geometry plus bounded symbol/text recognition; cover 6/8 and every
+      declared zero-to-six-sharp/flat profile case in authored tests.
 - [ ] Normalize OCR chord candidates through the existing deterministic chord parser.
 - [ ] Combine OMR, OCR, geometric, and validator evidence while preserving disagreements as separate
       issue evidence.
@@ -819,9 +853,8 @@ outside the application runtime; generated weights must remain outside Git.
 - [ ] Freeze the complete M5–M9 pipeline version, then run it once against every page in the frozen
       release corpus without tuning, page removal, scope narrowing, or manual data entry. Publish a
       non-reconstructable result table containing every frozen metric and per-stratum summary.
-- [ ] Require every frozen accuracy, correction-effort, first-use-download, cold-time, and memory
-      gate to pass before R4. Otherwise record `OMR_CANDIDATE_FAILED` and stop the photograph
-      release.
+- [ ] Require every frozen accuracy, correction-effort, cold-time, and memory gate to pass before
+      R4. Otherwise record `OMR_CANDIDATE_FAILED` and stop the photograph release.
 - [ ] Verify that photograph and digital-file imports enter the same preview, learn, and perform
       flows with no user-visible technical mode switch; verify local recognition, offline artifact
       reuse, and honest failure recovery.
@@ -888,7 +921,8 @@ outside the application runtime; generated weights must remain outside Git.
 - [ ] Photograph recognition never sends the source image to a cloud service.
 - [ ] Classic lead-sheet behavior and all repository quality gates remain green.
 - [ ] A supported photograph produces confidence-gated melody, harmony, and form guidance locally.
-- [ ] The approved accuracy, correction-effort, time, artifact-size, and memory gates pass.
+- [ ] The approved accuracy, correction-effort, time, and memory gates pass; the exact artifact
+      download size is documented and shown before first use.
 - [ ] Local photo recognition works offline after the authorized model assets are cached.
 - [ ] Recognition failure preserves the import and source image but is clearly not labeled ready to
       play; retry and recovery remain possible.
@@ -946,20 +980,24 @@ outputs may be committed without explicit permission and provenance review.
 - ONNX Runtime Web: <https://github.com/microsoft/onnxruntime/tree/main/js/web>
 - OpenCV.js: <https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html>
 - Tesseract.js: <https://github.com/naptha/tesseract.js>
+- Fast English OCR data: <https://github.com/tesseract-ocr/tessdata_fast>
 - OpenSheetMusicDisplay: <https://github.com/opensheetmusicdisplay/opensheetmusicdisplay>
 - OSMD incremental-render contract:
   <https://opensheetmusicdisplay.github.io/classdoc/interfaces/IRenderNextOptions.html>
-- Homr comparison baseline: <https://github.com/liebharc/homr>
+- Ultralytics licensing (reason its detector is excluded): <https://www.ultralytics.com/license>
+- JAZZMUS dataset card (excluded from fixtures/training):
+  <https://huggingface.co/datasets/PRAIG/JAZZMUS>
 
-Re-check versions, licenses, model availability, and browser compatibility at the milestone where a
-dependency or artifact is first introduced. Research links are evidence for the proposal, not an
-instruction to copy code without reviewing its license and provenance.
+The versions and revisions named in Section 3 and Milestones 6–8 are locked decisions. Verify their
+integrity against the recorded hashes when introduced; do not silently upgrade or replace them.
+Security-driven upgrades require equivalent license/provenance checks and regression evidence, not a
+new product decision. Research links are evidence for the plan, not permission to copy unrelated
+code or data.
 
 ## 9. Explicit stop conditions
 
 Stop the sequential implementation and request user direction if any of the following occurs:
 
-- The chosen model weights cannot be redistributed under acceptable terms.
 - Browser WASM parity cannot be achieved without server execution.
 - Representative pages require transcription-like correction effort.
 - The implementation would require adding a Node `package.json` or weakening Deno permissions.
@@ -969,9 +1007,10 @@ Stop the sequential implementation and request user direction if any of the foll
 - Private or copyrighted source material would need to enter Git, CI, or a third-party service
   without explicit authorization.
 - The exact `gpt-5.6-sol`/medium read-only reviewer cannot be spawned at a named checkpoint.
-- A required legal, artifact-publication, credential, or benchmark-device prerequisite cannot be
-  satisfied under the decisions recorded in this plan.
+- The already selected artifact-publication path or benchmark-device prerequisite is technically
+  unavailable after its documented alternatives have been exhausted.
 
 If the selected model fails, preserve the source import and MusicXML functionality, record
-`OMR_CANDIDATE_FAILED`, and stop the photograph-recognition release. Do not relabel manual chord
-entry or source-image display as a completed playable-photo feature.
+`OMR_CANDIDATE_FAILED`, mark this plan blocked, and keep the photograph-recognition release blocked.
+Do not start an unspecified replacement-model branch or relabel manual chord entry or source-image
+display as a completed playable-photo feature.

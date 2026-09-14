@@ -31,9 +31,11 @@ notation.
 ## Generated artifacts
 
 Model weights, tokenizers, ONNX files, decoded score output, and screenshots are never committed by
-default. A model artifact may be externally published only after the decision log records license,
-host, CORS, retention, checksum, and explicit user authorization for the upload. Browser caches are
-runtime data, not fixtures.
+default. The decision log provides standing user authorization to publish only the exact reviewed,
+checksummed release artifacts to the selected project-owned GitHub Releases location after the
+frozen gates and final review pass; no new approval is required then. Any different artifact,
+destination, or timing requires an updated decision record. Browser caches are runtime data, not
+fixtures.
 
 ## Review rule
 
