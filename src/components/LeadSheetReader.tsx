@@ -25,8 +25,9 @@ import type {
   StradellaGrooveType,
   ViewMode,
 } from "../types/index.ts";
-import type { ScoreMeasure, SpelledPitch } from "../types/score.ts";
+import type { ScoreDocument, ScoreMeasure, SpelledPitch } from "../types/score.ts";
 import { ALLOWED_SCAN_IMAGE_MIME_TYPES, MAX_SCAN_IMAGE_SIZE_BYTES } from "../types/scan.ts";
+import { ScoreReviewQueue } from "./ScoreReviewQueue.tsx";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
@@ -758,6 +759,16 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     }
   };
 
+  const handleUpdateScoreDocument = (updatedScore: ScoreDocument) => {
+    if (onUpdateSong) {
+      onUpdateSong({
+        ...song,
+        score: updatedScore,
+        updatedAt: Date.now(),
+      });
+    }
+  };
+
   // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
     return extractSectionChords(renderedLines, cbaGripMode, activeNoteSpelling);
@@ -1460,6 +1471,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
               </div>
             )}
           </div>
+
+          {song.score && onUpdateSong && (
+            <ScoreReviewQueue
+              document={song.score}
+              onUpdateDocument={handleUpdateScoreDocument}
+              onRelinkPhoto={handleRelinkPhoto}
+            />
+          )}
 
           {song.score.source.kind === "musicxml" && (
             <ScoreNotation

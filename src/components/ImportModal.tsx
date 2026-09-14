@@ -1018,7 +1018,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
               disabled={!previewSong || isSaving}
               className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
             >
-              {isSaving ? "Saving..." : "Save to Songbook"}
+              {isSaving ? "Saving..." : (previewSong?.score ? "Start playing" : "Save to Songbook")}
             </button>
           )}
         </footer>

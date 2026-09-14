@@ -825,54 +825,54 @@ outside the application runtime; generated weights must remain outside Git.
 
 ### Milestone 8 — Local text/form recognition and confidence fusion
 
-- [ ] Add `tesseract.js@7.0.0` lazily with `tessdata_fast` English data pinned at revision
+- [x] Add `tesseract.js@7.0.0` lazily with `tessdata_fast` English data pinned at revision
       `87416418657359cb625c412a48b6e1d6d41c29bd`; verify the 4,113,088-byte language artifact and
       SHA-256 `7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2`.
-- [ ] Add that exact OCR language file and its Apache-2.0 notice to the recognition-artifact
+- [x] Add that exact OCR language file and its Apache-2.0 notice to the recognition-artifact
       manifest, local artifact origin, final GitHub Release set, displayed first-use byte total,
       integrity verification, versioned runtime cache, offline test, and user-facing cache deletion.
       Never let Tesseract fetch unmanifested language data from its default CDN.
-- [ ] OCR only bounded chord/section/direction regions; never run whole-page text OCR without a
+- [x] OCR only bounded chord/section/direction regions; never run whole-page text OCR without a
       separately measured need.
-- [ ] Supplement JAZZMUS deterministically for v1 key signatures and meters absent from its
+- [x] Supplement JAZZMUS deterministically for v1 key signatures and meters absent from its
       vocabulary, using staff geometry plus bounded symbol/text recognition; cover 6/8 and every
       declared zero-to-six-sharp/flat profile case in authored tests.
-- [ ] Normalize OCR chord candidates through the existing deterministic chord parser.
-- [ ] Combine OMR, OCR, geometric, and validator evidence while preserving disagreements as separate
+- [x] Normalize OCR chord candidates through the existing deterministic chord parser.
+- [x] Combine OMR, OCR, geometric, and validator evidence while preserving disagreements as separate
       issue evidence.
-- [ ] Auto-accept approved high-confidence agreements, use conservative source-backed guidance at
+- [x] Auto-accept approved high-confidence agreements, use conservative source-backed guidance at
       medium confidence, and hide generated melody guidance at low confidence.
-- [ ] Add unresolved structural contradictions to the optional review queue.
-- [ ] Support editable section labels, repeat start/end, endings, Fine/Slut, D.C., D.S., Segno, and
+- [x] Add unresolved structural contradictions to the optional review queue.
+- [x] Support editable section labels, repeat start/end, endings, Fine/Slut, D.C., D.S., Segno, and
       Coda.
-- [ ] Keep unfamiliar localized directions visible and require explicit mapping.
-- [ ] Do not add a cloud-recognition action in v1; all photograph recognition stays on-device.
+- [x] Keep unfamiliar localized directions visible and require explicit mapping.
+- [x] Do not add a cloud-recognition action in v1; all photograph recognition stays on-device.
 
 **Exit criteria**
 
-- [ ] Chord/form uncertainty is visible and recoverable; operation is fully local.
-- [ ] Low-confidence output cannot masquerade as verified accordion guidance.
+- [x] Chord/form uncertainty is visible and recoverable; operation is fully local.
+- [x] Low-confidence output cannot masquerade as verified accordion guidance.
 
 ### Milestone 9 — Optional correction without pre-play friction
 
-- [ ] Default completed imports to `Start playing`, not `Review score`.
-- [ ] Show a resolvable source crop for uncertain assistance; otherwise show an explicit re-link
+- [x] Default completed imports to `Start playing`, not `Review score`.
+- [x] Show a resolvable source crop for uncertain assistance; otherwise show an explicit re-link
       action, never a broken crop.
-- [ ] Create a review queue containing only actionable recognition issues.
-- [ ] Provide compact operations for pitch, octave, duration, rest/note, accidental, tie, chord,
+- [x] Create a review queue containing only actionable recognition issues.
+- [x] Provide compact operations for pitch, octave, duration, rest/note, accidental, tie, chord,
       barline, and navigation destination.
-- [ ] Let users hide a questionable recognition hint without editing notation.
-- [ ] Re-run validation, melody paths, harmony transitions, and routing incrementally after an edit.
-- [ ] Preserve user corrections and locked fingerings across schema migrations; never overwrite them
+- [x] Let users hide a questionable recognition hint without editing notation.
+- [x] Re-run validation, melody paths, harmony transitions, and routing incrementally after an edit.
+- [x] Preserve user corrections and locked fingerings across schema migrations; never overwrite them
       automatically.
-- [ ] Preserve corrections/locks across rescans.
-- [ ] Add undo/redo for the active correction session.
-- [ ] Test skip-review, play, later single-item correction, and location restoration.
+- [x] Preserve corrections/locks across rescans.
+- [x] Add undo/redo for the active correction session.
+- [x] Test skip-review, play, later single-item correction, and location restoration.
 
 **Exit criteria**
 
-- [ ] The normal flow is import/photograph → play without manual transcription.
-- [ ] Correction is optional, scoped, reversible, and persistent.
+- [x] The normal flow is import/photograph → play without manual transcription.
+- [x] Correction is optional, scoped, reversible, and persistent.
 
 ### Milestone 10 — Integrated mobile hardening and release
 
