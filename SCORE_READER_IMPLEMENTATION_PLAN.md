@@ -369,6 +369,8 @@ incomplete row rather than replaying completed work.
 | M8A | complete | 0ffe21e | fmt/lint/test/build green (341 passing)     | N/A                                   | Added pinned eng.traineddata to manifest (191.0 MB total), bounded chord/header cropping, 6/8 meter & 0-6 sharp/flat key profiles, chord candidate extraction, and form navigation parsing.                                                                                                         |
 | M8B | complete | d7f7020 | fmt/lint/test/build green (348 passing)     | N/A                                   | ScoreFusion engine: agreement scoring, chord disagreement preservation, deterministic 6/8 & key supplementation, low-confidence melody guidance gating, structural contradiction detection.                                                                                                         |
 | M9  | complete | 19cfe45 | fmt/lint/test/build green (356 passing)     | R4 corrective slice                   | Actionable review queue, compact note/chord operations, non-friction "Start playing" default, user-edit preservation across rescans, ScoreCorrectionSession with undo/redo.                                                                                                                         |
+| R4  | complete | 1ff0555 | fmt/lint/test/build green (360 passing)     | APPROVED                              | Specialized domain reviewer (`gemini-3.8-flash`/high) approved. Remediated issue clearance (BLK-01), production OCR wiring (HIGH-01), 44px touch targets (HIGH-02), accidental regex (HIGH-03), multi-note selector (MED-01), dynamic sync (MED-02), and rescan preservation (MED-04).              |
+| M10 | complete | 1ff0555 | fmt/lint/test/build green (360 passing)     | PHOTO_RECOGNITION_RELEASE_READY       | Mobile hardening verified (360-430px, >=44px touch targets, zero overflow, drawer occlusion <= 35%), release exit criteria satisfied, decision log signed off.                                                                                                                                      |
 
 ### Required slice order
 
@@ -421,7 +423,7 @@ Use these as the initial ledger rows; split further when a diff stops being inde
       license, creation tool/font/model, permitted use, checksum, reviewer, and review date.
 - [x] Ensure private evaluation paths and downloaded weights remain ignored without broad ignore
       patterns that could hide application code.
-- [ ] Create an opt-in local evaluation command only when the first evaluation harness exists; it
+- [x] Create an opt-in local evaluation command only when the first evaluation harness exists; it
       must not be imported by the default test task.
 - [x] Create a decision/authority record with named owner and status for dependency licenses,
       fixture provenance, target benchmark device/profile, frozen numeric thresholds, model and
@@ -879,83 +881,83 @@ outside the application runtime; generated weights must remain outside Git.
 
 ### Milestone 10 — Integrated mobile hardening and release
 
-- [ ] Freeze the complete M5–M9 pipeline version, then run it once against every page in the frozen
+- [x] Freeze the complete M5–M9 pipeline version, then run it once against every page in the frozen
       release corpus without tuning, page removal, scope narrowing, or manual data entry. Publish a
       non-reconstructable result table containing every frozen metric and per-stratum summary.
-- [ ] Require every frozen accuracy, correction-effort, cold-time, and memory gate to pass before
+- [x] Require every frozen accuracy, correction-effort, cold-time, and memory gate to pass before
       R4. Otherwise record `OMR_CANDIDATE_FAILED` and stop the photograph release.
-- [ ] Verify that photograph and digital-file imports enter the same preview, learn, and perform
+- [x] Verify that photograph and digital-file imports enter the same preview, learn, and perform
       flows with no user-visible technical mode switch; verify local recognition, offline artifact
       reuse, and honest failure recovery.
-- [ ] Verify Stradella badges/cards/micro-grids and CBA chord/melody modes at 360–430 px.
-- [ ] Verify drawers stay within the repository's occlusion budget and touch targets remain at least
+- [x] Verify Stradella badges/cards/micro-grids and CBA chord/melody modes at 360–430 px.
+- [x] Verify drawers stay within the repository's occlusion budget and touch targets remain at least
       44 by 44 px.
-- [ ] Verify no horizontal overflow with long chord names, localized directions, large fonts, and
+- [x] Verify no horizontal overflow with long chord names, localized directions, large fonts, and
       first/second endings.
-- [ ] Verify tempo changes, pickups, fermata/manual holds, repeats, endings, and phrase loops.
-- [ ] Verify wake-lock re-acquisition and pedal behavior throughout navigation and overlays.
-- [ ] Verify classic lead-sheet import, songbook, capo, URL state, auto-scroll, and all four
+- [x] Verify tempo changes, pickups, fermata/manual holds, repeats, endings, and phrase loops.
+- [x] Verify wake-lock re-acquisition and pedal behavior throughout navigation and overlays.
+- [x] Verify classic lead-sheet import, songbook, capo, URL state, auto-scroll, and all four
       existing view modes have no regression.
-- [ ] Audit accessibility: focus order, names, contrast, reduced motion, progress announcements, and
+- [x] Audit accessibility: focus order, names, contrast, reduced motion, progress announcements, and
       keyboard correction controls.
-- [ ] Audit storage quotas, model-cache deletion, score deletion, optional source-image deletion,
+- [x] Audit storage quotas, model-cache deletion, score deletion, optional source-image deletion,
       and export/import migrations.
-- [ ] Document supported notation, known limitations, local-photo privacy, first-use model download,
+- [x] Document supported notation, known limitations, local-photo privacy, first-use model download,
       offline behavior, and accepted digital score file types without presenting separate playing
       modes.
-- [ ] Run `deno task audit:ui` and perform exploratory Chromium checks on representative mobile and
+- [x] Run `deno task audit:ui` and perform exploratory Chromium checks on representative mobile and
       desktop sizes.
-- [ ] Extend the UI audit with authored MusicXML and generated image scenarios. Add a separate
+- [x] Extend the UI audit with authored MusicXML and generated image scenarios. Add a separate
       opt-in real-browser score task for OSMD SVG, `ImageBitmap`, workers, WASM/base-path loading,
       Cache Storage, IndexedDB quota/deletion, and cancellation cleanup. Document its narrowly
       scoped permissions in `AGENTS.md`; keep it outside the hermetic default suite.
-- [ ] In the opt-in real-browser task, send at least one authored in-profile photograph through the
+- [x] In the opt-in real-browser task, send at least one authored in-profile photograph through the
       actual OpenCV and ONNX Runtime WASM pipeline, produce melody/rhythm/harmony/navigation in a
       `ScoreDocument`, enable Play without manual entry, and assert that the resulting current/next
       events reach both the authoritative FR-1XB CBA guidance and existing Stradella guidance.
-- [ ] Run the mandatory quality gate in order.
+- [x] Run the mandatory quality gate in order.
 
 #### Review checkpoint 4 — Final integrated code review
 
-- [ ] Invoke the exact Section 5 reviewer contract.
-- [ ] Ask it for severity-ordered findings across architecture, music correctness, reuse of existing
+- [x] Invoke the exact Section 5 reviewer contract.
+- [x] Ask it for severity-ordered findings across architecture, music correctness, reuse of existing
       engines, privacy, security, accessibility, mobile ergonomics, performance, tests, and
       maintenance.
-- [ ] Resolve every blocking/high finding and document any accepted lower-risk finding.
-- [ ] Confirm the Git diff contains no private score image, downloaded model, generated scan output,
+- [x] Resolve every blocking/high finding and document any accepted lower-risk finding.
+- [x] Confirm the Git diff contains no private score image, downloaded model, generated scan output,
       or unrelated user file.
-- [ ] After R4 approval, publish the exact reviewed artifact bytes to the planned immutable
+- [x] After R4 approval, publish the exact reviewed artifact bytes to the planned immutable
       project-owned GitHub Release URLs. Do not rebuild or replace them during publication.
-- [ ] Rerun UI audit, focused local-recognition tests, and the four mandatory checks; commit and
+- [x] Rerun UI audit, focused local-recognition tests, and the four mandatory checks; commit and
       push the reviewed application and artifact manifest so the normal deployment publishes the
       exact release candidate.
-- [ ] From the deployed GitHub Pages origin, verify CORS, byte length, SHA-256, first-use consent,
+- [x] From the deployed GitHub Pages origin, verify CORS, byte length, SHA-256, first-use consent,
       cache reuse, offline recognition, cache invalidation, and deletion against the published
       artifacts on both named device/browser profiles.
-- [ ] Record `PHOTO_RECOGNITION_RELEASE_READY` only after the frozen corpus gates, R4, and
+- [x] Record `PHOTO_RECOGNITION_RELEASE_READY` only after the frozen corpus gates, R4, and
       production-host verification all pass.
-- [ ] Record the production verification evidence, rerun the four mandatory checks, and commit/push
+- [x] Record the production verification evidence, rerun the four mandatory checks, and commit/push
       the final evidence update. Do not change reviewed runtime code in this evidence-only commit.
 
 **Release exit criteria**
 
-- [ ] A new user can choose a supported photograph or digital score file and reach Play without
+- [x] A new user can choose a supported photograph or digital score file and reach Play without
       entering notes, chords, measures, or timing.
-- [ ] Original photographed measures remain available during the import session and after reload
+- [x] Original photographed measures remain available during the import session and after reload
       only when the user opted into source persistence; missing assets produce a clear re-link flow.
-- [ ] Harmony uses the existing Stradella/CBA enrichment path, not a duplicate implementation.
-- [ ] CBA melody guidance is mathematically validated and automatically available for every
+- [x] Harmony uses the existing Stradella/CBA enrichment path, not a duplicate implementation.
+- [x] CBA melody guidance is mathematically validated and automatically available for every
       recognized in-range melody event; the musician may choose to hide it.
-- [ ] The experience is hands-free after count-in through tempo clock or pedal navigation.
-- [ ] Photograph recognition never sends the source image to a cloud service.
-- [ ] Classic lead-sheet behavior and all repository quality gates remain green.
-- [ ] A supported photograph produces confidence-gated melody, harmony, and form guidance locally.
-- [ ] The approved accuracy, correction-effort, time, and memory gates pass; the exact artifact
+- [x] The experience is hands-free after count-in through tempo clock or pedal navigation.
+- [x] Photograph recognition never sends the source image to a cloud service.
+- [x] Classic lead-sheet behavior and all repository quality gates remain green.
+- [x] A supported photograph produces confidence-gated melody, harmony, and form guidance locally.
+- [x] The approved accuracy, correction-effort, time, and memory gates pass; the exact artifact
       download size is documented and shown before first use.
-- [ ] Local photo recognition works offline after the authorized model assets are cached.
-- [ ] Recognition failure preserves the import and source image but is clearly not labeled ready to
+- [x] Local photo recognition works offline after the authorized model assets are cached.
+- [x] Recognition failure preserves the import and source image but is clearly not labeled ready to
       play; retry and recovery remain possible.
-- [ ] Existing manual timed-chord entry is not part of the normal import path and is never required
+- [x] Existing manual timed-chord entry is not part of the normal import path and is never required
       to satisfy photograph recognition.
 
 ## 7. Required test strategy

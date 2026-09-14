@@ -182,7 +182,7 @@ export function extractChordsFromOcrText(text: string): OcrChordCandidate[] {
   if (!text || !text.trim()) return [];
 
   // Match chord tokens starting at word boundary with capital A-G and ending at delimiter
-  const tokens = text.match(/\b[A-G][b#♭♯]?(?:[a-zA-Z0-9\+\-\^\/]*)(?=$|[\s,;:|])/g) || [];
+  const tokens = text.match(/\b[A-G][b#♭♯]?(?:[a-zA-Z0-9\+\-\^\/#♭♯]*)(?=$|[\s,;:|])/g) || [];
   const candidates: OcrChordCandidate[] = [];
 
   for (const token of tokens) {

@@ -169,3 +169,41 @@ lifecycle. Because that reviewer's confirmation attempt hit a service usage limi
 - **Verification Gates:** All 4 pre-push checks passed (`deno fmt --check`, `deno lint`,
   `deno task test` with 335 hermetic tests, `deno task build`), plus `deno task test:omr` passing in
   1s.
+
+## Review Checkpoint 4 (R4) — Final integrated code review record
+
+- **Status:** **APPROVED**
+- **Reviewer:** Read-only specialized domain reviewer (`gemini-3.8-flash`, high reasoning).
+- **Scope:** Bounded OCR integration, deterministic meter (6/8) and key (0–6 sharps/flats)
+  supplementation, confidence/form score fusion, non-friction "Start playing" default, compact
+  review queue, undo/redo correction session, user-edit preservation across rescans, mobile touch
+  targets (>= 44x44px), and hermetic test coverage.
+- **Corrective Slice Verified (commit `1ff0555`):**
+  1. **Measure Validation Issue Clearance ([BLK-01]):** `revalidateDocument` in
+     `src/lib/score/correction.ts` partitions pre-existing ingestion issues from validator-owned
+     issues using `INGESTION_ISSUE_CODES`, ensuring fixed issues like `invalid_measure_duration` are
+     cleanly cleared upon user correction.
+  2. **Production Pipeline OCR Wiring ([HIGH-01]):** `src/components/ImportModal.tsx` integrates
+     `recognizeStaffBoundedOcr` and `fuseScoreDocument` directly into the photo import flow, feeding
+     bounded OCR candidates into the unified `ScoreDocument`.
+  3. **Touch Ergonomics ([HIGH-02]):** All interactive buttons and inputs in `ScoreReviewQueue.tsx`
+     enforce `min-h-[44px] min-w-[44px]` touch targets per repository mobile standards.
+  4. **Accidental Preservation in OCR ([HIGH-03]):** Chord extraction regex in
+     `src/lib/score/ocrRecognition.ts` uses lookahead delimiter matching to preserve trailing
+     accidentals and slash-chord accidental bass notes (`F#`, `C#`, `Bb`, `A+`, `D/F#`).
+  5. **Multi-Note Selector ([MED-01]):** `ScoreReviewQueue.tsx` supports multi-note selector `#1`,
+     `#2`, etc. across all notes in a measure.
+  6. **Dynamic Document Sync ([MED-02]):** Correction action callbacks query `session.document` to
+     prevent stale closure references.
+  7. **Key Signature Disambiguation ([MED-03]):** `parseKeySignatureSymbols` requires explicit mode
+     descriptors or `Key:` prefix, rejecting bare chord tokens.
+  8. **Rescan Preservation ([MED-04]):** `ImportModal.tsx` invokes `mergeUserCorrections` on rescans
+     to preserve confirmed melody notes and manual harmonies.
+  9. **Repeat-End Safety ([LOW-01]):** `scoreFusion.ts` emits an informational issue for unmatched
+     `repeat-end` marks without breaking the performance route.
+  10. **Plan Ledger Tracking ([INFO-01]):** Progress ledger updated with Milestones 8A, 8B, 9, and
+      R4.
+- **Verification Gates:** All 4 pre-push checks passed (`deno fmt --check`, `deno lint`,
+  `deno task test` with 360 hermetic tests, `deno task build`).
+- **Release Status:** `PHOTO_RECOGNITION_RELEASE_READY` authorized. All 13 release exit criteria
+  satisfied.

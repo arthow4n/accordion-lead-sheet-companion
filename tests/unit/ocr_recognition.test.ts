@@ -169,10 +169,10 @@ Deno.test("OCR-06: Bounded crop geometry extracts chord banner and header safely
   assertEquals(header.data.length, header.width * header.height * 4);
 });
 
-Deno.test("OCR-07: Preserves non-word chord accidentals (F#, C#, Bb, A+) without truncation (HIGH-03)", () => {
-  const ocrText = "F#   C#   Bb   A+   Eb7";
+Deno.test("OCR-07: Preserves non-word chord accidentals (F#, C#, Bb, A+, D/F#) without truncation (HIGH-03)", () => {
+  const ocrText = "F#   C#   Bb   A+   Eb7   D/F#";
   const chords = extractChordsFromOcrText(ocrText);
-  assertEquals(chords.map((c) => c.normalized), ["F#", "C#", "Bb", "A+", "Eb7"]);
+  assertEquals(chords.map((c) => c.normalized), ["F#", "C#", "Bb", "A+", "Eb7", "D/F#"]);
 });
 
 Deno.test("OCR-08: Bare chord tokens are not falsely matched as key signatures (MED-03)", () => {
