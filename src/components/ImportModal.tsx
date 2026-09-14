@@ -318,9 +318,23 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         onProgress: (p) => setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`),
       });
 
+      setOmrProgressText("Performing bounded chord and text OCR...");
+      const { recognizeStaffBoundedOcr } = await import("../lib/score/ocrRecognition.ts");
+      const ocrData = await recognizeStaffBoundedOcr(
+        raw,
+        prep.staves,
+        prep.staves[0]?.lineSpacing || 24,
+      );
+
       const { fuseScoreDocument } = await import("../lib/score/scoreFusion.ts");
-      const fusedResult = fuseScoreDocument(scoreDoc);
-      const finalDoc = fusedResult.document;
+      const fusedResult = fuseScoreDocument(scoreDoc, ocrData);
+      let finalDoc = fusedResult.document;
+
+      // Preserve user corrections across rescan (MED-04)
+      if (previewSong?.score) {
+        const { mergeUserCorrections } = await import("../lib/score/correction.ts");
+        finalDoc = mergeUserCorrections(previewSong.score, finalDoc);
+      }
 
       if (avgConfidence < 0.6) {
         finalDoc.issues.push({

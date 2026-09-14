@@ -318,8 +318,16 @@ export function fuseScoreDocument(
     for (const n of m.navigation) {
       if (n.kind === "repeat-start") hasRepeatStart = true;
       if (n.kind === "repeat-end") {
-        if (!hasRepeatStart && m.writtenIndex > 0) {
-          // repeat-end without prior repeat-start
+        if (!hasRepeatStart && m.writtenIndex > 3) {
+          issues.push({
+            code: "ambiguous_navigation",
+            message: `Measure ${
+              m.printedNumber ?? m.writtenIndex + 1
+            }: Closing repeat without opening repeat barline. Traversal will repeat from beginning.`,
+            severity: "info",
+            measureId: m.id,
+            blocksGuidance: false,
+          });
         }
       }
       if (n.kind === "segno") hasSegno = true;

@@ -326,13 +326,21 @@ export function mergeUserCorrections(
   return revalidateDocument(clonedNew);
 }
 
+export const INGESTION_ISSUE_CODES = new Set([
+  "chord_disagreement",
+  "low_chord_confidence",
+  "low_melody_confidence",
+  "unsupported_harmony",
+  "ambiguous_navigation",
+  "unfamiliar_direction",
+  "low_omr_confidence",
+]);
+
 /** Helper to re-run validation and prune resolved issues. */
 function revalidateDocument(doc: ScoreDocument): ScoreDocument {
   const validation = validateScoreDocument(doc);
-  const nonValidationIssues = doc.issues.filter(
-    (i) => !validation.issues.some((v) => v.code === i.code && v.measureId === i.measureId),
-  );
-  doc.issues = [...nonValidationIssues, ...validation.issues];
+  const preservedIssues = doc.issues.filter((i) => INGESTION_ISSUE_CODES.has(i.code));
+  doc.issues = [...preservedIssues, ...validation.issues];
   return doc;
 }
 

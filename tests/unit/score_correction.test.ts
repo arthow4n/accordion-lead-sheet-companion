@@ -180,3 +180,20 @@ Deno.test("CORRECT-06: ScoreCorrectionSession provides multi-step Undo and Redo"
   session.redo();
   assertEquals(session.document.measures[0].harmonies[0].raw, "G");
 });
+
+Deno.test("CORRECT-07: Fixed validation issues (e.g. duration) are cleared from doc.issues (BLK-01)", async () => {
+  const doc = createMockScore();
+  doc.measures[0].writtenIndex = 1; // Measure 2 (not a pickup)
+  // Set invalid duration: note has 2 quarter beats in a 4/4 measure
+  doc.measures[0].melody[0].duration = rational(2, 4); // 2 beats
+  // Validate to produce invalid_measure_duration issue
+  const { validateScoreDocument } = await import("../../src/lib/score/validation.ts");
+  const validation = validateScoreDocument(doc);
+  doc.issues.push(...validation.issues);
+  assertEquals(doc.issues.some((i) => i.code === "invalid_measure_duration"), true);
+
+  // Fix note duration to 4 quarter beats (whole note in 4/4)
+  const fixed = updateNoteDuration(doc, "m1", "m1-n1", rational(4));
+  // The invalid_measure_duration issue must now be cleared!
+  assertEquals(fixed.issues.some((i) => i.code === "invalid_measure_duration"), false);
+});

@@ -92,3 +92,16 @@ Deno.test("UX-CORRECT-02: LeadSheetReader integrates ScoreReviewQueue alongside 
   assertStringIncludes(html, "Score reader");
   assertStringIncludes(html, "Actionable Review Queue");
 });
+
+Deno.test("UX-CORRECT-03: ScoreReviewQueue interactive controls maintain >= 44x44px touch targets (HIGH-02)", () => {
+  const doc = createScoreWithActionableIssues();
+  const html = renderToStaticMarkup(
+    <ScoreReviewQueue
+      document={doc}
+      onUpdateDocument={() => {}}
+    />,
+  );
+
+  assertStringIncludes(html, "min-h-[44px]");
+  assertStringIncludes(html, "Review Issues");
+});

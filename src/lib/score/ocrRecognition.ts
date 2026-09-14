@@ -119,8 +119,10 @@ export function parseKeySignatureSymbols(text: string): ScoreKeySignature | null
     if (flats > 0) return { fifths: -Math.min(6, flats), mode: "major" };
   }
 
-  // 2. Named key words e.g. "G Major", "Bb Major", "D Minor", "F# Major"
-  const nameMatch = trimmed.match(/^([A-G][b#♭♯]?)\s*(maj|major|min|minor)?$/i);
+  // 2. Named key words e.g. "G Major", "Bb Major", "D Minor", "F# Major", or "Key: G"
+  // Require explicit "maj/major/min/minor" or "key" prefix to avoid misinterpreting bare chords as key signatures.
+  const nameMatch = trimmed.match(/^(?:key\s*[:\s]\s*)?([A-G][b#♭♯]?)\s+(maj|major|min|minor)$/i) ||
+    trimmed.match(/^key\s*[:\s]\s*([A-G][b#♭♯]?)$/i);
   if (nameMatch) {
     let tonic = nameMatch[1].charAt(0).toUpperCase();
     if (nameMatch[1].length > 1) {
@@ -179,8 +181,8 @@ export function parseKeySignatureSymbols(text: string): ScoreKeySignature | null
 export function extractChordsFromOcrText(text: string): OcrChordCandidate[] {
   if (!text || !text.trim()) return [];
 
-  // Match isolated chord tokens starting at word boundary with capital A-G
-  const tokens = text.match(/\b[A-G][b#♭♯]?(?:[a-zA-Z0-9\+\-\^\/]*)\b/g) || [];
+  // Match chord tokens starting at word boundary with capital A-G and ending at delimiter
+  const tokens = text.match(/\b[A-G][b#♭♯]?(?:[a-zA-Z0-9\+\-\^\/]*)(?=$|[\s,;:|])/g) || [];
   const candidates: OcrChordCandidate[] = [];
 
   for (const token of tokens) {
@@ -382,4 +384,135 @@ export function revokeOcrLangUrl(): void {
     URL.revokeObjectURL(cachedOcrLangUrl);
     cachedOcrLangUrl = null;
   }
+}
+
+function rawImageToCanvas(crop: RawImageData): unknown {
+  if (typeof OffscreenCanvas !== "undefined") {
+    const canvas = new OffscreenCanvas(crop.width, crop.height);
+    const ctx = canvas.getContext("2d");
+    if (ctx && typeof ImageData !== "undefined") {
+      const imgData = new ImageData(
+        crop.data as unknown as ImageData["data"],
+        crop.width,
+        crop.height,
+      );
+      ctx.putImageData(imgData, 0, 0);
+      return canvas;
+    }
+  } else if (typeof document !== "undefined" && typeof document.createElement === "function") {
+    const canvas = document.createElement("canvas");
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+    if (ctx && typeof ImageData !== "undefined") {
+      const imgData = new ImageData(
+        crop.data as unknown as ImageData["data"],
+        crop.width,
+        crop.height,
+      );
+      ctx.putImageData(imgData, 0, 0);
+      return canvas;
+    }
+  }
+  return crop.data as unknown as Blob;
+}
+
+/**
+ * Perform bounded OCR on cropped staff chord banners and header regions.
+ * Resolves HIGH-01 by executing local Tesseract.js against local Cache Storage language data.
+ */
+export async function recognizeStaffBoundedOcr(
+  image: RawImageData,
+  staves: Array<{ box: ImageBox; id?: string }>,
+  lineSpacing: number = 24,
+): Promise<import("./scoreFusion.ts").OcrScoreData> {
+  const ocrData: import("./scoreFusion.ts").OcrScoreData = {
+    measures: [],
+    sections: [],
+    unrecognizedDirections: [],
+  };
+
+  let langPath: string;
+  try {
+    langPath = await getLocalOcrLangPath();
+  } catch (_e) {
+    // If language artifact is not cached yet, return empty OCR data gracefully
+    return ocrData;
+  }
+
+  if (!langPath) return ocrData;
+
+  // Lazily import tesseract.js and run bounded recognition
+  let worker;
+  try {
+    const { createWorker } = await import("tesseract.js");
+    worker = await createWorker("eng", 1, {
+      langPath,
+      gzip: false,
+      cacheMethod: "none",
+    });
+
+    // 1. Recognize header region of first staff for key & meter
+    if (staves.length > 0) {
+      const headerCrop = cropStaffHeaderRegion(image, staves[0].box, lineSpacing);
+      const canvas = rawImageToCanvas(headerCrop);
+      // deno-lint-ignore no-explicit-any
+      const headerRes = await (worker as any).recognize(canvas);
+      const headerText = headerRes.data?.text || "";
+      const parsedKey = parseKeySignatureSymbols(headerText);
+      if (parsedKey) ocrData.keySignature = parsedKey;
+      const parsedMeter = parseMeterToken(headerText);
+      if (parsedMeter) ocrData.timeSignature = parsedMeter;
+    }
+
+    // 2. Recognize bounded chord banners above each staff
+    for (let i = 0; i < staves.length; i++) {
+      const bannerCrop = cropStaffChordBanner(image, staves[i].box, lineSpacing);
+      const canvas = rawImageToCanvas(bannerCrop);
+      // deno-lint-ignore no-explicit-any
+      const bannerRes = await (worker as any).recognize(canvas);
+      const bannerText = bannerRes.data?.text || "";
+
+      // Extract chords from banner
+      const chords = extractChordsFromOcrText(bannerText);
+
+      // Extract navigation & sections from banner
+      const form = extractNavigationAndSectionsFromOcrText(bannerText);
+      if (form.keySignature && !ocrData.keySignature) {
+        ocrData.keySignature = form.keySignature;
+      }
+      if (form.timeSignature && !ocrData.timeSignature) {
+        ocrData.timeSignature = form.timeSignature;
+      }
+      if (form.sections.length > 0) {
+        for (const s of form.sections) {
+          ocrData.sections?.push({
+            label: s.label,
+            startMeasureIndex: i,
+          });
+        }
+      }
+      if (form.unrecognizedDirections.length > 0) {
+        ocrData.unrecognizedDirections?.push(...form.unrecognizedDirections);
+      }
+
+      ocrData.measures?.push({
+        measureIndex: i,
+        chords,
+        navigation: form.navigation,
+      });
+    }
+  } catch (err) {
+    console.warn("Bounded OCR recognition skipped or failed:", err);
+  } finally {
+    if (worker) {
+      try {
+        await worker.terminate();
+      } catch (_err) {
+        // ignore termination error
+      }
+    }
+  }
+
+  return ocrData;
 }
