@@ -23,10 +23,12 @@ import { MiniGripDrawer } from "../../src/components/MiniGripDrawer.tsx";
 import { StradellaGrid } from "../../src/components/StradellaGrid.tsx";
 import { CbaGrid } from "../../src/components/CbaGrid.tsx";
 import { CbaMiniCard } from "../../src/components/CbaMiniCard.tsx";
+import { CbaMelodyMiniMap } from "../../src/components/CbaMelodyMiniMap.tsx";
 import { StradellaMiniCard } from "../../src/components/StradellaMiniCard.tsx";
 import { UpdateToast } from "../../src/components/UpdateToast.tsx";
 import { enrichChord } from "../../src/lib/parser/tokenizer.ts";
 import { computeStradellaTransition } from "../../src/lib/stradella/transitions.ts";
+import { solveCbaMelodyPath } from "../../src/lib/cba/melodyPath.ts";
 import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/index.ts";
 
 interface MockReactElement {
@@ -547,6 +549,33 @@ Deno.test("CbaGrid: Renders CBA C-System Treble buttons with active chord finger
 
   assertExists(html);
   assertEquals(html.includes("Bb"), true);
+});
+
+Deno.test("CbaMelodyMiniMap: Renders current, next, and configurable finger guidance", () => {
+  const path = solveCbaMelodyPath([
+    {
+      id: "melody-c",
+      offset: { numerator: 0, denominator: 1 },
+      duration: { numerator: 1, denominator: 4 },
+      pitch: { step: "C", alter: 0, octave: 4 },
+      rest: false,
+    },
+    {
+      id: "melody-d",
+      offset: { numerator: 1, denominator: 4 },
+      duration: { numerator: 1, denominator: 4 },
+      pitch: { step: "D", alter: 0, octave: 4 },
+      rest: false,
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    React.createElement(CbaMelodyMiniMap, { path, density: "fingers" }),
+  );
+  assertEquals(path.status, "ok");
+  assertEquals(html.includes('data-cba-melody-density="fingers"'), true);
+  assertEquals(html.includes("CBA melody button path"), true);
+  assertEquals(html.includes("now"), true);
+  assertEquals(html.includes("next"), true);
 });
 
 // ============================================================================

@@ -16,6 +16,7 @@ import type {
   CbaDisplayMode,
   CbaGrip,
   CbaGripMode,
+  CbaMelodyPathStep,
   ChordDetail,
   LeadSheetLine,
   LeadSheetSong,
@@ -59,6 +60,8 @@ import { rationalToNumber } from "../lib/score/rational.ts";
 import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
 import { spelledPitchToMidi, transposeSpelledPitch } from "../lib/score/transposition.ts";
 import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
+import { solveCbaMelodyPath } from "../lib/cba/melodyPath.ts";
+import { type CbaMelodyAssistanceDensity, CbaMelodyMiniMap } from "./CbaMelodyMiniMap.tsx";
 
 function scorePitchLabel(
   pitch: SpelledPitch,
@@ -149,6 +152,8 @@ interface ScoreMeasureCardProps {
   onSelectChord?: (chord: ChordDetail | string) => void;
   selectedChord?: ChordDetail | string | null;
   harmonyEvents?: EnrichedHarmonyEvent[];
+  melodyPathSteps?: CbaMelodyPathStep[];
+  melodyDensity?: CbaMelodyAssistanceDensity;
   cbaMode: CbaGripMode;
   accordionSize: AccordionSize;
   transpositionSemitones?: number;
@@ -167,6 +172,8 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
   onSelectChord,
   selectedChord,
   harmonyEvents,
+  melodyPathSteps,
+  melodyDensity = "path",
   cbaMode,
   accordionSize,
   transpositionSemitones = 0,
@@ -249,6 +256,10 @@ const ScoreMeasureCard: React.FC<ScoreMeasureCardProps> = ({
           ))
           : <span className="text-xs text-zinc-500">No melody events</span>}
       </div>
+
+      {melodyPathSteps && melodyPathSteps.some((step) => !step.rest && step.location) && (
+        <CbaMelodyMiniMap path={melodyPathSteps} density={melodyDensity} />
+      )}
       {measure.navigation.length > 0 && (
         <div className="mt-2 text-[11px] text-zinc-500 truncate">
           {measure.navigation.map((mark) => mark.kind === "text" ? mark.text : mark.kind).join(
@@ -533,7 +544,33 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     scoreMeasures,
     scoreTranspositionSemitones,
   ]);
+  const scoreMelodySteps = useMemo(() => {
+    const byPerformance = new Map<number, CbaMelodyPathStep[]>();
+    const byMeasureId = new Map<string, CbaMelodyPathStep[]>();
+    if (scoreGuidanceBlocked || !scoreMeasures.length) return { byPerformance, byMeasureId };
+
+    const events = scoreMeasures.flatMap(({ ref, measure }) =>
+      measure.melody.map((event) => ({
+        ...event,
+        id: `${ref.performanceIndex}::${event.id}`,
+      }))
+    );
+    const solved = solveCbaMelodyPath(events, {
+      transpositionSemitones: scoreTranspositionSemitones,
+    });
+    if (solved.status !== "ok") return { byPerformance, byMeasureId };
+
+    let stepIndex = 0;
+    for (const { ref, measure } of scoreMeasures) {
+      const steps = solved.steps.slice(stepIndex, stepIndex + measure.melody.length);
+      stepIndex += measure.melody.length;
+      byPerformance.set(ref.performanceIndex, steps);
+      if (!byMeasureId.has(measure.id)) byMeasureId.set(measure.id, steps);
+    }
+    return { byPerformance, byMeasureId };
+  }, [scoreGuidanceBlocked, scoreMeasures, scoreTranspositionSemitones]);
   const [scoreView, setScoreView] = useState<"preview" | "learn" | "perform">("learn");
+  const [scoreMelodyDensity, setScoreMelodyDensity] = useState<CbaMelodyAssistanceDensity>("path");
 
   React.useEffect(() => {
     setScoreView("learn");
@@ -1157,6 +1194,23 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 ))}
               </div>
             </div>
+            {!scoreGuidanceBlocked && (
+              <label className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-1.5 text-[11px] text-zinc-400">
+                <span>Right-hand help</span>
+                <select
+                  value={scoreMelodyDensity}
+                  onChange={(event) =>
+                    setScoreMelodyDensity(event.target.value as CbaMelodyAssistanceDensity)}
+                  className="min-h-[36px] rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
+                  aria-label="Right-hand melody help density"
+                >
+                  <option value="path">Button + finger</option>
+                  <option value="note_names">Note names</option>
+                  <option value="fingers">Finger numbers</option>
+                  <option value="notation">Buttons only</option>
+                </select>
+              </label>
+            )}
             {!scoreGuidanceBlocked && scoreRoute && scoreRoute.issues.length > 0 && (
               <div className="rounded-xl border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
                 Navigation needs review: {scoreRoute.issues[0].message}
@@ -1256,6 +1310,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                   cbaMode={cbaGripMode}
                   accordionSize={accordionSize}
                   transpositionSemitones={scoreTranspositionSemitones}
+                  melodyPathSteps={scoreMelodySteps.byMeasureId.get(measure.id)}
+                  melodyDensity={scoreMelodyDensity}
                   onSelectChord={onSelectChord}
                   selectedChord={selectedChord}
                 />
@@ -1283,6 +1339,8 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     accordionSize={accordionSize}
                     transpositionSemitones={scoreTranspositionSemitones}
                     harmonyEvents={scoreHarmonyByPerformance.get(ref.performanceIndex)}
+                    melodyPathSteps={scoreMelodySteps.byPerformance.get(ref.performanceIndex)}
+                    melodyDensity={scoreMelodyDensity}
                     onSelectChord={onSelectChord}
                     selectedChord={selectedChord}
                   />
