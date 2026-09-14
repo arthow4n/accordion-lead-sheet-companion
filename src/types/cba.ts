@@ -59,3 +59,70 @@ export interface CbaPhysicalLocation {
   midi: number;
   pitchClass: number;
 }
+
+export type CbaMelodyFinger = 1 | 2 | 3 | 4 | 5;
+
+export interface CbaMelodyLock {
+  eventId: string;
+  row?: CbaPhysicalRow;
+  column?: number;
+  finger?: CbaMelodyFinger;
+}
+
+export type CbaMelodyDiagnosticCode =
+  | "invalid_layout"
+  | "invalid_lock"
+  | "out_of_range"
+  | "no_candidates"
+  | "missing_pitch"
+  | "invalid_tie";
+
+export interface CbaMelodyDiagnostic {
+  code: CbaMelodyDiagnosticCode;
+  eventId?: string;
+  message: string;
+}
+
+export interface CbaMelodyTransition {
+  from: CbaPhysicalLocation;
+  to: CbaPhysicalLocation;
+  fromFinger: CbaMelodyFinger;
+  toFinger: CbaMelodyFinger;
+  columnTravel: number;
+  rowTravel: number;
+  physicalDelta: number;
+  cost: number;
+}
+
+export interface CbaMelodyPathStep {
+  eventId: string;
+  rest: boolean;
+  midi?: number;
+  pitch?: SpelledPitch;
+  location?: CbaPhysicalLocation;
+  finger?: CbaMelodyFinger;
+  transition?: CbaMelodyTransition;
+  /** Number of physical candidates before finger assignment. */
+  candidateCount: number;
+  /** 0 = unique candidate; larger values indicate more assistance ambiguity. */
+  ambiguity: number;
+  confidence: "high" | "medium" | "low";
+  locked: boolean;
+}
+
+export interface CbaMelodyPathOptions {
+  layout?: CbaKeyboardLayout;
+  maxRows?: 3 | 5;
+  transpositionSemitones?: number;
+  locks?: readonly CbaMelodyLock[];
+  /** Event IDs at which the hand is reset before selecting the event. */
+  phraseBoundaryBeforeEventIds?: readonly string[];
+}
+
+export interface CbaMelodyPathResult {
+  schemaVersion: 1;
+  status: "ok" | CbaMelodyDiagnosticCode;
+  steps: CbaMelodyPathStep[];
+  totalCost: number;
+  diagnostics: CbaMelodyDiagnostic[];
+}

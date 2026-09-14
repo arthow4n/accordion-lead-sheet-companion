@@ -79,7 +79,10 @@ export {
   getCbaRowBounds,
   ROLAND_FR1XB_C_GRIFF_EUROPE,
   spelledPitchToMidi,
+  validateCbaKeyboardLayout,
 } from "./cba/keyboardLayout.ts";
+
+export { calculateCbaMelodyTransition, solveCbaMelodyPath } from "./cba/melodyPath.ts";
 
 export {
   findBestCoordinateCluster,
