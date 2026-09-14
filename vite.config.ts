@@ -44,6 +44,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globIgnores: ["**/opencv*", "**/onnx*"],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

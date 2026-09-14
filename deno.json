@@ -31,6 +31,7 @@
     "@xmldom/xmldom": "npm:@xmldom/xmldom@0.9.12",
     "fflate": "npm:fflate@0.8.3",
     "opensheetmusicdisplay": "npm:opensheetmusicdisplay@2.1.2",
+    "@techstark/opencv-js": "npm:@techstark/opencv-js@5.0.0-release.1",
     "@types/react": "npm:@types/react@^19.0.0",
     "@types/react-dom": "npm:@types/react-dom@^19.0.0",
     "@std/assert": "jsr:@std/assert@^1.0.0",

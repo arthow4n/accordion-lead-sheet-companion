@@ -21,18 +21,37 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
   const [objectUrl, setObjectUrl] = useState<string>();
   const [activeLayout, setActiveLayout] = useState<ScorePhotoLayout | undefined>(layout);
   const [status, setStatus] = useState<"decoding" | "ready" | "error">("decoding");
+  const [selectedMeasureIndex, setSelectedMeasureIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     const url = URL.createObjectURL(file);
     setObjectUrl(url);
     setStatus("decoding");
-    decodePhotoForGuidance(file).then((decoded) => {
+    decodePhotoForGuidance(file).then(async (decoded) => {
       if (cancelled) {
         decoded.close();
         return;
       }
-      const nextLayout = layout || createInitialPhotoLayout(decoded.width, decoded.height);
+      let nextLayout = layout;
+      if (!nextLayout) {
+        try {
+          const { preprocessScorePhoto } = await import("../lib/score/photoPreprocessing.ts");
+          const result = await preprocessScorePhoto(decoded.bitmap);
+          if (!cancelled && !result.usedFallback && result.layout.measures.length > 0) {
+            nextLayout = result.layout;
+          }
+        } catch {
+          // Fallback to single-measure layout on preprocessing failure
+        }
+      }
+      if (!nextLayout) {
+        nextLayout = createInitialPhotoLayout(decoded.width, decoded.height);
+      }
+      if (cancelled) {
+        decoded.close();
+        return;
+      }
       setActiveLayout(nextLayout);
       onLayoutChange?.(nextLayout);
       decoded.close();
@@ -46,7 +65,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
     };
   }, [file]);
 
-  const measure = activeLayout?.measures[0];
+  const measure = activeLayout?.measures[selectedMeasureIndex] || activeLayout?.measures[0];
   const updateBox = (field: "x" | "y" | "width" | "height", value: number) => {
     if (!activeLayout || !measure || !Number.isFinite(value)) return;
     const next = adjustPhotoMeasureBox(activeLayout, measure.id, {
@@ -67,18 +86,24 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
             className="block max-h-72 w-full object-contain"
           />
         )}
-        {measure && activeLayout && (
-          <div
-            className="pointer-events-none absolute border-2 border-amber-300/90"
-            style={{
-              left: `${measure.box.x / activeLayout.page.width * 100}%`,
-              top: `${measure.box.y / activeLayout.page.height * 100}%`,
-              width: `${measure.box.width / activeLayout.page.width * 100}%`,
-              height: `${measure.box.height / activeLayout.page.height * 100}%`,
-            }}
-            aria-hidden="true"
-          />
-        )}
+        {activeLayout && activeLayout.measures.map((m, idx) => {
+          const isSelected = idx === selectedMeasureIndex;
+          return (
+            <div
+              key={m.id}
+              className={`pointer-events-none absolute border-2 ${
+                isSelected ? "border-amber-300/90 z-10" : "border-sky-400/40 border-dashed"
+              }`}
+              style={{
+                left: `${(m.box.x / activeLayout.page.width) * 100}%`,
+                top: `${(m.box.y / activeLayout.page.height) * 100}%`,
+                width: `${(m.box.width / activeLayout.page.width) * 100}%`,
+                height: `${(m.box.height / activeLayout.page.height) * 100}%`,
+              }}
+              aria-hidden="true"
+            />
+          );
+        })}
       </div>
       <div className="flex items-center justify-between text-[11px] text-zinc-400">
         <span>
@@ -86,6 +111,8 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
             ? "Preparing local photo…"
             : status === "error"
             ? "Local decode unavailable"
+            : activeLayout && activeLayout.measures.length > 1
+            ? `Guided photo · ${activeLayout.measures.length} measures detected`
             : "Guided photo · one page strip"}
         </span>
         {activeLayout && <span>{activeLayout.page.width} × {activeLayout.page.height}px</span>}
@@ -93,8 +120,27 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
       {measure && activeLayout && (
         <details>
           <summary className="cursor-pointer text-[11px] font-semibold text-zinc-300">
-            Adjust page boundary
+            Adjust measure boundary {activeLayout.measures.length > 1 &&
+              `(${selectedMeasureIndex + 1}/${activeLayout.measures.length})`}
           </summary>
+          {activeLayout.measures.length > 1 && (
+            <div className="mt-2">
+              <label className="text-[10px] text-zinc-500 block mb-1">
+                Select measure to adjust:
+                <select
+                  value={selectedMeasureIndex}
+                  onChange={(e) => setSelectedMeasureIndex(Number(e.target.value))}
+                  className="mt-0.5 min-h-[36px] w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
+                >
+                  {activeLayout.measures.map((m, idx) => (
+                    <option key={m.id} value={idx}>
+                      Measure {idx + 1}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(["x", "y", "width", "height"] as const).map((field) => (
               <label key={field} className="text-[10px] text-zinc-500">

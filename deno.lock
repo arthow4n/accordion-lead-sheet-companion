@@ -9,6 +9,7 @@
     "npm:@google/genai@2.19.0": "2.19.0",
     "npm:@google/genai@^2.19.0": "2.19.0",
     "npm:@tailwindcss/vite@^4.3.3": "4.3.3_vite@6.4.3",
+    "npm:@techstark/opencv-js@5.0.0-release.1": "5.0.0-release.1",
     "npm:@types/react-dom@19": "19.2.4_@types+react@19.2.18",
     "npm:@types/react@19": "19.2.18",
     "npm:@vitejs/plugin-react@^4.3.4": "4.7.0_vite@6.4.3",
@@ -1341,6 +1342,9 @@
         "tailwindcss",
         "vite"
       ]
+    },
+    "@techstark/opencv-js@5.0.0-release.1": {
+      "integrity": "sha512-PIm+eB0MFtieXoNC2GRao0dv/02sehG+Nv2nSW5D6pQm6J/4WqvDHm0RyoqOmGYQm67jdGiaOdIeTShCY3PIUg=="
     },
     "@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1": {
       "integrity": "sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==",
@@ -3626,6 +3630,7 @@
       "jsr:@std/expect@1",
       "npm:@google/genai@2.19.0",
       "npm:@tailwindcss/vite@^4.3.3",
+      "npm:@techstark/opencv-js@5.0.0-release.1",
       "npm:@types/react-dom@19",
       "npm:@types/react@19",
       "npm:@vitejs/plugin-react@^4.3.4",

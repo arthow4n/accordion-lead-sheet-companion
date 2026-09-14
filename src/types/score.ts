@@ -178,3 +178,37 @@ export interface ScorePhotoLayout {
   };
   measures: ScorePhotoMeasureGeometry[];
 }
+
+export interface StaffGeometry {
+  id: string;
+  systemIndex: number;
+  box: ImageBox;
+  lineYCoordinates: number[];
+  lineSpacing: number;
+}
+
+export interface SystemGeometry {
+  id: string;
+  index: number;
+  box: ImageBox;
+  staves: StaffGeometry[];
+}
+
+export interface BarlineGeometry {
+  id: string;
+  systemIndex: number;
+  x: number;
+  topY: number;
+  bottomY: number;
+  type: "single" | "double" | "final" | "repeat";
+}
+
+export interface ScorePhotoPreprocessingResult {
+  layout: ScorePhotoLayout;
+  systems: SystemGeometry[];
+  staves: StaffGeometry[];
+  barlines: BarlineGeometry[];
+  deskewAngleDegrees: number;
+  processingTimeMs: number;
+  usedFallback: boolean;
+}
