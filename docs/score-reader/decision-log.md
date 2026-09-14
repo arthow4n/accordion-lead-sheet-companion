@@ -29,3 +29,18 @@ has supplied approval in the project conversation or an explicitly recorded proj
   treble input is assigned to MIDI channel 1 and the exercise range is G3–G6.
 - In-app authority: `src/lib/cba/grid.ts` remains unchanged for pitch-class lookup and row
   staggering; the physical profile adapts it with an absolute octave anchor and finite row bounds.
+
+## Guided-photo fallback record
+
+- The first photograph slice is deliberately no-OMR and local-only: a bounded `ImageBitmap` is
+  decoded with EXIF-aware orientation, then represented by a conservative full-page geometry strip.
+  This keeps the original page as visual ground truth while avoiding guessed melody notes.
+- Users may adjust the page boundary and enter timed chord labels using `Chord@beat` tokens (for
+  example, `C@0, G@2, Em@3`). These harmonies are marked `photo-manual` and flow through the same
+  Stradella/CBA guidance used by MusicXML and classic lead sheets.
+- A source image is ephemeral by default. During the current tab it is held in memory only; an
+  explicit “Keep the original photo” choice stores it as a separate IndexedDB asset. Songbook JSON
+  exports contain only the reference, never image bytes. Missing ephemeral assets after reload are
+  reported clearly and do not invalidate the saved timed chord guidance.
+- Automatic staff/measure slicing, OpenCV preprocessing, OMR, and model artifact selection remain
+  pending Milestones 5/6 and require the explicit authority decisions recorded above.

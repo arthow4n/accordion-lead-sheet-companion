@@ -133,10 +133,13 @@ export {
   clearSongbook,
   deleteSong,
   exportSongbook,
+  getScoreAsset,
   getSong,
   getSongs,
   importSongbook,
   initPresets,
+  registerEphemeralScoreAsset,
+  saveScoreAsset,
   saveSong,
 } from "./storage/songbook.ts";
 
@@ -189,3 +192,4 @@ export * from "./score/mxl.ts";
 export * from "./score/osmd.ts";
 export * from "./score/transposition.ts";
 export * from "./score/validation.ts";
+export * from "./score/photoGuidance.ts";

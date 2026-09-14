@@ -13,6 +13,9 @@ const DERIVED_CACHE_KEY_PREFIX = "accordion_score_derived_";
 
 // In-memory fallback for non-IndexedDB environments (e.g. headless unit tests)
 const memoryStore = new Map<string, unknown>();
+// Ephemeral photo sources intentionally never enter IndexedDB. They remain available only for
+// the current tab/session so a just-imported guided photo can be played before a reload.
+const ephemeralScoreAssets = new Map<string, Blob>();
 
 interface SongbookEnvelope {
   version: number;
@@ -269,9 +272,43 @@ export async function clearSongbook(): Promise<void> {
 /** Remove an opted-in photo source asset when its owning score is deleted. */
 export async function deleteScoreAsset(assetId: string): Promise<void> {
   if (!assetId.trim()) return;
+  ephemeralScoreAssets.delete(assetId);
   const key = `${SOURCE_ASSET_KEY_PREFIX}${assetId}`;
   if (isIndexedDbAvailable()) await del(key);
   else memoryStore.delete(key);
+}
+
+/** Keep a photo available for the current session without persisting its bytes. */
+export function registerEphemeralScoreAsset(assetId: string, blob: Blob): void {
+  if (!assetId.trim()) throw new Error("Photo asset ID is required.");
+  if (typeof Blob === "undefined" || !(blob instanceof Blob) || blob.size === 0) {
+    throw new Error("Photo asset must be a non-empty Blob.");
+  }
+  ephemeralScoreAssets.set(assetId, blob);
+}
+
+/** Persist an opted-in original photo outside the songbook JSON envelope. */
+export async function saveScoreAsset(assetId: string, blob: Blob): Promise<void> {
+  if (!assetId.trim()) throw new Error("Photo asset ID is required.");
+  if (
+    typeof Blob === "undefined" || !(blob instanceof Blob) || blob.size === 0 ||
+    blob.size > 10 * 1024 * 1024
+  ) {
+    throw new Error("Photo asset must be between 1 byte and 10 MiB.");
+  }
+  const key = `${SOURCE_ASSET_KEY_PREFIX}${assetId}`;
+  if (isIndexedDbAvailable()) await set(key, blob);
+  else memoryStore.set(key, blob);
+}
+
+/** Read an opted-in original photo; missing assets are an expected recoverable state. */
+export async function getScoreAsset(assetId: string): Promise<Blob | undefined> {
+  if (!assetId.trim()) return undefined;
+  const ephemeral = ephemeralScoreAssets.get(assetId);
+  if (ephemeral) return ephemeral;
+  const key = `${SOURCE_ASSET_KEY_PREFIX}${assetId}`;
+  if (isIndexedDbAvailable()) return await get<Blob>(key);
+  return memoryStore.get(key) as Blob | undefined;
 }
 
 /** Remove score-derived caches while leaving shared model artifacts untouched. */

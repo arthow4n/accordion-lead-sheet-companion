@@ -83,6 +83,7 @@ export interface HarmonyEvent {
   duration?: RationalDuration;
   confidence?: number;
   sourceBox?: ImageBox;
+  provenance?: "musicxml" | "photo-manual" | "cloud-lookup";
   /** Set when the parser preserved visible text but could not map it to chord semantics. */
   unsupported?: boolean;
 }
@@ -133,6 +134,7 @@ export interface ScoreDocument {
   tempoMap: TempoEvent[];
   sections: ScoreSection[];
   measures: ScoreMeasure[];
+  photoLayout?: ScorePhotoLayout;
   issues: ScoreIssue[];
 }
 
@@ -158,4 +160,21 @@ export interface ScoreCursor {
   performanceIndex: number;
   measureId: string;
   offset: RationalDuration;
+}
+
+/** Model-independent geometry retained for the guided-photo fallback. */
+export interface ScorePhotoMeasureGeometry {
+  id: string;
+  writtenIndex: number;
+  box: ImageBox;
+  source: "automatic" | "manual";
+}
+
+export interface ScorePhotoLayout {
+  schemaVersion: 1;
+  page: {
+    width: number;
+    height: number;
+  };
+  measures: ScorePhotoMeasureGeometry[];
 }

@@ -286,21 +286,24 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID  | Status   | Commit  | Checks                                  | Review disposition                    | Notes                                                                                                                                                                                                                                                                   |
-| --- | -------- | ------- | --------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                                   | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                                                                                                     |
-| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                                   | Versioned contracts, rational timing, and validation.                                                                                                                                                                                                                   |
-| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                                   | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                                                                                                           |
-| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                                   | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                                                                                                |
-| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                                                                                                  |
-| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                                                                                                    |
-| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice                   | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                                                                                                          |
-| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                              | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer.                                                                               |
-| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                                   | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                                                                   |
-| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                                                                 |
-| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                                                                      |
-| M4A | complete | 186e134 | fmt/lint/test/build green (292 passing) | R2 APPROVED (score_cba_domain_review) | FR-1XB C-Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, validated solver specification/tests, and explicit 1-2-4/2-3-5 regression evidence are committed; user-authorized current app layout is the coordinate authority. |
-| M4B | complete | 2e9dfd7 | fmt/lint/test/build green (299 passing) | N/A                                   | Deterministic CBA melody DP, hard diagnostics/locks/ties/resets, shared compact RH path map, and configurable assistance density are implemented without changing existing chord voice leading.                                                                         |
+| ID  | Status   | Commit  | Checks                                  | Review disposition                    | Notes                                                                                                                                                                                                                                                                                            |
+| --- | -------- | ------- | --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                                   | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                                                                                                                              |
+| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                                   | Versioned contracts, rational timing, and validation.                                                                                                                                                                                                                                            |
+| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                                   | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                                                                                                                                    |
+| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                                   | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                                                                                                                         |
+| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                                                                                                                           |
+| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice                   | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                                                                                                                             |
+| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice                   | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                                                                                                                                   |
+| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                              | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer.                                                                                                        |
+| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                                   | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                                                                                            |
+| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                                                                                          |
+| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                                                                                               |
+| M4A | complete | 186e134 | fmt/lint/test/build green (292 passing) | R2 APPROVED (score_cba_domain_review) | FR‑1XB C‑Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, validated solver specification/tests, and explicit 1‑2‑4/2‑3‑5 regression evidence are committed; user-authorized current app layout is the coordinate authority.                          |
+| M4B | complete | 2e9dfd7 | fmt/lint/test/build green (299 passing) | N/A                                   | Deterministic CBA melody DP, hard diagnostics/locks/ties/resets, shared compact RH path map, and configurable assistance density are implemented without changing existing chord voice leading.                                                                                                  |
+| M5A | active   | pending | fmt/lint/test/build pending             | N/A                                   | Conservative local photo preparation is implemented: camera/gallery validation, EXIF-aware bounded `ImageBitmap` decode, one-page geometry, cancellation, object-URL cleanup, and an in-memory ephemeral asset path. OpenCV worker/preprocessing remains pending authority and dependency gates. |
+| M5B | complete | pending | fmt/lint/test/build pending             | N/A                                   | Manual page-boundary adjustment and mobile source-strip rendering use the versioned `ScorePhotoLayout`; no OMR crop/model assumptions are frozen.                                                                                                                                                |
+| M5C | complete | pending | fmt/lint/test/build pending             | N/A                                   | Timed manual chord assignment (`Chord@beat`) is provenance-marked and reuses existing harmony guidance. Explicit opt-in persists the original image separately; ephemeral/missing-source behavior is visible.                                                                                    |
 
 ### Required slice order
 
@@ -315,8 +318,8 @@ Use these as the initial ledger rows; split further when a diff stops being inde
    accessibility, and browser audit.
 5. `M4A`: physical-keyboard mathematical specification and tests; then `R2`; `M4B`: geometry
    compatibility layer and solver; `M4C`: shared melody presentation.
-6. `M5A`: bounded page geometry worker; `M5B`: measure crop/boundary UI; `M5C`: manual timed chord
-   assignment and source lifecycle.
+6. `M5A`: bounded local photo decode and conservative page geometry (worker/OpenCV follow-up);
+   `M5B`: measure crop/boundary UI; `M5C`: manual timed chord assignment and source lifecycle.
 7. `M6A`: authority, model-input probe, frozen corpus and gates; `M6B`: reference/export/parity and
    browser benchmarks; `M6C`: recorded branch decision. On `OMR_NO_GO`, run combined photo/OMR
    review `R3` here.
@@ -566,22 +569,28 @@ mandated by `AGENTS.md` before production implementation.
 
 ### Milestone 5 — Guided photograph mode without full OMR
 
-- [ ] Add camera/gallery input with existing MIME and size protections.
-- [ ] Decode into an `ImageBitmap` and normalize EXIF orientation where required.
+The first deliverable is intentionally a conservative, useful no-OMR slice. It keeps the selected
+page as visual ground truth, creates one bounded full-page strip, and lets the musician enter timed
+chords. Automatic staff/barline slicing and any melody claim remain pending until the dependency,
+model, and authority gates in Milestone 6 are satisfied.
+
+- [x] Add camera/gallery input with existing MIME and size protections.
+- [x] Decode into an `ImageBitmap` and normalize EXIF orientation where required.
 - [ ] Lazy-load OpenCV.js and keep its work outside initial application startup.
 - [ ] Move expensive preprocessing into a dedicated worker or bounded worker pipeline.
 - [ ] Implement conservative grayscale, illumination normalization, page boundary detection,
       perspective correction, deskew, staff grouping, and barline detection.
-- [ ] Produce model-independent page/system/staff/measure geometry. Do not freeze OMR crop size,
-      overlap, normalization, or stitching here; those belong to the selected model adapter.
-- [ ] Provide a manual boundary adjustment only when automatic slicing is visibly wrong.
-- [ ] Add a measure-level manual chord-assignment flow with beat offset/provenance. Do not treat the
+- [x] Produce model-independent page/system/staff/measure geometry as a conservative full-page
+      measure strip. Do not freeze OMR crop size, overlap, normalization, or stitching here; those
+      belong to the selected model adapter.
+- [x] Provide a manual boundary adjustment only when automatic slicing is visibly wrong.
+- [x] Add a measure-level manual chord-assignment flow with beat offset/provenance. Do not treat the
       current scan API's unique `string[]` chord list as timed harmony; it remains chord lookup only
       unless its contract is deliberately extended and tested.
-- [ ] Allow immediate guided-photo playing using original measure/system crops plus assigned chords.
-- [ ] Do not require melody recognition or score correction to use this mode.
-- [ ] Revoke object URLs, release OpenCV matrices/canvases, support cancellation, and cap decoded
-      dimensions to prevent memory exhaustion.
+- [x] Allow immediate guided-photo playing using the original page strip plus assigned chords.
+- [x] Do not require melody recognition or score correction to use this mode.
+- [x] Revoke object URLs, release decoded bitmaps, support cancellation, and cap decoded dimensions
+      to prevent memory exhaustion.
 - [ ] Keep the original photo blob ephemeral by default. On opt-in, persist it under a stable asset
       ID. Test reopen, missing/evicted assets, re-linking, export, song deletion, and cache
       deletion; never promise an original crop after reload if the source was not retained.
@@ -590,9 +599,12 @@ mandated by `AGENTS.md` before production implementation.
 
 **Exit criteria**
 
-- [ ] A user can photograph a page and play from mobile-sized original measure strips.
-- [ ] The flow remains valuable even when no OMR model is installed.
-- [ ] Source-image privacy behavior is explicit and tested.
+- [x] A user can photograph a page and play from a mobile-sized original page strip with manually
+      assigned timed chords.
+- [x] The flow remains valuable even when no OMR model is installed.
+- [ ] Source-image privacy behavior is explicit and fully lifecycle-tested (the conservative slice
+      currently covers in-session ephemeral and explicit opt-in storage; reopen/re-link/export
+      coverage remains).
 
 ### Milestone 6 — OMR model evaluation and browser feasibility gate
 

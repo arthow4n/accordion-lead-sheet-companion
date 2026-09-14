@@ -60,6 +60,7 @@ import { rationalToNumber } from "../lib/score/rational.ts";
 import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
 import { spelledPitchToMidi, transposeSpelledPitch } from "../lib/score/transposition.ts";
 import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
+import { getScoreAsset } from "../lib/storage/songbook.ts";
 import { solveCbaMelodyPath } from "../lib/cba/melodyPath.ts";
 import { type CbaMelodyAssistanceDensity, CbaMelodyMiniMap } from "./CbaMelodyMiniMap.tsx";
 
@@ -319,6 +320,93 @@ const ScoreNotation: React.FC<{ xml?: string; startMeasure?: number; measureCoun
       )}
     </div>
   );
+};
+
+const GuidedPhotoScore: React.FC<{
+  assetId?: string;
+  layout?: import("../types/score.ts").ScorePhotoLayout;
+}> = ({ assetId, layout }) => {
+  const [objectUrl, setObjectUrl] = React.useState<string>();
+  const [missing, setMissing] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | undefined;
+    setMissing(!assetId);
+    setObjectUrl(undefined);
+    if (!assetId) return;
+    getScoreAsset(assetId).then((blob) => {
+      if (cancelled) return;
+      if (!blob) {
+        setMissing(true);
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      createdUrl = url;
+      setObjectUrl(url);
+    }).catch(() => {
+      if (!cancelled) setMissing(true);
+    });
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [assetId]);
+
+  if (objectUrl) {
+    const strips = layout?.measures.slice(0, 8) || [];
+    return (
+      <div className="space-y-2 rounded-2xl border border-zinc-800 bg-white/95 p-2">
+        {strips.length > 0
+          ? strips.map((measure, index) => {
+            const box = measure.box;
+            return (
+              <div
+                key={measure.id}
+                className="relative w-full overflow-hidden rounded-lg bg-zinc-100"
+                style={{ aspectRatio: box.width + " / " + box.height }}
+                aria-label={"Guided score measure " + (index + 1)}
+              >
+                <img
+                  src={objectUrl}
+                  alt={index === 0 ? "Saved guided score photo" : ""}
+                  aria-hidden={index > 0 ? "true" : undefined}
+                  className="absolute max-w-none object-fill"
+                  style={{
+                    width: String(layout!.page.width / box.width * 100) + "%",
+                    height: String(layout!.page.height / box.height * 100) + "%",
+                    left: "-" + String(box.x / box.width * 100) + "%",
+                    top: "-" + String(box.y / box.height * 100) + "%",
+                  }}
+                />
+              </div>
+            );
+          })
+          : (
+            <img
+              src={objectUrl}
+              alt="Saved guided score photo"
+              className="max-h-80 w-full object-contain"
+            />
+          )}
+        {layout && layout.measures.length > strips.length && (
+          <p className="text-[10px] text-zinc-500">
+            Showing the first {strips.length}{" "}
+            source strips; guidance remains available for all measures.
+          </p>
+        )}
+      </div>
+    );
+  }
+  if (missing) {
+    return (
+      <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
+        Original photo is unavailable. The saved timed chord guidance remains usable; re-link the
+        image to restore the crop.
+      </div>
+    );
+  }
+  return null;
 };
 
 const YouTubeIcon: React.FC<{ className?: string }> = ({ className = "w-3.5 h-3.5" }) => (
@@ -1295,6 +1383,9 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                 : scoreMeasures[scorePerformanceIndex]?.measure.writtenIndex || 0}
               measureCount={scoreView === "preview" ? 2 : 1}
             />
+          )}
+          {song.score.source.kind === "photo" && (
+            <GuidedPhotoScore assetId={song.score.source.assetId} layout={song.score.photoLayout} />
           )}
 
           {!scoreGuidanceBlocked && scoreView === "preview" && (

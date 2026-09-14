@@ -5,6 +5,7 @@ import type {
   ScoreDocument,
   ScoreIssue,
   ScoreMeasure,
+  ScorePhotoLayout,
   ScoreTimeSignature,
   ScoreValidationResult,
 } from "../../types/score.ts";
@@ -112,6 +113,34 @@ function isValidSource(source: ScoreDocument["source"]): boolean {
   return source.kind === "photo" &&
     (source.persistence === "ephemeral" || source.persistence === "opted_in") &&
     (source.assetId === undefined || typeof source.assetId === "string");
+}
+
+function isValidPhotoLayout(layout: ScorePhotoLayout | undefined): boolean {
+  if (layout === undefined) return true;
+  if (
+    layout.schemaVersion !== 1 || !layout.page ||
+    !Number.isFinite(layout.page.width) || !Number.isFinite(layout.page.height) ||
+    layout.page.width <= 0 || layout.page.height <= 0 ||
+    layout.page.width > 50_000 || layout.page.height > 50_000 ||
+    !Array.isArray(layout.measures) || layout.measures.length === 0 ||
+    layout.measures.length > MAX_MEASURES
+  ) return false;
+  const ids = new Set<string>();
+  return layout.measures.every((measure) => {
+    if (!measure || typeof measure.id !== "string" || !measure.id.trim() || ids.has(measure.id)) {
+      return false;
+    }
+    ids.add(measure.id);
+    if (
+      !Number.isSafeInteger(measure.writtenIndex) || measure.writtenIndex < 0 ||
+      !isFiniteBox(measure.box) || measure.source !== "automatic" && measure.source !== "manual"
+    ) {
+      return false;
+    }
+    const box = measure.box;
+    return box !== undefined && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0 &&
+      box.x + box.width <= layout.page.width && box.y + box.height <= layout.page.height;
+  });
 }
 
 function isValidNavigationMark(value: unknown): value is NavigationMark {
@@ -491,7 +520,8 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   if (document.time !== undefined && !isValidTime(document.time)) {
     issues.push(issue("invalid_time_signature", "Score time signature is invalid."));
   }
-  if (!isValidSource(document.source)) {
+  const validSource = isValidSource(document.source);
+  if (!validSource) {
     issues.push(issue("invalid_source", "Score source has an invalid shape."));
   } else {
     if (document.source.kind === "musicxml" && !document.source.sanitizedXml.trim()) {
@@ -503,6 +533,12 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     ) {
       issues.push(issue("missing_source_asset", "Opted-in photo source has no asset ID."));
     }
+  }
+  if (
+    !isValidPhotoLayout(document.photoLayout) ||
+    (document.photoLayout !== undefined && (!validSource || document.source.kind !== "photo"))
+  ) {
+    issues.push(issue("invalid_photo_layout", "Photo geometry is invalid for this score source."));
   }
   if (!Array.isArray(document.tempoMap)) {
     issues.push(issue("invalid_tempo_map", "Score tempo map must be an array."));

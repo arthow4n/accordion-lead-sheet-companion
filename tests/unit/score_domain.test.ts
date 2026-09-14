@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import { assertEquals, assertExists, assertRejects, assertThrows } from "@std/assert";
 import type {
   ImageBox,
   MelodyEvent,
@@ -16,11 +16,26 @@ import {
   spelledPitchToMidi,
   transposeSpelledPitch,
 } from "../../src/lib/score/transposition.ts";
-import { importSongbook, normalizeSongRecord } from "../../src/lib/storage/songbook.ts";
+import {
+  clearSongbook,
+  deleteScoreAsset,
+  deleteSong,
+  exportSongbook,
+  getScoreAsset,
+  importSongbook,
+  normalizeSongRecord,
+  registerEphemeralScoreAsset,
+  saveScoreAsset,
+  saveSong,
+} from "../../src/lib/storage/songbook.ts";
 import { enrichHarmonySequence } from "../../src/lib/score/harmony.ts";
 import { parseMusicXml } from "../../src/lib/score/musicxml.ts";
 import { parseMxl } from "../../src/lib/score/mxl.ts";
 import { createMusicXmlExcerpt } from "../../src/lib/score/osmd.ts";
+import {
+  adjustPhotoMeasureBox,
+  createInitialPhotoLayout,
+} from "../../src/lib/score/photoGuidance.ts";
 import {
   getNextScorePlaybackIndex,
   getPhraseLoopRange,
@@ -73,6 +88,86 @@ Deno.test("score validation rejects missing pitches and invalid source state", (
   }));
   assertEquals(result.valid, false);
   assertEquals(result.issues.map((item) => item.code), ["missing_source_asset", "missing_pitch"]);
+});
+
+Deno.test("score validation reports malformed source without throwing while photo geometry is present", () => {
+  const result = validateScoreDocument(score({
+    source: null as unknown as ScoreDocument["source"],
+    photoLayout: createInitialPhotoLayout(320, 240),
+  }));
+  assertEquals(result.valid, false);
+  assertEquals(result.issues.some((item) => item.code === "invalid_source"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_photo_layout"), true);
+});
+
+Deno.test("guided photo geometry is bounded, adjustable, and valid as a source-only score", () => {
+  const initial = createInitialPhotoLayout(1_200, 1_800);
+  const adjusted = adjustPhotoMeasureBox(initial, "photo-measure-1", {
+    x: -50,
+    y: 100,
+    width: 2_000,
+    height: 1_000,
+  });
+  assertEquals(adjusted.measures[0].source, "manual");
+  assertEquals(adjusted.measures[0].box, {
+    x: 0,
+    y: 100,
+    width: 1_200,
+    height: 1_000,
+    sourceWidth: 1_200,
+    sourceHeight: 1_800,
+  });
+  const result = validateScoreDocument(score({
+    source: { kind: "photo", persistence: "ephemeral" },
+    photoLayout: adjusted,
+  }));
+  assertEquals(result.valid, true);
+});
+
+Deno.test("opted-in photo assets round-trip independently from songbook JSON", async () => {
+  const assetId = "score-domain-photo-asset";
+  const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
+  await saveScoreAsset(assetId, blob);
+  const stored = await getScoreAsset(assetId);
+  assertExists(stored);
+  assertEquals(stored.size, 3);
+  assertEquals(stored.type, "image/png");
+  await deleteScoreAsset(assetId);
+  assertEquals(await getScoreAsset(assetId), undefined);
+});
+
+Deno.test("ephemeral photo assets are available in-session and deleted with their source", async () => {
+  const assetId = "score-domain-ephemeral-photo";
+  const blob = new Blob([new Uint8Array([9])], { type: "image/jpeg" });
+  registerEphemeralScoreAsset(assetId, blob);
+  assertEquals(await getScoreAsset(assetId), blob);
+  await deleteScoreAsset(assetId);
+  assertEquals(await getScoreAsset(assetId), undefined);
+});
+
+Deno.test("saved photo scores export references without bytes and delete their opted-in asset", async () => {
+  await clearSongbook();
+  const assetId = "score-domain-owned-photo";
+  const blob = new Blob([new Uint8Array([4, 5])], { type: "image/jpeg" });
+  await saveScoreAsset(assetId, blob);
+  const song: import("../../src/types/index.ts").LeadSheetSong = {
+    id: "photo-score-song",
+    title: "Photo score",
+    capoFret: 0,
+    rawText: "",
+    lines: [],
+    score: score({
+      source: { kind: "photo", persistence: "opted_in", assetId },
+      photoLayout: createInitialPhotoLayout(640, 480),
+    }),
+    updatedAt: Date.now(),
+  };
+  await saveSong(song);
+  const exported = await exportSongbook();
+  assertEquals(exported.includes("score-domain-owned-photo"), true);
+  assertEquals(exported.includes("\u0004\u0005"), false);
+  await deleteSong(song.id);
+  assertEquals(await getScoreAsset(assetId), undefined);
 });
 
 Deno.test("score validation rejects malformed nested metadata and bounded collections", () => {

@@ -13,7 +13,10 @@ import { parseLeadSheetText } from "../lib/parser/tokenizer.ts";
 import { parseMusicXml } from "../lib/score/musicxml.ts";
 import { parseChordLookupInput } from "../lib/lookup/index.ts";
 import { getApiBaseUrl } from "../lib/api/config.ts";
+import { rational } from "../lib/score/rational.ts";
+import { registerEphemeralScoreAsset, saveScoreAsset } from "../lib/storage/songbook.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
+import { GuidedPhotoPreview } from "./GuidedPhotoPreview.tsx";
 
 export interface ImportModalProps {
   isOpen: boolean;
@@ -44,6 +47,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
   // Transient lookup state (cleared on modal open/close)
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [photoLayout, setPhotoLayout] = useState<import("../types/score.ts").ScorePhotoLayout>();
+  const [photoChordInput, setPhotoChordInput] = useState("");
+  const [photoKeepSource, setPhotoKeepSource] = useState(false);
   const [manualChordInput, setManualChordInput] = useState("");
   const [lookupChords, setLookupChords] = useState<string[]>([]);
   const [invalidManualTokens, setInvalidManualTokens] = useState<string[]>([]);
@@ -58,6 +64,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setSelectedImage(null);
+      setPhotoLayout(undefined);
+      setPhotoChordInput("");
+      setPhotoKeepSource(false);
       setManualChordInput("");
       setLookupChords([]);
       setInvalidManualTokens([]);
@@ -146,6 +155,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     setScanError(null);
     setLookupChords([]);
     setInvalidManualTokens([]);
+    setPhotoLayout(undefined);
 
     if (!file) {
       setSelectedImage(null);
@@ -182,6 +192,56 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     }
 
     setSelectedImage(file);
+  };
+
+  const handleCreateGuidedPhoto = () => {
+    if (!selectedImage || !photoLayout) return;
+    const assignments = photoChordInput.split(/[\n,]+/).map((token) => token.trim()).filter(Boolean)
+      .flatMap((token) => {
+        const match = token.match(/^(.*?)@([0-9]+(?:\.[0-9]+)?)$/);
+        const raw = (match?.[1] || token).trim();
+        const parsed = parseChordLookupInput(raw);
+        if (parsed.chords.length === 0) return [];
+        const beat = match ? Number(match[2]) : 0;
+        return [{ raw: parsed.chords[0], beat: Number.isFinite(beat) ? beat : 0 }];
+      });
+    const now = Date.now();
+    const measures = photoLayout.measures.map((geometry, index) => ({
+      id: geometry.id,
+      printedNumber: index + 1,
+      writtenIndex: index,
+      melody: [],
+      harmonies: assignments.map((assignment, chordIndex) => ({
+        id: `photo-harmony-${index}-${chordIndex}`,
+        offset: rational(Math.round(assignment.beat * 1000), 1000),
+        raw: assignment.raw,
+        confidence: 1,
+        sourceBox: geometry.box,
+        provenance: "photo-manual" as const,
+      })),
+      navigation: [],
+      sourceBox: geometry.box,
+    }));
+    const title = selectedImage.name.replace(/\.[^.]+$/, "") || "Guided score photo";
+    setPreviewSong({
+      id: `photo_${now}_${Math.random().toString(36).slice(2, 9)}`,
+      title,
+      capoFret: 0,
+      rawText: "",
+      lines: [],
+      score: {
+        schemaVersion: 1,
+        source: { kind: "photo", persistence: "ephemeral" },
+        tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }],
+        sections: [],
+        measures,
+        photoLayout,
+        issues: [],
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+    setActiveTab("score");
   };
 
   const handleScoreFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,7 +369,24 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     if (!previewSong || activeTab === "lookup" || isSaving) return;
     try {
       setIsSaving(true);
-      await onSaveSong(previewSong);
+      let songToSave = previewSong;
+      if (selectedImage && previewSong.score?.source.kind === "photo") {
+        const assetId = previewSong.score.source.assetId || `asset_${previewSong.id}`;
+        if (photoKeepSource) await saveScoreAsset(assetId, selectedImage);
+        else registerEphemeralScoreAsset(assetId, selectedImage);
+        songToSave = {
+          ...previewSong,
+          score: {
+            ...previewSong.score,
+            source: {
+              kind: "photo",
+              persistence: photoKeepSource ? "opted_in" : "ephemeral",
+              assetId,
+            },
+          },
+        };
+      }
+      await onSaveSong(songToSave);
       onClose();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Could not save this song.");
@@ -576,6 +653,49 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                       <span className="text-zinc-500 font-mono text-[11px] shrink-0 ml-2">
                         {formatFileSize(selectedImage.size)}
                       </span>
+                    </div>
+                  )}
+
+                  {selectedImage && (
+                    <GuidedPhotoPreview
+                      file={selectedImage}
+                      layout={photoLayout}
+                      onLayoutChange={setPhotoLayout}
+                    />
+                  )}
+
+                  {selectedImage && photoLayout && (
+                    <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-2.5">
+                      <label className="text-[11px] font-semibold text-zinc-300">
+                        Chords by beat (optional)
+                        <textarea
+                          value={photoChordInput}
+                          onChange={(event) => setPhotoChordInput(event.target.value)}
+                          placeholder="C@0, G@2, Em@3"
+                          rows={2}
+                          className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-xs font-mono text-zinc-200 placeholder-zinc-500"
+                        />
+                      </label>
+                      <label className="flex items-start gap-2 text-[11px] text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={photoKeepSource}
+                          onChange={(event) => setPhotoKeepSource(event.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span>Keep the original photo in this device’s songbook</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleCreateGuidedPhoto}
+                        className="min-h-[44px] w-full rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-500"
+                      >
+                        Use guided photo
+                      </button>
+                      <p className="text-[10px] text-zinc-500">
+                        This local fallback keeps the page crop and your timed chord labels. It does
+                        not guess melody notes.
+                      </p>
                     </div>
                   )}
 
