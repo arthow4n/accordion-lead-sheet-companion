@@ -120,6 +120,51 @@ Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () =
   assertEquals(html.includes("Key unknown"), false);
 });
 
+Deno.test("UX-SCORE-03: missing guided-photo sources offer a recoverable relink path", () => {
+  const html = renderToStaticMarkup(
+    <LeadSheetReader
+      song={{
+        id: "photo-score",
+        title: "Photo score",
+        capoFret: 0,
+        rawText: "",
+        lines: [],
+        updatedAt: 1,
+        score: {
+          schemaVersion: 1,
+          source: { kind: "photo", persistence: "ephemeral" },
+          tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }],
+          sections: [],
+          measures: [{
+            id: "photo-measure-1",
+            writtenIndex: 0,
+            melody: [],
+            harmonies: [{ id: "h1", offset: rational(0), raw: "C", provenance: "photo-manual" }],
+            navigation: [],
+          }],
+          photoLayout: {
+            schemaVersion: 1,
+            page: { width: 100, height: 100 },
+            measures: [{
+              id: "photo-measure-1",
+              writtenIndex: 0,
+              box: { x: 0, y: 0, width: 100, height: 100 },
+              source: "automatic",
+            }],
+          },
+          issues: [],
+        },
+      }}
+      capo={0}
+      viewMode="stradella"
+      onUpdateSong={() => {}}
+    />,
+  );
+  assertStringIncludes(html, "Original photo is unavailable");
+  assertStringIncludes(html, "Relink for this session");
+  assertStringIncludes(html, "C");
+});
+
 Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {
   const input = "C, G/B, Am7, C/D\nG(add2), Em, Em(maj7)/D#";
   const result = parseChordLookupInput(input);

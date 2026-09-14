@@ -26,6 +26,7 @@ import type {
   ViewMode,
 } from "../types/index.ts";
 import type { ScoreMeasure, SpelledPitch } from "../types/score.ts";
+import { ALLOWED_SCAN_IMAGE_MIME_TYPES, MAX_SCAN_IMAGE_SIZE_BYTES } from "../types/scan.ts";
 import { enrichLeadSheetLines } from "../lib/parser/tokenizer.ts";
 import { getSoundingKey } from "../lib/capo/enharmonics.ts";
 import { enrichSongLinesWithVoiceLeading, extractSectionChords } from "../lib/cba/sectionChords.ts";
@@ -60,7 +61,12 @@ import { rationalToNumber } from "../lib/score/rational.ts";
 import { createMusicXmlExcerpt, createScoreRenderer } from "../lib/score/osmd.ts";
 import { spelledPitchToMidi, transposeSpelledPitch } from "../lib/score/transposition.ts";
 import { getStradellaMovementColumn } from "../lib/stradella/transitions.ts";
-import { getScoreAsset } from "../lib/storage/songbook.ts";
+import {
+  getScoreAsset,
+  registerEphemeralScoreAsset,
+  saveScoreAsset,
+} from "../lib/storage/songbook.ts";
+import { createInitialPhotoLayout, decodePhotoForGuidance } from "../lib/score/photoGuidance.ts";
 import { solveCbaMelodyPath } from "../lib/cba/melodyPath.ts";
 import { type CbaMelodyAssistanceDensity, CbaMelodyMiniMap } from "./CbaMelodyMiniMap.tsx";
 
@@ -324,16 +330,23 @@ const ScoreNotation: React.FC<{ xml?: string; startMeasure?: number; measureCoun
 
 const GuidedPhotoScore: React.FC<{
   assetId?: string;
+  persistence?: "ephemeral" | "opted_in";
   layout?: import("../types/score.ts").ScorePhotoLayout;
-}> = ({ assetId, layout }) => {
+  version?: number;
+  onRelink?: (file: File) => Promise<void>;
+}> = ({ assetId, persistence = "ephemeral", layout, version, onRelink }) => {
   const [objectUrl, setObjectUrl] = React.useState<string>();
-  const [missing, setMissing] = React.useState(false);
+  const [missing, setMissing] = React.useState(!assetId);
+  const [relinking, setRelinking] = React.useState(false);
+  const [relinkError, setRelinkError] = React.useState<string>();
+  const [reloadNonce, setReloadNonce] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
     let createdUrl: string | undefined;
     setMissing(!assetId);
     setObjectUrl(undefined);
+    setRelinkError(undefined);
     if (!assetId) return;
     getScoreAsset(assetId).then((blob) => {
       if (cancelled) return;
@@ -351,7 +364,7 @@ const GuidedPhotoScore: React.FC<{
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [assetId]);
+  }, [assetId, reloadNonce, version]);
 
   if (objectUrl) {
     const strips = layout?.measures.slice(0, 8) || [];
@@ -400,9 +413,45 @@ const GuidedPhotoScore: React.FC<{
   }
   if (missing) {
     return (
-      <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
-        Original photo is unavailable. The saved timed chord guidance remains usable; re-link the
-        image to restore the crop.
+      <div className="space-y-2 rounded-xl border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">
+        <p>
+          Original photo is unavailable. The saved timed chord guidance remains usable; re-link the
+          image to restore the crop.
+        </p>
+        {onRelink && (
+          <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-lg border border-amber-700/70 bg-amber-950/50 px-3 font-semibold text-amber-100">
+            {relinking
+              ? "Relinking…"
+              : persistence === "opted_in"
+              ? "Relink saved photo"
+              : "Relink for this session"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+              capture="environment"
+              className="hidden"
+              disabled={relinking}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setRelinking(true);
+                setRelinkError(undefined);
+                try {
+                  await onRelink(file);
+                  setReloadNonce((current) => current + 1);
+                } catch (error) {
+                  setRelinkError(
+                    error instanceof Error ? error.message : "Could not relink photo.",
+                  );
+                } finally {
+                  setRelinking(false);
+                }
+              }}
+            />
+          </label>
+        )}
+        {relinkError && <p className="text-rose-300">{relinkError}</p>}
       </div>
     );
   }
@@ -671,6 +720,43 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
     );
     card?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [scoreIsPlaying, scorePerformanceIndex, song.score]);
+
+  const handleRelinkPhoto = async (file: File) => {
+    const score = song.score;
+    if (!score || score.source.kind !== "photo") {
+      throw new Error("This song does not contain a guided photo source.");
+    }
+    if (file.size === 0 || file.size > MAX_SCAN_IMAGE_SIZE_BYTES) {
+      throw new Error("Photo file must be between 1 byte and 10 MiB.");
+    }
+    const mime = file.type.toLowerCase();
+    if (!ALLOWED_SCAN_IMAGE_MIME_TYPES.some((allowed) => allowed === mime)) {
+      throw new Error("Unsupported format. Choose a JPEG, PNG, WebP, HEIC, or HEIF image.");
+    }
+    const decoded = await decodePhotoForGuidance(file);
+    try {
+      const assetId = score.source.assetId || `asset_${song.id}`;
+      if (score.source.persistence === "opted_in") await saveScoreAsset(assetId, file);
+      else registerEphemeralScoreAsset(assetId, file);
+      const existingLayout = score.photoLayout;
+      const photoLayout = existingLayout &&
+          existingLayout.page.width === decoded.width &&
+          existingLayout.page.height === decoded.height
+        ? existingLayout
+        : createInitialPhotoLayout(decoded.width, decoded.height);
+      await onUpdateSong?.({
+        ...song,
+        updatedAt: Date.now(),
+        score: {
+          ...score,
+          source: { ...score.source, assetId },
+          photoLayout,
+        },
+      });
+    } finally {
+      decoded.close();
+    }
+  };
 
   // Precompute unique chords per section and for the entire song
   const { sectionChordsMap, allSongChords } = useMemo(() => {
@@ -1385,7 +1471,13 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
             />
           )}
           {song.score.source.kind === "photo" && (
-            <GuidedPhotoScore assetId={song.score.source.assetId} layout={song.score.photoLayout} />
+            <GuidedPhotoScore
+              assetId={song.score.source.assetId}
+              persistence={song.score.source.persistence}
+              layout={song.score.photoLayout}
+              version={song.updatedAt}
+              onRelink={onUpdateSong ? handleRelinkPhoto : undefined}
+            />
           )}
 
           {!scoreGuidanceBlocked && scoreView === "preview" && (
