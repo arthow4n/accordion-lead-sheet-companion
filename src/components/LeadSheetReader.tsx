@@ -513,10 +513,10 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
       });
       const annotated = annotateHarmonyTransitions(enriched, previousColumn);
       map.set(ref.performanceIndex, annotated);
-      const last = annotated.at(-1);
-      const lastColumn = getStradellaMovementColumn(last?.detail);
+      const lastPlayable = [...annotated].reverse().find((event) => event.detail);
+      const lastColumn = getStradellaMovementColumn(lastPlayable?.detail);
       if (lastColumn !== undefined) previousColumn = lastColumn;
-      if (last?.detail?.cba) previousCbaGrip = last.detail.cba;
+      if (lastPlayable?.detail?.cba) previousCbaGrip = lastPlayable.detail.cba;
     }
     return map;
   }, [

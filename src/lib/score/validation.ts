@@ -50,7 +50,7 @@ function isValidKey(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const key = value as Record<string, unknown>;
   return typeof key.fifths === "number" && Number.isSafeInteger(key.fifths) &&
-    key.fifths >= -12 && key.fifths <= 12 &&
+    key.fifths >= -7 && key.fifths <= 7 &&
     (key.mode === "major" || key.mode === "minor");
 }
 
@@ -59,6 +59,7 @@ function isValidTime(value: unknown): boolean {
   const time = value as Record<string, unknown>;
   return Number.isSafeInteger(time.beats) && Number(time.beats) > 0 &&
     Number.isSafeInteger(time.beatType) && Number(time.beatType) > 0 &&
+    Number(time.beats) <= 1_024 && Number(time.beatType) <= 1_024 &&
     Number.isSafeInteger(Number(time.beats) * 4);
 }
 
@@ -100,7 +101,7 @@ function isValidNavigationMark(value: unknown): value is NavigationMark {
     case "ending-stop":
     case "fine":
       return mark.kind !== "repeat-end" || mark.repeatCount === undefined ||
-        (Number.isInteger(mark.repeatCount) && Number(mark.repeatCount) > 0);
+        (Number.isSafeInteger(mark.repeatCount) && Number(mark.repeatCount) > 0);
     case "ending":
       return Array.isArray(mark.numbers) && mark.numbers.length > 0 &&
         mark.numbers.every((number) => Number.isInteger(number) && Number(number) > 0);
@@ -146,7 +147,7 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
     issues.push(issue("event_limit", "Measure contains too many melody events.", measure.id));
   }
   let previousOffset = RATIONAL_ZERO;
-  for (const event of measure.melody) {
+  for (const event of measure.melody.slice(0, MAX_EVENTS_PER_MEASURE)) {
     if (
       !event || typeof event !== "object" || !isRational(event.offset) ||
       !isRational(event.duration) || typeof event.id !== "string" || typeof event.rest !== "boolean"
@@ -234,13 +235,14 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
 function validateMeasure(
   measure: ScoreMeasure,
   fallbackTime?: ScoreTimeSignature,
+  globalEventIds?: Set<string>,
 ): ScoreIssue[] {
   const issues = [...validateMelody(measure)];
   const activeTime = measure.time || fallbackTime;
   const measureLength = activeTime && isValidTime(activeTime)
     ? rational(activeTime.beats * 4, activeTime.beatType)
     : undefined;
-  const eventIds = new Set<string>();
+  const eventIds = globalEventIds || new Set<string>();
   let latestTimedEnd = RATIONAL_ZERO;
   const registerEventId = (id: unknown, source: ImageBox | undefined) => {
     if (typeof id !== "string" || !id.trim()) return;
@@ -258,7 +260,11 @@ function validateMeasure(
     }
     eventIds.add(id);
   };
-  for (const event of Array.isArray(measure.melody) ? measure.melody : []) {
+  for (
+    const event of Array.isArray(measure.melody)
+      ? measure.melody.slice(0, MAX_EVENTS_PER_MEASURE)
+      : []
+  ) {
     if (!event || typeof event !== "object") continue;
     registerEventId(event.id, event.sourceBox);
     if (!isRational(event.offset) || !isRational(event.duration)) continue;
@@ -333,7 +339,7 @@ function validateMeasure(
       issue("navigation_limit", "Measure contains too many navigation marks.", measure.id),
     );
   }
-  for (const mark of measure.navigation) {
+  for (const mark of measure.navigation.slice(0, MAX_NAVIGATION_PER_MEASURE)) {
     if (!isValidNavigationMark(mark)) {
       issues.push(
         issue(
@@ -344,7 +350,7 @@ function validateMeasure(
       );
     }
   }
-  for (const harmony of measure.harmonies) {
+  for (const harmony of measure.harmonies.slice(0, MAX_HARMONIES_PER_MEASURE)) {
     const harmonyId = harmony && typeof harmony === "object" && typeof harmony.id === "string"
       ? harmony.id
       : "(unknown)";
@@ -469,7 +475,9 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   } else if (document.tempoMap.length > 1024) {
     issues.push(issue("tempo_limit", "Score tempo map exceeds the supported limit."));
   }
-  for (const tempo of Array.isArray(document.tempoMap) ? document.tempoMap : []) {
+  for (
+    const tempo of Array.isArray(document.tempoMap) ? document.tempoMap.slice(0, 1024) : []
+  ) {
     if (
       !tempo || typeof tempo !== "object" || !isRational(tempo.offset) ||
       !Number.isFinite(tempo.bpm) || tempo.bpm <= 0 || tempo.bpm > 1_000 ||
@@ -487,7 +495,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     if (document.sections.length > MAX_SECTIONS) {
       issues.push(issue("section_limit", "Score contains too many sections."));
     }
-    for (const section of document.sections) {
+    for (const section of document.sections.slice(0, MAX_SECTIONS)) {
       if (
         !section || typeof section !== "object" || typeof section.id !== "string" ||
         !section.id.trim() ||
@@ -501,7 +509,11 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     }
   }
   const sectionIds = new Set<string>();
-  for (const section of Array.isArray(document.sections) ? document.sections : []) {
+  for (
+    const section of Array.isArray(document.sections)
+      ? document.sections.slice(0, MAX_SECTIONS)
+      : []
+  ) {
     if (section && typeof section === "object" && typeof section.id === "string") {
       if (sectionIds.has(section.id)) {
         issues.push(issue("duplicate_section_id", `Section ID ${section.id} is duplicated.`));
@@ -515,7 +527,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     if (document.issues.length > MAX_ISSUES) {
       issues.push(issue("issue_limit", "Score issue list exceeds the supported limit."));
     }
-    for (const scoreIssue of document.issues) {
+    for (const scoreIssue of document.issues.slice(0, MAX_ISSUES)) {
       if (!isValidIssue(scoreIssue)) {
         issues.push(issue("invalid_issue", "Score issue has an invalid shape."));
       }
@@ -531,7 +543,12 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   const ids = new Set<string>();
   const writtenIndexes = new Set<number>();
   const fallbackTime = isValidTime(document.time) ? document.time : undefined;
-  for (const measure of Array.isArray(document.measures) ? document.measures : []) {
+  const eventIds = new Set<string>();
+  for (
+    const measure of Array.isArray(document.measures)
+      ? document.measures.slice(0, MAX_MEASURES)
+      : []
+  ) {
     if (!measure || typeof measure !== "object") {
       issues.push(issue("invalid_measure", "Score measure has an invalid shape."));
       continue;
@@ -552,14 +569,18 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     }
     ids.add(measure.id);
     writtenIndexes.add(measure.writtenIndex);
-    issues.push(...validateMeasure(measure, fallbackTime));
+    issues.push(...validateMeasure(measure, fallbackTime, eventIds));
   }
   const measureIds = new Set(
-    (Array.isArray(document.measures) ? document.measures : [])
+    (Array.isArray(document.measures) ? document.measures.slice(0, MAX_MEASURES) : [])
       .filter((measure): measure is ScoreMeasure => Boolean(measure && typeof measure === "object"))
       .map((measure) => measure.id),
   );
-  for (const section of Array.isArray(document.sections) ? document.sections : []) {
+  for (
+    const section of Array.isArray(document.sections)
+      ? document.sections.slice(0, MAX_SECTIONS)
+      : []
+  ) {
     if (!section || typeof section !== "object") continue;
     if (typeof section.startMeasureId === "string" && !measureIds.has(section.startMeasureId)) {
       issues.push(
@@ -572,7 +593,10 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
       );
     }
   }
-  return { valid: issues.every((candidate) => candidate.severity !== "error"), issues };
+  return {
+    valid: issues.every((candidate) => candidate.severity !== "error"),
+    issues: issues.slice(0, MAX_ISSUES),
+  };
 }
 
 /** Validate one event's duration against a positive measure length. */

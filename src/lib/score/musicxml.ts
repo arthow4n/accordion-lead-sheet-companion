@@ -10,13 +10,16 @@ import type {
   ScoreTimeSignature,
   TempoEvent,
 } from "../../types/score.ts";
-import { addRational, rational } from "./rational.ts";
+import { rational } from "./rational.ts";
+import { validateScoreDocument } from "./validation.ts";
 
 export const MUSICXML_MAX_BYTES = 10 * 1024 * 1024;
 export const MUSICXML_MAX_NODES = 100_000;
 export const MUSICXML_MAX_DEPTH = 128;
 export const MUSICXML_MAX_EVENTS_PER_MEASURE = 10_000;
 export const MUSICXML_MAX_TEMPO_EVENTS = 1_024;
+const MUSICXML_MAX_DIVISIONS = 1_000_000;
+const MUSICXML_MAX_DURATION_DIVISIONS = 1_000_000_000;
 
 export interface MusicXmlParseResult {
   document?: ScoreDocument;
@@ -60,12 +63,33 @@ function text(element: Element | undefined): string {
 }
 
 function intText(element: Element | undefined, fallback = 0): number {
-  const value = Number.parseInt(text(element), 10);
-  return Number.isFinite(value) ? value : fallback;
+  if (!element) return fallback;
+  const value = Number(text(element));
+  return Number.isSafeInteger(value) ? value : fallback;
 }
 
 function isIntegerText(element: Element | undefined): boolean {
   return /^[-+]?\d+$/.test(text(element));
+}
+
+function safeIntText(element: Element | undefined): number | undefined {
+  if (!isIntegerText(element)) return undefined;
+  const value = Number(text(element));
+  return Number.isSafeInteger(value) ? value : undefined;
+}
+
+function safeAddRational(
+  left: ReturnType<typeof rational>,
+  right: ReturnType<typeof rational>,
+): ReturnType<typeof rational> | undefined {
+  const numerator = left.numerator * right.denominator + right.numerator * left.denominator;
+  const denominator = left.denominator * right.denominator;
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) return undefined;
+  try {
+    return rational(numerator, denominator);
+  } catch (_error) {
+    return undefined;
+  }
 }
 
 function xmlIssueFromParser(doc: Document): ScoreIssue | undefined {
@@ -116,9 +140,12 @@ export function inspectMusicXmlSafety(xml: string): ScoreIssue | undefined {
 function parseKey(attributes: Element): ScoreKeySignature | undefined {
   const key = child(attributes, "key");
   if (!key) return undefined;
-  const fifths = intText(child(key, "fifths"), Number.NaN);
+  const fifths = safeIntText(child(key, "fifths"));
   const mode = text(child(key, "mode"));
-  if (!Number.isInteger(fifths) || (mode !== "major" && mode !== "minor")) return undefined;
+  if (
+    fifths === undefined || fifths < -7 || fifths > 7 ||
+    (mode !== "major" && mode !== "minor")
+  ) return undefined;
   return { fifths, mode };
 }
 
@@ -127,7 +154,10 @@ function parseTime(attributes: Element): ScoreTimeSignature | undefined {
   if (!time) return undefined;
   const beats = intText(child(time, "beats"), Number.NaN);
   const beatType = intText(child(time, "beat-type"), Number.NaN);
-  if (!Number.isInteger(beats) || !Number.isInteger(beatType) || beats <= 0 || beatType <= 0) {
+  if (
+    !Number.isSafeInteger(beats) || !Number.isSafeInteger(beatType) || beats <= 0 ||
+    beatType <= 0 || beats > 1_024 || beatType > 1_024
+  ) {
     return undefined;
   }
   return { beats, beatType };
@@ -201,6 +231,10 @@ function parseHarmony(
     raw: bassStep ? `${raw}/${bassStep}${accidental(bassAlter)}` : raw,
     unsupported: suffix === undefined || hasDegree,
   };
+}
+
+function isPitchStep(value: string): boolean {
+  return ["A", "B", "C", "D", "E", "F", "G"].includes(value);
 }
 
 function parseNavigation(measureElement: Element): NavigationMark[] {
@@ -277,9 +311,14 @@ function parseNote(
   const rest = child(note, "rest") !== undefined;
   const pitch = child(note, "pitch");
   const step = text(child(pitch || note, "step"));
-  const octave = intText(child(pitch || note, "octave"), 4);
-  const alter = intText(child(pitch || note, "alter"));
-  const durationDivisions = grace ? 0 : intText(child(note, "duration"), 0);
+  const octave = safeIntText(child(pitch || note, "octave")) ?? 4;
+  const alter = safeIntText(child(pitch || note, "alter")) ?? 0;
+  const parsedDuration = safeIntText(child(note, "duration"));
+  const durationDivisions = grace
+    ? 0
+    : parsedDuration !== undefined && parsedDuration <= MUSICXML_MAX_DURATION_DIVISIONS
+    ? parsedDuration
+    : 0;
   const ties = children(note, "tie").map((element) => element.getAttribute("type"));
   const tie = ties.includes("start") && ties.includes("stop")
     ? "continue"
@@ -346,6 +385,8 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
   let tempoLimitReported = false;
   const segnoTargets = new Set<string>();
   const codaTargets = new Set<string>();
+  let repeatDepth = 0;
+  let nestedRepeatReported = false;
   for (const measureElement of children(part, "measure")) {
     const id = `m${measures.length + 1}`;
     const attributesList = children(measureElement, "attributes");
@@ -374,9 +415,18 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           ),
         );
       }
-      const divisionValue = intText(child(attributes, "divisions"), divisions);
-      if (divisionValue <= 0) {
-        issues.push(issue("invalid_divisions", "MusicXML divisions must be positive."));
+      const divisionElement = child(attributes, "divisions");
+      const divisionValue = divisionElement ? safeIntText(divisionElement) : divisions;
+      if (
+        divisionValue === undefined || divisionValue <= 0 || divisionValue > MUSICXML_MAX_DIVISIONS
+      ) {
+        issues.push(
+          measureIssue(
+            "invalid_divisions",
+            `MusicXML divisions must be a positive integer no larger than ${MUSICXML_MAX_DIVISIONS}.`,
+            id,
+          ),
+        );
       } else divisions = divisionValue;
       const parsedKey = parseKey(attributes);
       if (parsedKey) key = parsedKey;
@@ -440,7 +490,10 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
       if (element.localName === "forward") {
         const durationElement = child(element, "duration");
         const forwardDuration = intText(durationElement);
-        if (!isIntegerText(durationElement) || forwardDuration <= 0) {
+        if (
+          !isIntegerText(durationElement) || forwardDuration <= 0 ||
+          forwardDuration > MUSICXML_MAX_DURATION_DIVISIONS
+        ) {
           issues.push(
             measureIssue("invalid_forward", "Forward duration must be a positive integer.", id),
           );
@@ -529,12 +582,11 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           const octaveElement = child(pitchElement, "octave");
           const step = text(stepElement);
           const alter = intText(alterElement);
-          const octave = intText(octaveElement);
           if (
-            !["A", "B", "C", "D", "E", "F", "G"].includes(step) ||
+            !isPitchStep(step) ||
             (alterElement !== undefined &&
-              (!isIntegerText(alterElement) || alter < -2 || alter > 2)) ||
-            !isIntegerText(octaveElement) || !Number.isSafeInteger(octave)
+              (safeIntText(alterElement) === undefined || alter < -2 || alter > 2)) ||
+            safeIntText(octaveElement) === undefined
           ) {
             issues.push(
               measureIssue(
@@ -547,7 +599,12 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         }
         const grace = child(element, "grace") !== undefined;
         const durationElement = child(element, "duration");
-        if (!grace && (!isIntegerText(durationElement) || intText(durationElement) <= 0)) {
+        const parsedDuration = safeIntText(durationElement);
+        if (
+          !grace &&
+          (parsedDuration === undefined || parsedDuration <= 0 ||
+            parsedDuration > MUSICXML_MAX_DURATION_DIVISIONS)
+        ) {
           issues.push(
             measureIssue(
               "invalid_event_duration",
@@ -578,7 +635,13 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         melody.push(event);
         if (event.grace) pendingGrace = true;
         else pendingGrace = false;
-        offsetDivisions += event.duration.numerator * divisions / event.duration.denominator;
+        const nextOffset = offsetDivisions +
+          event.duration.numerator * divisions / event.duration.denominator;
+        if (!Number.isSafeInteger(nextOffset)) {
+          issues.push(
+            measureIssue("timing_limit", "MusicXML event timing exceeds safe limits.", id),
+          );
+        } else offsetDivisions = nextOffset;
       } else if (element.localName === "harmony") {
         if (eventCount >= MUSICXML_MAX_EVENTS_PER_MEASURE) {
           if (!eventLimitReported) {
@@ -588,6 +651,30 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           continue;
         }
         eventCount += 1;
+        const root = child(element, "root");
+        const rootStep = text(child(root || element, "root-step"));
+        const rootAlterElement = child(root || element, "root-alter");
+        const rootAlter = safeIntText(rootAlterElement);
+        const bass = child(element, "bass");
+        const bassStep = text(child(bass || element, "bass-step"));
+        const bassAlterElement = child(bass || element, "bass-alter");
+        const bassAlter = safeIntText(bassAlterElement);
+        if (
+          (root && (!isPitchStep(rootStep) ||
+            (rootAlterElement !== undefined &&
+              (rootAlter === undefined || rootAlter < -2 || rootAlter > 2)))) ||
+          (bass && (!isPitchStep(bassStep) ||
+            (bassAlterElement !== undefined &&
+              (bassAlter === undefined || bassAlter < -2 || bassAlter > 2))))
+        ) {
+          issues.push(
+            measureIssue(
+              "invalid_harmony",
+              "MusicXML harmony root or bass pitch is invalid.",
+              id,
+            ),
+          );
+        }
         const harmony = parseHarmony(
           element,
           rational(offsetDivisions, divisions),
@@ -614,7 +701,11 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           continue;
         }
         eventCount += 1;
-        const offset = addRational(documentOffset, rational(offsetDivisions, divisions));
+        const offset = safeAddRational(documentOffset, rational(offsetDivisions, divisions));
+        if (!offset) {
+          issues.push(issue("timing_limit", "MusicXML timeline exceeds safe rational limits."));
+          continue;
+        }
         const tempo = parseTempo(element, offset, issues);
         if (tempo) {
           if (tempoMap.length < MUSICXML_MAX_TEMPO_EVENTS) tempoMap.push(tempo);
@@ -663,6 +754,23 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     }
     const printedNumber = Number.parseInt(measureElement.getAttribute("number") || "", 10);
     const navigation = parseNavigation(measureElement);
+    for (const mark of navigation) {
+      if (mark.kind === "repeat-start") {
+        if (repeatDepth > 0 && !nestedRepeatReported) {
+          nestedRepeatReported = true;
+          issues.push(
+            measureIssue(
+              "unsupported_nested_repeat",
+              "Nested repeats are not supported by the performance navigator.",
+              id,
+            ),
+          );
+        }
+        repeatDepth += 1;
+      } else if (mark.kind === "repeat-end") {
+        repeatDepth = Math.max(0, repeatDepth - 1);
+      }
+    }
     const endingStart = navigation.find((mark) => mark.kind === "ending");
     const endingStop = navigation.some((mark) => mark.kind === "ending-stop");
     if (!endingStart && activeEndingNumbers) {
@@ -724,7 +832,13 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
       navigation,
       confidence: 1,
     });
-    documentOffset = addRational(documentOffset, rational(offsetDivisions, divisions));
+    const nextDocumentOffset = safeAddRational(
+      documentOffset,
+      rational(offsetDivisions, divisions),
+    );
+    if (!nextDocumentOffset) {
+      issues.push(issue("timing_limit", "MusicXML timeline exceeds safe rational limits."));
+    } else documentOffset = nextDocumentOffset;
   }
   if (!sawTreble && !sawClef) {
     issues.push(issue("unsupported_score_shape", "No supported treble clef was found."));
@@ -741,7 +855,7 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
   }
   const title = text(child(root, "work")) || text(child(root, "movement-title"));
   const sections: ScoreSection[] = [];
-  const document: ScoreDocument = {
+  const parsedDocument: ScoreDocument = {
     schemaVersion: 1,
     title: title || undefined,
     source: { kind: "musicxml", sanitizedXml: sanitizeXml(parsed) },
@@ -756,6 +870,8 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     measures,
     issues,
   };
-  if (issues.some((candidate) => candidate.blocksGuidance)) return { document, issues };
-  return { document, issues };
+  const domainIssues = validateScoreDocument(parsedDocument).issues;
+  const allIssues = [...issues, ...domainIssues];
+  const document = { ...parsedDocument, issues: allIssues };
+  return { document, issues: allIssues };
 }

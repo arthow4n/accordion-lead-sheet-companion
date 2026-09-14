@@ -43,12 +43,30 @@ export function expandPerformanceRoute(
   const seenStates = new Set<string>();
   const segnoIndex = new Map<string, number>();
   const codaIndex = new Map<string, number>();
+  let repeatDepth = 0;
+  let nestedRepeat = false;
   measures.forEach((measure, index) => {
     for (const mark of measure.navigation) {
       if (mark.kind === "segno") segnoIndex.set(mark.id || "default", index);
       if (mark.kind === "coda") codaIndex.set(mark.id || "default", index);
+      if (mark.kind === "repeat-start") {
+        if (repeatDepth > 0 && !nestedRepeat) {
+          issues.push(
+            routeIssue(
+              "unsupported_nested_repeat",
+              "Nested repeats are not supported by the bounded performance navigator.",
+              measure.id,
+            ),
+          );
+          nestedRepeat = true;
+        }
+        repeatDepth += 1;
+      } else if (mark.kind === "repeat-end") {
+        repeatDepth = Math.max(0, repeatDepth - 1);
+      }
     }
   });
+  if (nestedRepeat) return { measures: [], issues, truncated: true };
 
   let index = 0;
   let truncated = false;

@@ -136,6 +136,17 @@ Deno.test("score validation rejects duplicate and out-of-measure event timing", 
         id: "m2",
         writtenIndex: 1,
         time: { beats: 4, beatType: 4 },
+        melody: [{
+          id: "duplicate",
+          offset: rational(0),
+          duration: rational(4),
+          rest: true,
+        }],
+      }),
+      measure({
+        id: "m3",
+        writtenIndex: 2,
+        time: { beats: 4, beatType: 4 },
         melody: [],
       }),
     ],
@@ -434,6 +445,23 @@ Deno.test("MusicXML parser rejects malformed notes and preserves explicit volta 
   assertEquals(result.document?.measures[4].navigation.some((mark) => mark.kind === "coda"), true);
   const route = result.document ? expandPerformanceRoute(result.document) : undefined;
   assertEquals(route?.measures.map((ref) => ref.measureId), ["m1", "m2", "m3", "m1", "m4", "m5"]);
+});
+
+Deno.test("MusicXML parser blocks unsafe numeric domains and nested repeats", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><key><fifths>99</fifths><mode>major</mode></key><clef><sign>G</sign></clef></attributes>
+      <barline location="left"><repeat direction="forward"/></barline><note><rest/><duration>9007199254740992</duration></note>
+    </measure>
+    <measure number="2"><barline location="left"><repeat direction="forward"/></barline><note><rest/><duration>1</duration></note></measure>
+    <measure number="3"><barline location="right"><repeat direction="backward"/></barline><harmony><root><root-step>H</root-step><root-alter>99</root-alter></root><kind>major</kind></harmony><note><rest/><duration>1</duration></note></measure>
+    <measure number="4"><barline location="right"><repeat direction="backward"/></barline><note><rest/><duration>1</duration></note></measure>
+  </part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues.some((item) => item.code === "invalid_divisions"), false);
+  assertEquals(result.issues.some((item) => item.code === "invalid_key_signature"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_event_duration"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_harmony"), true);
+  assertEquals(result.issues.some((item) => item.code === "unsupported_nested_repeat"), true);
 });
 
 Deno.test("score harmony adapter applies transposition and selected CBA profile", () => {
