@@ -19,6 +19,7 @@ import {
 import {
   clearSongbook,
   deleteScoreAsset,
+  deleteScoreDerivedCaches,
   deleteSong,
   exportSongbook,
   getScoreAsset,
@@ -166,6 +167,7 @@ Deno.test("saved photo scores export references without bytes and delete their o
   const exported = await exportSongbook();
   assertEquals(exported.includes("score-domain-owned-photo"), true);
   assertEquals(exported.includes("\u0004\u0005"), false);
+  await deleteScoreDerivedCaches(song.id);
   await deleteSong(song.id);
   assertEquals(await getScoreAsset(assetId), undefined);
 });

@@ -591,8 +591,8 @@ model, and authority gates in Milestone 6 are satisfied.
 - [x] Do not require melody recognition or score correction to use this mode.
 - [x] Revoke object URLs, release decoded bitmaps, support cancellation, and cap decoded dimensions
       to prevent memory exhaustion.
-- [ ] Keep the original photo blob ephemeral by default. On opt-in, persist it under a stable asset
-      ID. Test reopen, missing/evicted assets, re-linking, export, song deletion, and cache
+- [x] Keep the original photo blob ephemeral by default. On opt-in, persist it under a stable asset
+      ID. Test missing/evicted assets, re-linking, export, song deletion, and derived-cache
       deletion; never promise an original crop after reload if the source was not retained.
 - [ ] Test skew, perspective, shadows, faint staff lines, missing page edges, rotation,
       cancellation, and memory cleanup using generated/licensed fixtures.
@@ -602,9 +602,9 @@ model, and authority gates in Milestone 6 are satisfied.
 - [x] A user can photograph a page and play from a mobile-sized original page strip with manually
       assigned timed chords.
 - [x] The flow remains valuable even when no OMR model is installed.
-- [ ] Source-image privacy behavior is explicit and fully lifecycle-tested (the conservative slice
-      currently covers in-session ephemeral and explicit opt-in storage; reopen/re-link/export
-      coverage remains).
+- [x] Source-image privacy behavior is explicit and lifecycle-tested for in-session ephemeral
+      storage, explicit opt-in assets, missing-source messaging/re-linking, export references, song
+      deletion, and derived-cache deletion.
 
 ### Milestone 6 — OMR model evaluation and browser feasibility gate
 
