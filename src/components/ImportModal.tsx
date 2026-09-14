@@ -28,8 +28,13 @@ import { registerEphemeralScoreAsset, saveScoreAsset } from "../lib/storage/song
 import { LineRenderer } from "./LineRenderer.tsx";
 import { GuidedPhotoPreview } from "./GuidedPhotoPreview.tsx";
 import { OmrDownloadModal } from "./OmrDownloadModal.tsx";
-import { areOmrModelsReady, transcribeStripsWithOmr } from "../lib/score/omrClient.ts";
+import {
+  areOmrModelsReady,
+  terminateOmrWorker,
+  transcribeStripsWithOmr,
+} from "../lib/score/omrClient.ts";
 import { extractStaffCropTensor } from "../lib/score/omrPreprocessing.ts";
+import { decodePhotoForGuidance } from "../lib/score/photoGuidance.ts";
 
 export interface ImportModalProps {
   isOpen: boolean;
@@ -80,6 +85,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   // Reset transient lookup and error state when modal opens or closes
   useEffect(() => {
     if (!isOpen) {
+      terminateOmrWorker();
       setSelectedImage(null);
       setPhotoLayout(undefined);
       setPhotoChordInput("");
@@ -103,6 +109,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setUrlInput("");
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      terminateOmrWorker();
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -278,10 +290,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     setOmrProgressText("Analyzing score staves and geometry...");
     setOmrError(null);
 
+    let decoded: Awaited<ReturnType<typeof decodePhotoForGuidance>> | null = null;
     try {
-      const bitmap = await createImageBitmap(selectedImage);
+      decoded = await decodePhotoForGuidance(selectedImage);
+      const canvas = new OffscreenCanvas(decoded.width, decoded.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not initialize canvas context.");
+      ctx.drawImage(decoded.bitmap, 0, 0);
+      const imgData = ctx.getImageData(0, 0, decoded.width, decoded.height);
+      const raw = { data: imgData.data, width: decoded.width, height: decoded.height };
+
       const { preprocessScorePhoto } = await import("../lib/score/photoPreprocessing.ts");
-      const prep = await preprocessScorePhoto(bitmap);
+      const prep = await preprocessScorePhoto(raw);
 
       if (!prep.staves || prep.staves.length === 0) {
         throw new Error(
@@ -289,21 +309,25 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         );
       }
 
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Could not initialize canvas context.");
-      ctx.drawImage(bitmap, 0, 0);
-      const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-      const raw = { data: imgData.data, width: bitmap.width, height: bitmap.height };
-
       const strips = prep.staves.map((staff, idx) =>
         extractStaffCropTensor(raw, staff.box, staff.id || `staff-${idx}`)
       );
 
       setOmrProgressText(`Transcribing ${strips.length} staves with AI...`);
-      const { scoreDoc } = await transcribeStripsWithOmr(strips, {
+      const { scoreDoc, avgConfidence } = await transcribeStripsWithOmr(strips, {
         onProgress: (p) => setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`),
       });
+
+      if (avgConfidence < 0.6) {
+        scoreDoc.issues.push({
+          code: "low_omr_confidence",
+          message: `OMR recognition confidence was low (${
+            Math.round(avgConfidence * 100)
+          }%). Some notes or chords may need review.`,
+          severity: "warning",
+          blocksGuidance: false,
+        });
+      }
 
       scoreDoc.photoLayout = prep.layout;
       scoreDoc.title = selectedImage.name.replace(/\.[^.]+$/, "") || "Scanned Lead Sheet";
@@ -334,6 +358,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     } catch (err) {
       setOmrError(err instanceof Error ? err.message : "Recognition failed.");
     } finally {
+      if (decoded) {
+        decoded.close();
+      }
       setIsTranscribingOmr(false);
       setOmrProgressText(null);
     }

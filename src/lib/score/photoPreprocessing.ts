@@ -328,6 +328,7 @@ export function detectBarlinesAndSliceMeasures(
     const topY = staff.lineYCoordinates[0];
     const bottomY = staff.lineYCoordinates[4];
     const staffH = bottomY - topY;
+    if (staffH < 4) continue;
 
     if (!binaryInvMat.roi) continue;
     // Crop binaryInv to the staff lines region
@@ -335,7 +336,7 @@ export function detectBarlinesAndSliceMeasures(
     const roi = tracker.track(binaryInvMat.roi(roiRect));
 
     // Vertical morphological kernel to isolate barlines spanning the staff
-    const vertKernelH = Math.max(4, Math.round(staffH * 0.65));
+    const vertKernelH = Math.min(staffH, Math.max(1, Math.round(staffH * 0.65)));
     const vertKernel = tracker.track(
       cv.getStructuringElement(
         cv.MORPH_RECT,
@@ -450,6 +451,18 @@ export function processScoreImageWithCv(
 
   try {
     const { width, height } = imageData;
+    if (width < 32 || height < 32) {
+      return {
+        layout: createInitialPhotoLayout(Math.max(1, width), Math.max(1, height)),
+        systems: [],
+        staves: [],
+        barlines: [],
+        deskewAngleDegrees: 0,
+        processingTimeMs: Date.now() - startTime,
+        usedFallback: true,
+      };
+    }
+
     const srcMat = tracker.track(new cv.Mat(height, width, cv.CV_8UC4));
     srcMat.data.set(imageData.data);
 
@@ -512,7 +525,7 @@ export function processScoreImageWithCv(
     checkAborted(options?.signal);
 
     // 4. Horizontal morphological opening to isolate staff lines
-    const kernelWidth = Math.max(15, Math.floor(width / 35));
+    const kernelWidth = Math.min(width, Math.max(3, Math.floor(width / 35)));
     const horizKernel = tracker.track(
       cv.getStructuringElement(
         cv.MORPH_RECT,

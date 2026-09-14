@@ -138,4 +138,34 @@ lifecycle. Because that reviewer's confirmation attempt hit a service usage limi
   SHA-256 before inference, and provide granular cache deletion controls.
 - **Opt-in Test Command:** `deno task test:omr` verifies live WASM execution against local models
   without polluting the hermetic offline default test suite.
-- **Default Hermetic Test Suite:** All 330 tests pass with zero network access.
+- **Default Hermetic Test Suite:** All 335 tests pass with zero network access.
+
+## Review Checkpoint 3 (R3) — OMR, privacy, security, and performance record
+
+- **Status:** **APPROVED**
+- **Reviewer:** Read-only specialized security, music domain, and OMR reviewer (`gemini-3.8-flash`,
+  high reasoning).
+- **Corrective Slice Verified:**
+  1. **Cache Storage Key Invariance:** `src/lib/score/omrManifest.ts` decoupled cache storage keys
+     from remote fetch URLs using canonical key prefix
+     `https://accordion-app.local/omr-artifacts-v1/`. Both local testing origin and production
+     GitHub Releases URLs query and cache identical keys.
+  2. **Humdrum Repeat Barline Parsing:** `src/lib/score/humdrumParser.ts` separates closing repeat
+     navigation (`repeat-end`) from opening navigation (`repeat-start`). Back-to-back repeats
+     (`=:|!|:`) correctly attach `repeat-end` to the preceding measure and `repeat-start` to the
+     subsequent measure.
+  3. **Hostile Image Handling & Memory Cleanup:** `src/components/ImportModal.tsx` routes photo
+     imports through `decodePhotoForGuidance` (enforcing max dimensions 8192px and 24M pixels),
+     eliminates duplicate canvas allocations by sharing `RawImageData`, and deterministically closes
+     `ImageBitmap` in `finally`.
+  4. **OpenCV Kernel Bounds:** `src/lib/score/photoPreprocessing.ts` guards against degenerate
+     `< 32x32` images, clamps `kernelWidth <= width`, and clamps `vertKernelH <= staffH`.
+  5. **WASM Paths & Worker Lifecycle:** `src/workers/omr.worker.ts` configures local `wasmPaths`;
+     worker memory is cleanly terminated on cache deletion, modal close, and unmount.
+  6. **Confidence Propagation:** Token logits confidence is propagated to `ScoreMeasure`,
+     `MelodyEvent`, and `HarmonyEvent`; low-confidence imports emit non-blocking review warnings.
+  7. **Breve Duration Support:** Humdrum reciprocal `"0"` is parsed as 8 quarter-note beats with
+     full dot scaling.
+- **Verification Gates:** All 4 pre-push checks passed (`deno fmt --check`, `deno lint`,
+  `deno task test` with 335 hermetic tests, `deno task build`), plus `deno task test:omr` passing in
+  1s.

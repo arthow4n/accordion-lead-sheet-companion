@@ -202,3 +202,62 @@ Deno.test("OMR-08: parseHumdrumScore produces structured ScoreDocument with meas
   const blockingIssues = doc.issues.filter((i) => i.blocksGuidance);
   assertEquals(blockingIssues.length, 0);
 });
+
+Deno.test("OMR-09: Back-to-back combined repeat barline (=:|!|:) splits across measures correctly", () => {
+  const humdrum = `
+**kern\t**mxhm
+*M4/4\t*
+=1\t=1
+4c\tC:maj
+4d\t.
+4e\t.
+4f\t.
+=:|!|:\t*
+=2\t=2
+4g\tG:maj
+4a\t.
+4b\t.
+4cc\t.
+==\t==
+*-
+`;
+
+  const doc = parseHumdrumScore(humdrum);
+  assertEquals(doc.measures.length, 2);
+
+  const m1 = doc.measures[0];
+  assertEquals(m1.printedNumber, 1);
+  assertEquals(m1.navigation.length, 1);
+  assertEquals(m1.navigation[0], { kind: "repeat-end" });
+
+  const m2 = doc.measures[1];
+  assertEquals(m2.printedNumber, 2);
+  assertEquals(m2.navigation.length, 1);
+  assertEquals(m2.navigation[0], { kind: "repeat-start" });
+});
+
+Deno.test("OMR-10: parseKernDuration correctly handles breve (0) as 8 beats", () => {
+  const breve = parseKernDuration("0");
+  assertEquals(breve, { numerator: 8, denominator: 1 });
+
+  const dottedBreve = parseKernDuration("0.");
+  assertEquals(dottedBreve, { numerator: 12, denominator: 1 });
+});
+
+Deno.test("OMR-11: parseHumdrumScore propagates confidence to measures, melody, and harmony", () => {
+  const humdrum = `
+**kern\t**mxhm
+*M4/4\t*
+=1\t=1
+4c\tC:maj
+4d\t.
+2r\t.
+==\t==
+*-
+`;
+
+  const doc = parseHumdrumScore(humdrum, { confidence: 0.84 });
+  assertEquals(doc.measures[0].confidence, 0.84);
+  assertEquals(doc.measures[0].melody[0].confidence, 0.84);
+  assertEquals(doc.measures[0].harmonies[0].confidence, 0.84);
+});

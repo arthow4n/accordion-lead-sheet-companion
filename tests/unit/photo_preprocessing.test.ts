@@ -272,3 +272,15 @@ Deno.test("PREPROCESS-10: detectBarlinesAndSliceMeasures directly produces valid
     tracker.releaseAll();
   }
 });
+
+Deno.test("PREP-07: Degenerate image dimensions (< 32x32) gracefully return fallback layout without throwing", async () => {
+  const cv = await loadOpenCv();
+  const degenerateImg = createBlankImage(10, 10);
+  const result = processScoreImageWithCv(cv, degenerateImg);
+
+  assertEquals(result.usedFallback, true);
+  assertEquals(result.staves.length, 0);
+  assertEquals(result.layout.page.width, 10);
+  assertEquals(result.layout.page.height, 10);
+  assertEquals(result.layout.measures.length, 1);
+});

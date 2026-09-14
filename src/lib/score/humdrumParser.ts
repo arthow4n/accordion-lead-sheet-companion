@@ -26,6 +26,7 @@ export interface HumdrumParseOptions {
   title?: string;
   sourceAssetId?: string;
   persistence?: "ephemeral" | "opted_in";
+  confidence?: number;
 }
 
 /** Convert a Humdrum **mxhm token (e.g. "C:maj", "A:min7/E") to standard chord symbol. */
@@ -119,11 +120,8 @@ export function parseKernDuration(token: string): RationalDuration {
   }
 
   const n = parseInt(match[0], 10);
-  if (n <= 0) return rational(1, 1);
-
-  // In Humdrum, n is reciprocal of whole note. Whole note = 4 beats.
-  // Base duration in beats = 4 / n
-  let dur = rational(4, n);
+  // In Humdrum, n is reciprocal of whole note. Whole note = 4 beats. Breve ("0") = 8 beats.
+  let dur = n <= 0 ? rational(8, 1) : rational(4, n);
 
   // Count dots
   const dotCount = (token.match(/\./g) || []).length;
@@ -231,6 +229,8 @@ export function parseHumdrumScore(
   let currentKey: ScoreKeySignature = { fifths: 0, mode: "major" };
   let currentTempo = 120;
 
+  const defaultConfidence = options.confidence ?? 0.95;
+
   let currentMeasureIndex = 0;
   let activeMeasure: ScoreMeasure = {
     id: `m${currentMeasureIndex + 1}`,
@@ -240,6 +240,7 @@ export function parseHumdrumScore(
     melody: [],
     harmonies: [],
     navigation: [],
+    confidence: defaultConfidence,
   };
 
   let currentOffset: RationalDuration = RATIONAL_ZERO;
@@ -262,6 +263,7 @@ export function parseHumdrumScore(
         melody: [],
         harmonies: [],
         navigation: [],
+        confidence: defaultConfidence,
       };
     } else if (navigationMarks.length > 0) {
       activeMeasure.navigation.push(...navigationMarks);
@@ -284,7 +286,6 @@ export function parseHumdrumScore(
 
     // 1. Check Barline
     if (kernCol.startsWith("=")) {
-      const nav: NavigationMark[] = [];
       let printedNumber: number | undefined;
 
       const numMatch = kernCol.match(/=(\d+)/);
@@ -292,13 +293,22 @@ export function parseHumdrumScore(
         printedNumber = parseInt(numMatch[1], 10);
       }
 
-      if (kernCol.includes("!|:")) {
-        nav.push({ kind: "repeat-start" });
-      } else if (kernCol.includes(":|!")) {
-        nav.push({ kind: "repeat-end" });
+      const closingNav: NavigationMark[] = [];
+      const openingNav: NavigationMark[] = [];
+
+      // Check for repeat end (:|!, =:|, :||, etc.)
+      if (kernCol.includes(":|!") || kernCol.includes("=:|") || kernCol.includes(":|")) {
+        closingNav.push({ kind: "repeat-end" });
+      }
+      // Check for repeat start (!|:, |!:, ||:, |:, etc.)
+      if (kernCol.includes("!|:") || kernCol.includes("|!:") || kernCol.includes("|:")) {
+        openingNav.push({ kind: "repeat-start" });
       }
 
-      closeActiveMeasure(nav);
+      closeActiveMeasure(closingNav);
+      if (openingNav.length > 0) {
+        activeMeasure.navigation.push(...openingNav);
+      }
       if (printedNumber !== undefined) {
         activeMeasure.printedNumber = printedNumber;
       }
@@ -364,7 +374,7 @@ export function parseHumdrumScore(
         grace: isGrace,
         pitch,
         tie,
-        confidence: 0.95,
+        confidence: defaultConfidence,
       };
       activeMeasure.melody.push(melodyEvent);
       hasActiveEvents = true;
@@ -378,7 +388,7 @@ export function parseHumdrumScore(
             offset: currentOffset,
             duration,
             raw: chordSymbol,
-            confidence: 0.95,
+            confidence: defaultConfidence,
             provenance: "photo-omr",
           };
           activeMeasure.harmonies.push(harmonyEvent);
@@ -395,7 +405,7 @@ export function parseHumdrumScore(
           id: `${activeMeasure.id}-h${eventCounter++}`,
           offset: currentOffset,
           raw: chordSymbol,
-          confidence: 0.95,
+          confidence: defaultConfidence,
           provenance: "photo-omr",
         };
         activeMeasure.harmonies.push(harmonyEvent);

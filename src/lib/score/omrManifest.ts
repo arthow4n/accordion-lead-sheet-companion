@@ -58,6 +58,12 @@ export interface OmrDownloadProgress {
   currentArtifact: string;
 }
 
+export const DEFAULT_OMR_RELEASE_BASE_URL =
+  "https://github.com/arthow4n/accordion-lead-sheet-companion/releases/download/omr-v1";
+
+/** Canonical URI prefix used to store and look up artifacts in Cache Storage. */
+export const OMR_CACHE_KEY_PREFIX = "https://accordion-app.local/omr-artifacts-v1/";
+
 export class OmrIntegrityError extends Error {
   constructor(public artifactId: string, message: string) {
     super(`OMR integrity verification failed for ${artifactId}: ${message}`);
@@ -65,13 +71,25 @@ export class OmrIntegrityError extends Error {
   }
 }
 
+/** Create a canonical Cache Storage request key for an artifact. */
+export function makeArtifactCacheRequest(filename: string): Request {
+  return new Request(`${OMR_CACHE_KEY_PREFIX}${filename}`);
+}
+
+/** Create a remote fetch request for downloading an artifact. */
+export function makeArtifactFetchRequest(filename: string, baseUrl?: string): Request {
+  const base = baseUrl !== undefined && baseUrl !== "" ? baseUrl : DEFAULT_OMR_RELEASE_BASE_URL;
+  const sep = base.endsWith("/") || !base ? "" : "/";
+  return new Request(`${base}${sep}${filename}`);
+}
+
 /** Check whether both encoder and decoder exist in the OMR cache. */
 export async function isOmrCached(): Promise<boolean> {
   if (typeof caches === "undefined") return false;
   try {
     const cache = await caches.open(OMCACHE_NAME_SAFE());
-    const enc = await cache.match(makeArtifactRequest(OMR_ARTIFACTS.encoder.filename));
-    const dec = await cache.match(makeArtifactRequest(OMR_ARTIFACTS.decoder.filename));
+    const enc = await cache.match(makeArtifactCacheRequest(OMR_ARTIFACTS.encoder.filename));
+    const dec = await cache.match(makeArtifactCacheRequest(OMR_ARTIFACTS.decoder.filename));
     return enc !== undefined && dec !== undefined;
   } catch {
     return false;
@@ -90,12 +108,6 @@ export async function deleteCachedOmrArtifacts(): Promise<boolean> {
 
 function OMCACHE_NAME_SAFE(): string {
   return OMR_CACHE_NAME;
-}
-
-function makeArtifactRequest(filename: string, baseUrl?: string): Request {
-  const base = baseUrl || "";
-  const sep = base.endsWith("/") || !base ? "" : "/";
-  return new Request(`${base}${sep}${filename}`);
 }
 
 /** Compute lowercase hex SHA-256 string for an ArrayBuffer. */
@@ -132,7 +144,7 @@ export async function getCachedArtifactBuffer(
   if (typeof caches === "undefined") return null;
   const cache = await caches.open(OMCACHE_NAME_SAFE());
   const spec = OMR_ARTIFACTS[id];
-  const response = await cache.match(makeArtifactRequest(spec.filename));
+  const response = await cache.match(makeArtifactCacheRequest(spec.filename));
   if (!response) return null;
   return await response.arrayBuffer();
 }
@@ -158,9 +170,11 @@ export async function downloadAndCacheOmrArtifacts(options?: {
       throw new DOMException("OMR download aborted by user.", "AbortError");
     }
 
-    const req = makeArtifactRequest(artifact.filename, options?.baseUrl);
+    const cacheReq = makeArtifactCacheRequest(artifact.filename);
+    const fetchReq = makeArtifactFetchRequest(artifact.filename, options?.baseUrl);
+
     // Check if already in cache and verified
-    const existing = await cache.match(req);
+    const existing = await cache.match(cacheReq);
     if (existing) {
       const existingBuf = await existing.arrayBuffer();
       try {
@@ -175,11 +189,11 @@ export async function downloadAndCacheOmrArtifacts(options?: {
         continue;
       } catch {
         // Cached buffer was corrupted, re-download
-        await cache.delete(req);
+        await cache.delete(cacheReq);
       }
     }
 
-    const response = await fetch(req, { signal: options?.signal });
+    const response = await fetch(fetchReq, { signal: options?.signal });
     if (!response.ok) {
       throw new Error(
         `Failed to fetch ${artifact.filename}: HTTP ${response.status} ${response.statusText}`,
@@ -226,14 +240,14 @@ export async function downloadAndCacheOmrArtifacts(options?: {
     // Verify integrity
     await verifyArtifactBuffer(artifact, merged.buffer);
 
-    // Store in cache
+    // Store in cache using canonical cache request key
     const cachedResponse = new Response(merged, {
       headers: {
         "Content-Type": "application/octet-stream",
         "Content-Length": String(merged.byteLength),
       },
     });
-    await cache.put(req, cachedResponse);
+    await cache.put(cacheReq, cachedResponse);
     loadedTotal += artifact.byteLength;
   }
 }

@@ -69,6 +69,9 @@ async function ensureSessions(): Promise<{
 
   // Force single-thread WASM execution for maximum mobile stability & compatibility
   ort.env.wasm.numThreads = 1;
+  if (typeof location !== "undefined" && location?.origin) {
+    ort.env.wasm.wasmPaths = location.origin + "/";
+  }
 
   encSession = await ort.InferenceSession.create(encBuf, {
     executionProviders: ["wasm"],
@@ -201,12 +204,12 @@ self.onmessage = async (event: MessageEvent<OmrWorkerRequest>) => {
       // Combine strips using Humdrum !!linebreak standard
       const combinedHumdrum = transcribedStrips.join("\n!!linebreak\n");
 
-      // Parse directly into typed ScoreDocument
-      const scoreDoc = parseHumdrumScore(combinedHumdrum);
-
       const avgConfidence = totalTokensEvaluated > 0
         ? totalConfidenceSum / totalTokensEvaluated
         : 1.0;
+
+      // Parse directly into typed ScoreDocument with model confidence
+      const scoreDoc = parseHumdrumScore(combinedHumdrum, { confidence: avgConfidence });
 
       activeAborts.delete(id);
 

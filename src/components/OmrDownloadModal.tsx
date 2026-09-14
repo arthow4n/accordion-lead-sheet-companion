@@ -5,7 +5,7 @@ import {
   OMR_FIRST_USE_DISCLOSURE,
   type OmrDownloadProgress,
 } from "../lib/score/omrManifest.ts";
-import { downloadOmrModels } from "../lib/score/omrClient.ts";
+import { downloadOmrModels, terminateOmrWorker } from "../lib/score/omrClient.ts";
 
 interface OmrDownloadModalProps {
   isOpen: boolean;
@@ -59,6 +59,7 @@ export function OmrDownloadModal({ isOpen, onClose, onSuccess }: OmrDownloadModa
   };
 
   const handleDeleteCache = async () => {
+    terminateOmrWorker();
     await deleteCachedOmrArtifacts();
     setStatus("disclosure");
     setProgress(null);

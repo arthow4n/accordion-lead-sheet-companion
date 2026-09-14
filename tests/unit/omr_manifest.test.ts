@@ -1,8 +1,12 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import {
   computeSha256,
+  DEFAULT_OMR_RELEASE_BASE_URL,
   isOmrCached,
+  makeArtifactCacheRequest,
+  makeArtifactFetchRequest,
   OMR_ARTIFACTS,
+  OMR_CACHE_KEY_PREFIX,
   OMR_FIRST_USE_DISCLOSURE,
   OMR_TOTAL_DOWNLOAD_BYTES,
   OmrIntegrityError,
@@ -60,4 +64,21 @@ Deno.test("OMR-MAN-02: computeSha256 and integrity verification", async () => {
 Deno.test("OMR-MAN-03: isOmrCached returns boolean gracefully without throwing", async () => {
   const cached = await isOmrCached();
   assertEquals(typeof cached, "boolean");
+});
+
+Deno.test("OMR-MAN-04: Canonical Cache Storage request keys are decoupled from remote fetch baseUrl", () => {
+  const filename = "encoder.onnx";
+  const cacheReq = makeArtifactCacheRequest(filename);
+  assertEquals(cacheReq.url, `${OMR_CACHE_KEY_PREFIX}${filename}`);
+
+  // Default release fetch URL
+  const defaultFetchReq = makeArtifactFetchRequest(filename);
+  assertEquals(defaultFetchReq.url, `${DEFAULT_OMR_RELEASE_BASE_URL}/${filename}`);
+
+  // Custom local testing origin
+  const localFetchReq = makeArtifactFetchRequest(filename, "http://localhost:8080/artifacts");
+  assertEquals(localFetchReq.url, "http://localhost:8080/artifacts/encoder.onnx");
+
+  // Cache key remains invariant regardless of fetch origin
+  assertEquals(cacheReq.url, `${OMR_CACHE_KEY_PREFIX}encoder.onnx`);
 });
