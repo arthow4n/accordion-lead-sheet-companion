@@ -2,8 +2,9 @@
 
 **Status:** Execution in progress; M0–M4 and the conservative M5 photo-source slice are implemented\
 **Execution model:** One primary coding agent working sequentially\
-**Review model:** Four named checkpoints, each using one read-only `gpt-5.6-sol` (`medium`)
-sub-agent\
+**Review model:** Four named checkpoints, each using exactly one read-only reviewer: either
+`gpt-5.6-sol` at medium reasoning or, when that model is unavailable, stable `gemini-3.8-flash` at
+high reasoning\
 **Primary outcome:** A musician can photograph or import a printed melody-and-chord score, press
 Play, and receive measure-aware CBA and Stradella guidance without first transcribing notes or
 chords or operating a notation editor. Automatic photograph recognition is required for release;
@@ -126,6 +127,7 @@ recognition failure an unsupported page.
 | Model caching                  | Cache on demand at runtime; exclude model weights from the Workbox precache.                                                                                                                                                                                      |
 | Source image privacy           | Hold the photo in memory during a scan. Persist only when the user explicitly requests it.                                                                                                                                                                        |
 | Download-size policy           | Size is disclosed, not an acceptance gate. Show the exact manifest total before first use, explain that it is downloaded once for offline reuse, and provide progress, cancel, retry, and cache deletion.                                                         |
+| Copyleft/non-commercial policy | Keep the application MIT. Do not integrate AGPL code/weights or CC-BY-NC datasets into the shipped recognizer, fixtures, or training path. Non-commercial intent does not override their redistribution and downstream-use obligations.                           |
 
 ### Required recognition path
 
@@ -152,6 +154,21 @@ manual-photo release. A different recognizer is outside this plan.
 Homr and the bundled Ultralytics detector are excluded from implementation and evaluation so their
 AGPL code or weights cannot enter this project. LEGATO is not the planned mobile candidate because
 its full model requires a large vision backbone and substantial GPU memory.
+
+This exclusion is a deliberate engineering decision, not an assumption that open-source licenses
+forbid commercial use. AGPL permits commercial use but would require the covered combined work and
+its corresponding source to remain available under AGPL, including network-use source access and
+appropriate notices. Adopting the bundled YOLO detector would therefore require relicensing this
+currently MIT application for a component whose job is limited to locating staff regions. The
+approved OpenCV geometry path keeps the project MIT and avoids an extra model conversion/download.
+If OpenCV staff detection misses its frozen gate, that is a failed technical gate for this plan; it
+does not silently authorize a project-wide AGPL relicense.
+
+Likewise, the CC-BY-NC JAZZMUS dataset is not required to run the already published MIT model. It
+would help only with additional training or evaluation, while restricting commercial downstream use
+and requiring gated access. The implementation instead uses authored or clearly licensed fixtures
+tailored to the frozen photograph profile. The dataset remains excluded even if the current
+maintainer expects the application to stay non-commercial.
 
 ## 4. Architecture boundaries
 
@@ -288,13 +305,19 @@ construct marked reject-guidance.
       milestone's exit criteria and review checkpoint, when present, are satisfied.
 - [ ] The primary agent performs all implementation. Do not delegate implementation tasks.
 - [ ] Do not spawn exploratory, implementation, test-writing, or documentation sub-agents.
-- [ ] Spawn exactly one read-only reviewer only at each explicitly labeled review checkpoint.
-- [ ] At every checkpoint use the exact spawn contract `model: "gpt-5.6-sol"`,
-      `reasoning_effort: "medium"`, and `fork_turns: "none"`. Give it a self-contained prompt with
-      the absolute repository/plan paths, applicable requirements, base/head commits or diff,
-      relevant tests, and a request for severity-ordered findings. It must remain read-only.
-- [ ] If that exact model/effort cannot be created, stop the checkpoint and request user direction;
-      never silently substitute another reviewer.
+- [ ] Spawn exactly one read-only reviewer only at each explicitly labeled review checkpoint. Do not
+      run both approved reviewers at the same checkpoint.
+- [ ] First try the exact Codex spawn contract `model: "gpt-5.6-sol"`, `reasoning_effort: "medium"`,
+      and `fork_turns: "none"`. If that model cannot be started in the active environment, use the
+      official stable Gemini model ID `gemini-3.8-flash` with its reasoning/thinking level set to
+      `high` and with no inherited implementation conversation. Provider-specific field names may
+      differ, but the recorded backend model and reasoning level must be exact.
+- [ ] Give either reviewer the same self-contained prompt with the absolute repository/plan paths,
+      applicable requirements, base/head commits or diff, relevant tests, and a request for
+      severity-ordered findings. It must remain read-only. Record which model and reasoning level
+      actually ran so a later agent does not repeat the checkpoint.
+- [ ] If neither approved reviewer can be started, stop the checkpoint and request user direction;
+      never silently substitute a third model or run two reviews merely because both are available.
 - [ ] Resolve every blocking/high finding, record the disposition, rerun the milestone checks, and
       only then mark the checkpoint complete.
 - [ ] Preserve unrelated user changes in a dirty worktree.
@@ -985,8 +1008,12 @@ outputs may be committed without explicit permission and provenance review.
 - OSMD incremental-render contract:
   <https://opensheetmusicdisplay.github.io/classdoc/interfaces/IRenderNextOptions.html>
 - Ultralytics licensing (reason its detector is excluded): <https://www.ultralytics.com/license>
+- GNU AGPL-3.0 terms: <https://www.ultralytics.com/legal/agpl-3-0-software-license>
 - JAZZMUS dataset card (excluded from fixtures/training):
   <https://huggingface.co/datasets/PRAIG/JAZZMUS>
+- CC-BY-NC 4.0 summary and legal-code link: <https://creativecommons.org/licenses/by-nc/4.0/>
+- Official Gemini model list and stable `gemini-3.8-flash` identifier:
+  <https://ai.google.dev/gemini-api/docs/models>
 
 The versions and revisions named in Section 3 and Milestones 6–8 are locked decisions. Verify their
 integrity against the recorded hashes when introduced; do not silently upgrade or replace them.
@@ -1006,7 +1033,8 @@ Stop the sequential implementation and request user direction if any of the foll
   a reviewed migration.
 - Private or copyrighted source material would need to enter Git, CI, or a third-party service
   without explicit authorization.
-- The exact `gpt-5.6-sol`/medium read-only reviewer cannot be spawned at a named checkpoint.
+- Neither approved read-only reviewer—`gpt-5.6-sol`/medium nor stable `gemini-3.8-flash`/high—can be
+  started at a named checkpoint.
 - The already selected artifact-publication path or benchmark-device prerequisite is technically
   unavailable after its documented alternatives have been exhausted.
 
