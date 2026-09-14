@@ -686,7 +686,7 @@ outside the application runtime; generated weights must remain outside Git.
       `643b49cf4772a58027e8f2cf924f2be637b31fc4`; the relevant source hashes are
       `a864f6545caf78f237c83b38741c238d009cac4787016ef7e7aef2d94582d268` for `configuration_smt.py`
       and `3c5e414a7fe0e51cc60541b84898f01c1aa713a594f78d94a10238fca9af4597` for `modeling_smt.py`.
-- [ ] Before loading the weights, create an isolated CPython 3.11.11 conversion environment with
+- [x] Before loading the weights, create an isolated CPython 3.11.11 conversion environment with
       direct pins `torch==2.6.0`, `transformers==5.3.0`, `safetensors==0.5.3`, `numpy==2.2.3`,
       `einops==0.8.1`, `gin-config==0.5.0`, `onnx==1.17.0`, and `onnxscript==0.2.2`. Use `uv` to
       generate a fully resolved hash-locked transitive manifest, record the Python/platform details,
@@ -694,15 +694,15 @@ outside the application runtime; generated weights must remain outside Git.
       or any Ultralytics package. If these exact pins cannot reconstruct and strictly load the
       pinned state dictionary, record `OMR_CANDIDATE_FAILED`; do not vary versions until something
       happens to load.
-- [ ] Build a local evaluation manifest that refers to private samples outside the repository and
+- [x] Build a local evaluation manifest that refers to private samples outside the repository and
       committed authored/public-domain samples inside it.
-- [ ] Establish ground truth for pitch, rhythm, chord symbols, key signature, meter, barlines,
+- [x] Establish ground truth for pitch, rhythm, chord symbols, key signature, meter, barlines,
       repeats, endings, and supported navigation.
-- [ ] On a development set that is permanently excluded from the release corpus, run a small
+- [x] On a development set that is permanently excluded from the release corpus, run a small
       feasibility probe to determine the model's required input unit (full system, fixed-height
       staff crop, measure window, overlap) and prevent the UI crop format from dictating model
       preprocessing.
-- [ ] Freeze a checksummed, versioned release corpus before running the complete-pipeline
+- [x] Freeze a checksummed, versioned release corpus before running the complete-pipeline
       evaluation. It contains at least 20 in-profile pages from at least 10 musical works and five
       independent engraving/font sources, with no more than two pages per work: at least 10 direct
       scans and 10 camera photos; natural, sharp-key, and flat-key examples; every supported meter;
@@ -712,7 +712,7 @@ outside the application runtime; generated weights must remain outside Git.
       source/provenance, work-level split, ground truth, and file hashes. No failing page may be
       removed or reclassified after results are viewed; a corpus correction requires a version bump
       and a complete fresh evaluation. Private paths remain outside Git.
-- [ ] Freeze these release gates before inspecting complete-pipeline corpus results: staff recall
+- [x] Freeze these release gates before inspecting complete-pipeline corpus results: staff recall
       ≥99%; measure-boundary F1 ≥98%; note pitch+rhythm event error ≤5%; chord exact match ≥90%;
       navigation exact match ≥95%; 100% of duration-invalid measures flagged; 100% of in-profile
       pages produce a structured first draft and reach Play without mandatory note/chord entry;
@@ -722,36 +722,36 @@ outside the application runtime; generated weights must remain outside Git.
       download bytes, but do not reject an otherwise viable recognizer because of an arbitrary size
       ceiling. Any changed accuracy, effort, performance, or memory gate requires a plan amendment
       and a fresh frozen evaluation—never post-hoc acceptance.
-- [ ] Evaluate unmodified JAZZMUS on the separate development set against representative printed
+- [x] Evaluate unmodified JAZZMUS on the separate development set against representative printed
       single-staff class sheets. Record every release metric for diagnosis, but do not make the
       final release decision until the complete M7–M9 pipeline exists.
-- [ ] Measure staff-detection yield, pitch error, rhythm error, chord exact match, navigation exact
+- [x] Measure staff-detection yield, pitch error, rhythm error, chord exact match, navigation exact
       match, invalid-measure rate, processing time, peak memory, artifact bytes, review-queue
       measures, and correction operations per page.
-- [ ] Export only the permitted JAZZMUS encoder, initial decoder, and cached decoder to ONNX. Build
+- [x] Export only the permitted JAZZMUS encoder, initial decoder, and cached decoder to ONNX. Build
       staff/system/measure detection with the approved OpenCV geometry path; never convert, load, or
       distribute the excluded YOLO detector.
-- [ ] Prove token-for-token parity between PyTorch and ONNX on a fixed authored corpus.
-- [ ] Quantize to INT8 and measure accuracy loss before accepting the smaller artifact.
-- [ ] Require quantized output to remain within 1 percentage point of reference note-event error and
+- [x] Prove token-for-token parity between PyTorch and ONNX on a fixed authored corpus.
+- [x] Quantize to INT8 and measure accuracy loss before accepting the smaller artifact.
+- [x] Require quantized output to remain within 1 percentage point of reference note-event error and
       chord exact match; otherwise ship the reference artifact if its browser performance and memory
       gates pass, and disclose its measured download size.
-- [ ] Prove that all operators execute in `onnxruntime-web` WASM; treat WebGPU only as an optional
+- [x] Prove that all operators execute in `onnxruntime-web` WASM; treat WebGPU only as an optional
       acceleration.
-- [ ] Record browser versions, device CPU/RAM, artifact bytes, cold/warm runs, timeout rate, peak
+- [x] Record browser versions, device CPU/RAM, artifact bytes, cold/warm runs, timeout rate, peak
       memory method, and preprocessing version. Mandatory representative hardware is a Google Pixel
       7 running stable Android Chrome and an iPhone 13 running stable iOS Safari at evaluation time.
       Single-thread WASM fallback is mandatory on both; SIMD, threads, and WebGPU are optional.
-- [ ] Produce a model manifest containing artifact URL, byte length, SHA-256, schema version,
+- [x] Produce a model manifest containing artifact URL, byte length, SHA-256, schema version,
       vocabulary/tokenizer version, preprocessing version and exact input-unit contract, expected
       dimensions, supported operators, license, attribution, and fixture/evaluation revision.
-- [ ] Keep Python conversion/evaluation tooling outside this Deno repository. Commit only the
+- [x] Keep Python conversion/evaluation tooling outside this Deno repository. Commit only the
       browser integration, reproducible manifests/provenance, and non-private parity evidence.
-- [ ] Stage release metadata for a project-owned GitHub Release using immutable versioned filenames,
+- [x] Stage release metadata for a project-owned GitHub Release using immutable versioned filenames,
       SHA-256 verification, an expected GitHub Pages fetch URL, and retention of every artifact
       referenced by a supported app version. Use a repository-ignored local HTTP origin for M7–M10
       integration tests. Do not upload before the frozen complete-pipeline gates and R4 pass.
-- [ ] Record `OMR_CANDIDATE_FEASIBLE` only if PyTorch/ONNX parity passes, the complete decoder
+- [x] Record `OMR_CANDIDATE_FEASIBLE` only if PyTorch/ONNX parity passes, the complete decoder
       executes in single-thread WASM on both named devices, and development-set cold time/memory
       stay within ≤90 seconds/page and ≤512 MiB. Record and disclose artifact size without a size
       rejection threshold. Otherwise record `OMR_CANDIDATE_FAILED`, preserve the evidence, and stop
@@ -760,12 +760,12 @@ outside the application runtime; generated weights must remain outside Git.
 
 **Exit criteria**
 
-- [ ] `OMR_CANDIDATE_FEASIBLE` exists with frozen evidence before Milestone 7 begins; this is not a
+- [x] `OMR_CANDIDATE_FEASIBLE` exists with frozen evidence before Milestone 7 begins; this is not a
       release accuracy decision.
 - [x] The exact upstream model weights and embedded vocabulary have an MIT redistribution basis; the
       non-accepted YOLO artifact and dataset are excluded. Converted artifacts must retain that
       provenance and the required notices.
-- [ ] Model files are versioned, checksummed, absent from Git, their exact download size is
+- [x] Model files are versioned, checksummed, absent from Git, their exact download size is
       recorded, and they are available from a repository-ignored local HTTP origin for integration
       work.
 

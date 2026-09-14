@@ -83,7 +83,7 @@ export interface HarmonyEvent {
   duration?: RationalDuration;
   confidence?: number;
   sourceBox?: ImageBox;
-  provenance?: "musicxml" | "photo-manual" | "cloud-lookup";
+  provenance?: "musicxml" | "photo-manual" | "photo-omr" | "cloud-lookup";
   /** Set when the parser preserved visible text but could not map it to chord semantics. */
   unsupported?: boolean;
 }

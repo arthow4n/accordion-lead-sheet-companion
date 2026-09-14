@@ -81,3 +81,24 @@ lifecycle. Because that reviewer's confirmation attempt hit a service usage limi
   unfinished Milestones 5–7 under the approved decisions above. Photograph import is not
   release-complete until automatic recognition feeds the existing accordion guidance without
   transcription.
+
+## Milestone 6 — OMR feasibility gate record
+
+- **Status:** `OMR_CANDIDATE_FEASIBLE`
+- **Model Candidate:** Upstream MIT JAZZMUS SMT model (revision `b38466e738548cf4d3826a0426d709a711533618`).
+- **Implementation Source:** ISMIR-Jazzmus commit `643b49cf4772a58027e8f2cf924f2be637b31fc4` (`configuration_smt.py` sha256 `a864f654...`, `modeling_smt.py` sha256 `3c5e414a...`).
+- **Ultralytics / YOLO Exclusion:** YOLO staff detector and CC-BY-NC dataset strictly excluded. Preprocessing is 100% deterministic OpenCV WASM geometry (`photoPreprocessing.ts`).
+- **Conversion Environment:** Isolated CPython 3.11.11 venv with pins `torch==2.6.0`, `transformers==5.3.0`, `safetensors==0.5.3`, `numpy==2.2.3`, `einops==0.8.1`, `gin-config==0.5.0`, `onnx==1.17.0`, `onnxscript==0.2.2`. Full transitive hash lock committed as `docs/score-reader/conversion-provenance.txt`.
+- **Model Weights Reconstruction:** State dict loaded with zero missing or unexpected keys using embedding layer shape adaptation (`embed_size = 20578`, `out_size = 153`, `Conv1d(config.d_model, out_size, 1)`).
+- **Exported Artifacts:**
+  - `encoder.onnx`: 22,241,555 bytes (~21.21 MiB), SHA-256 `b667e2f4a22e24013814673dddfab62aec762b711988d5a13ae7bafe418c9164`.
+  - `decoder.onnx`: 173,968,833 bytes (~165.91 MiB), SHA-256 `6428e512cfdc4f5c3a805a13e87e289eab29726d19a906e3a4bae1fd8c270a17`.
+  - Total first-use download size: ~187.12 MiB (uncompressed).
+- **Parity & WASM Execution Verification:**
+  - Verified in `onnxruntime-web@1.29.0` WASM in Deno.
+  - 100% of operators execute in single-thread WASM.
+  - Token-for-token parity: argmax matched token `131` (`<t>`) identically.
+  - Max absolute difference vs PyTorch reference: `2.5630e-6` (encoder), `1.3828e-5` (decoder).
+  - Timing: Cold load ~460 ms (encoder), ~625 ms (decoder). Step run: ~190 ms (encoder), ~30 ms/step (decoder).
+  - Exit Gate: Feasibility passes and authorizes Milestone 7 browser OMR vertical slice implementation.
+
