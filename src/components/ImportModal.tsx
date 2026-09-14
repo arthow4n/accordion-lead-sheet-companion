@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Camera, Clipboard, Globe, Loader2, Music, Sparkles, Type, X } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  Clipboard,
+  Globe,
+  Loader2,
+  Music,
+  Sparkles,
+  Type,
+  X,
+} from "lucide-react";
 import type {
   AllowedScanImageMimeType,
   LeadSheetLine,
@@ -17,6 +27,9 @@ import { rational } from "../lib/score/rational.ts";
 import { registerEphemeralScoreAsset, saveScoreAsset } from "../lib/storage/songbook.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { GuidedPhotoPreview } from "./GuidedPhotoPreview.tsx";
+import { OmrDownloadModal } from "./OmrDownloadModal.tsx";
+import { areOmrModelsReady, transcribeStripsWithOmr } from "../lib/score/omrClient.ts";
+import { extractStaffCropTensor } from "../lib/score/omrPreprocessing.ts";
 
 export interface ImportModalProps {
   isOpen: boolean;
@@ -50,6 +63,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [photoLayout, setPhotoLayout] = useState<import("../types/score.ts").ScorePhotoLayout>();
   const [photoChordInput, setPhotoChordInput] = useState("");
   const [photoKeepSource, setPhotoKeepSource] = useState(false);
+  const [isOmrModalOpen, setIsOmrModalOpen] = useState(false);
+  const [isTranscribingOmr, setIsTranscribingOmr] = useState(false);
+  const [omrProgressText, setOmrProgressText] = useState<string | null>(null);
+  const [omrError, setOmrError] = useState<string | null>(null);
   const [manualChordInput, setManualChordInput] = useState("");
   const [lookupChords, setLookupChords] = useState<string[]>([]);
   const [invalidManualTokens, setInvalidManualTokens] = useState<string[]>([]);
@@ -67,6 +84,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setPhotoLayout(undefined);
       setPhotoChordInput("");
       setPhotoKeepSource(false);
+      setIsOmrModalOpen(false);
+      setIsTranscribingOmr(false);
+      setOmrProgressText(null);
+      setOmrError(null);
       setManualChordInput("");
       setLookupChords([]);
       setInvalidManualTokens([]);
@@ -242,6 +263,80 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       updatedAt: now,
     });
     setActiveTab("score");
+  };
+
+  const handleStartOmrRecognition = async () => {
+    if (!selectedImage) return;
+
+    const ready = await areOmrModelsReady();
+    if (!ready) {
+      setIsOmrModalOpen(true);
+      return;
+    }
+
+    setIsTranscribingOmr(true);
+    setOmrProgressText("Analyzing score staves and geometry...");
+    setOmrError(null);
+
+    try {
+      const bitmap = await createImageBitmap(selectedImage);
+      const { preprocessScorePhoto } = await import("../lib/score/photoPreprocessing.ts");
+      const prep = await preprocessScorePhoto(bitmap);
+
+      if (!prep.staves || prep.staves.length === 0) {
+        throw new Error(
+          "No musical staves were detected in this image. Please ensure the score is well-lit and clearly visible.",
+        );
+      }
+
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not initialize canvas context.");
+      ctx.drawImage(bitmap, 0, 0);
+      const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+      const raw = { data: imgData.data, width: bitmap.width, height: bitmap.height };
+
+      const strips = prep.staves.map((staff, idx) =>
+        extractStaffCropTensor(raw, staff.box, staff.id || `staff-${idx}`)
+      );
+
+      setOmrProgressText(`Transcribing ${strips.length} staves with AI...`);
+      const { scoreDoc } = await transcribeStripsWithOmr(strips, {
+        onProgress: (p) => setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`),
+      });
+
+      scoreDoc.photoLayout = prep.layout;
+      scoreDoc.title = selectedImage.name.replace(/\.[^.]+$/, "") || "Scanned Lead Sheet";
+
+      const now = Date.now();
+      const assetId = `asset_${now}_${Math.random().toString(36).slice(2, 9)}`;
+      registerEphemeralScoreAsset(assetId, selectedImage);
+
+      if (photoKeepSource) {
+        await saveScoreAsset(assetId, selectedImage);
+        scoreDoc.source = { kind: "photo", assetId, persistence: "opted_in" };
+      } else {
+        scoreDoc.source = { kind: "photo", assetId, persistence: "ephemeral" };
+      }
+
+      setPreviewSong({
+        id: `photo_${now}_${Math.random().toString(36).slice(2, 9)}`,
+        title: scoreDoc.title,
+        capoFret: 0,
+        rawText: "",
+        lines: [],
+        score: scoreDoc,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      setActiveTab("score");
+    } catch (err) {
+      setOmrError(err instanceof Error ? err.message : "Recognition failed.");
+    } finally {
+      setIsTranscribingOmr(false);
+      setOmrProgressText(null);
+    }
   };
 
   const handleScoreFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -664,6 +759,47 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                     />
                   )}
 
+                  {selectedImage && (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleStartOmrRecognition}
+                        disabled={isTranscribingOmr}
+                        className="min-h-[44px] w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                      >
+                        {isTranscribingOmr
+                          ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-white" />
+                              <span>{omrProgressText || "Recognizing score with AI..."}</span>
+                            </>
+                          )
+                          : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-amber-300" />
+                              <span>Recognize Notes & Chords (Local AI)</span>
+                            </>
+                          )}
+                      </button>
+
+                      {omrError && (
+                        <div className="p-2.5 rounded-xl border border-red-500/20 bg-red-500/10 text-xs text-red-300 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p>{omrError}</p>
+                            <button
+                              type="button"
+                              onClick={handleStartOmrRecognition}
+                              className="mt-1 font-semibold text-blue-400 underline hover:text-blue-300 cursor-pointer"
+                            >
+                              Retry recognition
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {selectedImage && photoLayout && (
                     <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-2.5">
                       <label className="text-[11px] font-semibold text-zinc-300">
@@ -856,6 +992,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           )}
         </footer>
       </div>
+
+      <OmrDownloadModal
+        isOpen={isOmrModalOpen}
+        onClose={() => setIsOmrModalOpen(false)}
+        onSuccess={() => {
+          setIsOmrModalOpen(false);
+          handleStartOmrRecognition();
+        }}
+      />
     </div>
   );
 };

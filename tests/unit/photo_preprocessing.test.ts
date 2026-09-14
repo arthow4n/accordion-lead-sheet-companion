@@ -61,8 +61,8 @@ function drawVerticalLine(
   }
 }
 
-Deno.test("PREPROCESS-01: Internal capability gate is exported and defaults false before M7", () => {
-  assertEquals(PHOTO_OMR_CAPABILITY_ENABLED, false);
+Deno.test("PREPROCESS-01: Internal capability gate is exported and enabled in M7", () => {
+  assertEquals(PHOTO_OMR_CAPABILITY_ENABLED, true);
 });
 
 Deno.test("PREPROCESS-02: groupLinesIntoStaves groups 5-line staves and rejects isolated noise lines", () => {

@@ -13,7 +13,7 @@ import { createInitialPhotoLayout } from "./photoGuidance.ts";
  * Capability gate for automatic photograph melody recognition.
  * Kept false until Milestone 7 browser feasibility and OMR validation pass.
  */
-export const PHOTO_OMR_CAPABILITY_ENABLED = false;
+export const PHOTO_OMR_CAPABILITY_ENABLED = true;
 
 export interface DeletableMat {
   delete(): void;

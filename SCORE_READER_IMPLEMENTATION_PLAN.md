@@ -771,40 +771,40 @@ outside the application runtime; generated weights must remain outside Git.
 
 ### Milestone 7 — Browser OMR vertical slice
 
-- [ ] Add `onnxruntime-web` through `deno.json` only.
-- [ ] Implement a lazily created OMR Web Worker with typed request, progress, result, cancellation,
+- [x] Add `onnxruntime-web` through `deno.json` only.
+- [x] Implement a lazily created OMR Web Worker with typed request, progress, result, cancellation,
       timeout, and error contracts.
-- [ ] In production, download artifacts only after the user starts local recognition and confirms a
+- [x] In production, download artifacts only after the user starts local recognition and confirms a
       first-use message stating the exact total size, that it is downloaded once and retained for
       offline reuse, and how to delete it. Show per-download progress and provide cancel, retry, and
       cache-management controls. During M7–M10, exercise the same loader against the
       repository-ignored local artifact origin selected in Milestone 6.
-- [ ] Verify manifest size and SHA-256 before opening an inference session.
-- [ ] Cache verified artifacts using a versioned runtime cache independent of the PWA precache.
-- [ ] Make model-adapter-owned preprocessing consume page geometry and declare resizing,
+- [x] Verify manifest size and SHA-256 before opening an inference session.
+- [x] Cache verified artifacts using a versioned runtime cache independent of the PWA precache.
+- [x] Make model-adapter-owned preprocessing consume page geometry and declare resizing,
       normalization, crop context, overlap, concurrency, and stitching exactly as frozen in the
       approved manifest.
-- [ ] Implement the tokenizer and autoregressive decode loop with cached decoder state.
-- [ ] Retain token log probabilities and map them to measure-level confidence/issues.
-- [ ] Parse the supported Humdrum `**kern`/`**mxhm` subset directly into `ScoreDocument`; reject or
+- [x] Implement the tokenizer and autoregressive decode loop with cached decoder state.
+- [x] Retain token log probabilities and map them to measure-level confidence/issues.
+- [x] Parse the supported Humdrum `**kern`/`**mxhm` subset directly into `ScoreDocument`; reject or
       flag unsupported tokens rather than guessing.
-- [ ] Stitch strips using barlines as re-synchronization points so one bad strip cannot shift the
+- [x] Stitch strips using barlines as re-synchronization points so one bad strip cannot shift the
       remainder of the page.
-- [ ] Add golden parity tests using stored model outputs, not live downloads, to keep default tests
+- [x] Add golden parity tests using stored model outputs, not live downloads, to keep default tests
       hermetic.
-- [ ] Add an explicit opt-in browser/model test command outside the default suite.
-- [ ] Resolve worker/WASM/model URLs under Vite's relative GitHub Pages base and smoke-test the
+- [x] Add an explicit opt-in browser/model test command outside the default suite.
+- [x] Resolve worker/WASM/model URLs under Vite's relative GitHub Pages base and smoke-test the
       planned production URL shape with the local artifact origin. Detect SIMD, threads/cross-origin
       isolation, and WebGPU independently; a single-thread WASM fallback is mandatory. Actual GitHub
       Release CORS/cache verification occurs after R4 publication.
-- [ ] Ensure failures preserve the source and offer retry/re-link/recovery without losing the
+- [x] Ensure failures preserve the source and offer retry/re-link/recovery without losing the
       import. A failed recognition may not be labeled playable or silently require transcription.
 
 **Exit criteria**
 
-- [ ] A supported authored page becomes a `ScoreDocument` locally in a browser.
-- [ ] UI remains responsive and cancellation releases sessions and image memory.
-- [ ] Offline recognition works after the first successful artifact cache using the local artifact
+- [x] A supported authored page becomes a `ScoreDocument` locally in a browser.
+- [x] UI remains responsive and cancellation releases sessions and image memory.
+- [x] Offline recognition works after the first successful artifact cache using the local artifact
       origin; production-host parity remains a final post-publication gate.
 
 #### Review checkpoint 3 — OMR, privacy, security, and performance

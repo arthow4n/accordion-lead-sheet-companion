@@ -234,3 +234,19 @@ Deno.test("UX-LOOKUP-07: Lookup result chips have >=44px touch target classes", 
   assertStringIncludes(minTouchTargetClass, "min-h-[44px]");
   assertStringIncludes(minTouchTargetClass, "min-w-[44px]");
 });
+
+Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, and privacy notice", async () => {
+  const { OmrDownloadModal } = await import("../../src/components/OmrDownloadModal.tsx");
+  const html = renderToStaticMarkup(
+    <OmrDownloadModal
+      isOpen
+      onClose={() => {}}
+      onSuccess={() => {}}
+    />,
+  );
+
+  assertStringIncludes(html, "Download Offline Music Recognition Model");
+  assertStringIncludes(html, "187.1 MB");
+  assertStringIncludes(html, "100% On-Device");
+  assertStringIncludes(html, "Download &amp; Start");
+});
