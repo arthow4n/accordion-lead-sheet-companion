@@ -286,20 +286,20 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID  | Status   | Commit  | Checks                                  | Review disposition       | Notes                                                                                                                                                                                     |
-| --- | -------- | ------- | --------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                      | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                       |
-| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                      | Versioned contracts, rational timing, and validation.                                                                                                                                     |
-| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                      | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                             |
-| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                      | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                  |
-| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice      | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                    |
-| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice      | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                      |
-| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice      | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                            |
-| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                 | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer. |
-| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                      | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                     |
-| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                      | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                   |
-| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                      | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.        |
-| M4A | pending  | —       | —                                       | blocked by user approval | Before any CBA melody geometry/solver work, obtain approval for each `CbaKeyboardLayout` profile as required by the plan and `AGENTS.md`.                                                 |
+| ID  | Status   | Commit  | Checks                                  | Review disposition  | Notes                                                                                                                                                                                                                     |
+| --- | -------- | ------- | --------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                 | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                                                       |
+| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                 | Versioned contracts, rational timing, and validation.                                                                                                                                                                     |
+| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                 | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                                                             |
+| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                 | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                                                  |
+| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                                                    |
+| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                                                      |
+| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                                                            |
+| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED            | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer.                                 |
+| M3A | complete | 0643c7e | fmt/lint/test/build green (282 passing) | N/A                 | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                                                     |
+| M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                 | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                   |
+| M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                 | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                        |
+| M4A | complete | pending | fmt/lint/test/build pending             | awaiting R2         | FR-1XB C-Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, and mathematical specification/tests are committed; user-authorized current app layout is the coordinate authority. |
 
 ### Required slice order
 
@@ -358,7 +358,7 @@ Use these as the initial ledger rows; split further when a diff stops being inde
       fixture provenance, target benchmark device/profile, frozen numeric thresholds, model and
       artifact licensing, artifact host/CORS/retention, external publication, and whether
       `OMR_NO_GO` is an acceptable v1.
-- [ ] Before M4A, obtain user approval for every supported `CbaKeyboardLayout`: display name, row
+- [x] Before M4A, obtain user approval for every supported `CbaKeyboardLayout`: display name, row
       and button counts, physical bounds, lowest/highest sounding pitch, reference coordinate and
       pitch, orientation, and authoritative source. If none is approved, v1 may use only an
       explicitly labeled abstract layout and must not claim instrument-specific reachability.
@@ -500,28 +500,28 @@ mandated by `AGENTS.md` before production implementation.
 
 #### Milestone 4A — Specification and tests first
 
-- [ ] Define a versioned `CbaKeyboardLayout` with layout/model ID, handedness/orientation, physical
+- [x] Define a versioned `CbaKeyboardLayout` with layout/model ID, handedness/orientation, physical
       row/column bounds, absolute MIDI pitch at a reference coordinate, duplicated-row mapping, and
       playable range for each supported instrument profile.
-- [ ] Preserve current pitch-class chord-grid behavior behind compatibility adapters/tests; do not
+- [x] Preserve current pitch-class chord-grid behavior behind compatibility adapters/tests; do not
       pretend its artificial 12-column lattice represents melody register.
-- [ ] Write a short mathematical specification for melodic path optimization without production
+- [x] Write a short mathematical specification for melodic path optimization without production
       implementation.
-- [ ] Enumerate candidates through
+- [x] Enumerate candidates through
       `SpelledPitch → absolute sounding MIDI pitch → physical key locations` across supported 3-row
       and 5-row layouts. Define how the sheet's 16-foot register label affects display/instrument
       profile metadata without silently octave-shifting source notation.
-- [ ] Define state as at least button coordinate, finger, hand-position estimate, and previous
+- [x] Define state as at least button coordinate, finger, hand-position estimate, and previous
       transition.
-- [ ] Define transition costs for column travel, row travel, repeated-note fingering, thumb policy,
+- [x] Define transition costs for column travel, row travel, repeated-note fingering, thumb policy,
       finger crossing, stretch, position reset after rests, and future look-ahead.
-- [ ] Preserve pitch spelling for display while using pitch class/octave for physical location.
-- [ ] Define deterministic tie-breaking so tests and persisted results remain stable.
-- [ ] Specify how user-locked fingerings constrain subsequent optimization.
-- [ ] Write table-driven expected paths covering every absolute pitch in each supported keyboard,
+- [x] Preserve pitch spelling for display while using pitch class/octave for physical location.
+- [x] Define deterministic tie-breaking so tests and persisted results remain stable.
+- [x] Specify how user-locked fingerings constrain subsequent optimization.
+- [x] Write table-driven expected paths covering every absolute pitch in each supported keyboard,
       all 12 pitch classes, ascending and descending scales, repeated notes, chromatic runs, leaps,
       rests, ties, phrase boundaries, out-of-range notes, 3-row layouts, and 5-row auxiliary rows.
-- [ ] Add invariants: every output button sounds the input pitch, no impossible finger is emitted,
+- [x] Add invariants: every output button sounds the input pitch, no impossible finger is emitted,
       locked choices are preserved, and identical input/preferences produce identical output.
 
 #### Review checkpoint 2 — Pre-implementation domain validation

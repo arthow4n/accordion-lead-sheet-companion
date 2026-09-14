@@ -70,6 +70,18 @@ export {
 } from "./cba/grid.ts";
 
 export {
+  CBA_ROW_SEMITONE_OFFSETS,
+  DEFAULT_CBA_KEYBOARD_LAYOUT,
+  getCbaLayoutButtonCount,
+  getCbaMidiAt,
+  getCbaPhysicalLocationsForMidi,
+  getCbaPhysicalLocationsForPitch,
+  getCbaRowBounds,
+  ROLAND_FR1XB_C_GRIFF_EUROPE,
+  spelledPitchToMidi,
+} from "./cba/keyboardLayout.ts";
+
+export {
   findBestCoordinateCluster,
   generateCanonicalRootGrip,
   generateCbaGrip,
