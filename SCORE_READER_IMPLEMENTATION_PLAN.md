@@ -300,6 +300,7 @@ incomplete row rather than replaying completed work.
 | M3B | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                                                                                                 |
 | M3C | complete | 2b29ec5 | fmt/lint/test/build green (282 passing) | N/A                                   | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.                                                                                      |
 | M4A | complete | 186e134 | fmt/lint/test/build green (292 passing) | R2 APPROVED (score_cba_domain_review) | FR-1XB C-Griff Europe profile, absolute pitch anchor, finite 62-button bounds, candidate enumeration, validated solver specification/tests, and explicit 1-2-4/2-3-5 regression evidence are committed; user-authorized current app layout is the coordinate authority. |
+| M4B | complete | 2e9dfd7 | fmt/lint/test/build green (299 passing) | N/A                                   | Deterministic CBA melody DP, hard diagnostics/locks/ties/resets, shared compact RH path map, and configurable assistance density are implemented without changing existing chord voice leading.                                                                         |
 
 ### Required slice order
 
@@ -541,27 +542,27 @@ mandated by `AGENTS.md` before production implementation.
 
 #### Milestone 4B — Solver and presentation
 
-- [ ] Implement the melody path as a pure dynamic-programming/Viterbi-style optimizer under
+- [x] Implement the melody path as a pure dynamic-programming/Viterbi-style optimizer under
       `src/lib/cba/`; do not use an LLM.
-- [ ] Keep melody-path logic separate from chord-grip voice leading while sharing only validated
+- [x] Keep melody-path logic separate from chord-grip voice leading while sharing only validated
       physical-layout primitives.
-- [ ] Return per-event coordinate, finger, transition, confidence/ambiguity, and locked status.
-- [ ] Make invalid locks, conflicting locks, out-of-range notes, rests, ties, and phrase resets
+- [x] Return per-event coordinate, finger, transition, confidence/ambiguity, and locked status.
+- [x] Make invalid locks, conflicting locks, out-of-range notes, rests, ties, and phrase resets
       explicit result diagnostics; never substitute a nearest button.
-- [ ] Add the table-driven path fixtures and solver invariants deferred from Milestone 4A.
-- [ ] Add a melody-focused CBA visualization by extending shared grid primitives rather than
+- [x] Add the table-driven path fixtures and solver invariants deferred from Milestone 4A.
+- [x] Add a melody-focused CBA visualization by extending shared grid primitives rather than
       duplicating the full grid.
-- [ ] Show current, next, and optionally previous melody buttons; keep the established semantic
+- [x] Show current, next, and optionally previous melody buttons; keep the established semantic
       color hierarchy intact.
-- [ ] Make assistance density configurable: notation only, note names, finger numbers, or button
+- [x] Make assistance density configurable: notation only, note names, finger numbers, or button
       path.
-- [ ] Add exhaustive unit tests and focused mobile component tests.
+- [x] Add exhaustive unit tests and focused mobile component tests.
 
 **Exit criteria**
 
-- [ ] All mathematical fixtures pass on both 3-row and 5-row layouts.
-- [ ] The solver is deterministic and independent of UI/OMR code.
-- [ ] Existing chord-grip voice leading remains unchanged.
+- [x] All mathematical fixtures pass on both 3-row and 5-row layouts.
+- [x] The solver is deterministic and independent of UI/OMR code.
+- [x] Existing chord-grip voice leading remains unchanged.
 
 ### Milestone 5 — Guided photograph mode without full OMR
 
