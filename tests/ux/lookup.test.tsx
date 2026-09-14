@@ -72,6 +72,9 @@ Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guida
   assertStringIncludes(html, "Preview");
   assertStringIncludes(html, "Learn");
   assertStringIncludes(html, "Perform");
+  assertStringIncludes(html, "Loop phrase");
+  assertStringIncludes(html, "Count-in on start");
+  assertStringIncludes(html, "Tempo 90 BPM");
   assertStringIncludes(html, "Key D");
   assertStringIncludes(html, "D4");
 });

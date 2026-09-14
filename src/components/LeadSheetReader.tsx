@@ -335,8 +335,11 @@ export interface LeadSheetReaderProps {
   selectedChord?: ChordDetail | string | null;
   scorePerformanceIndex?: number;
   scoreIsPlaying?: boolean;
+  scoreCountInBeats?: number;
+  scoreLoopEnabled?: boolean;
   onScoreNextMeasure?: () => void;
   onScorePreviousMeasure?: () => void;
+  onToggleScoreLoop?: () => void;
   className?: string;
 }
 
@@ -354,8 +357,11 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
   selectedChord,
   scorePerformanceIndex = 0,
   scoreIsPlaying = false,
+  scoreCountInBeats = 0,
+  scoreLoopEnabled = false,
   onScoreNextMeasure,
   onScorePreviousMeasure,
+  onToggleScoreLoop,
   className = "",
 }) => {
   const defaultCapo = song.capoFret ?? song.capo ?? 0;
@@ -1113,6 +1119,14 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
                     {song.score.time
                       ? ` · Meter ${song.score.time.beats}/${song.score.time.beatType}`
                       : ""}
+                    {song.score.sections.length > 0
+                      ? ` · Form ${
+                        song.score.sections.map((section) => section.label || section.id).join(
+                          " · ",
+                        )
+                      }`
+                      : ""}
+                    {` · Tempo ${Math.round(song.score.tempoMap[0]?.bpm ?? 90)} BPM`}
                     {scoreTranspositionSemitones !== 0
                       ? ` · ${
                         scoreTranspositionSemitones > 0 ? "+" : ""
@@ -1155,30 +1169,53 @@ export const LeadSheetReader: React.FC<LeadSheetReaderProps> = ({
               </div>
             )}
             {!scoreGuidanceBlocked && scoreView !== "preview" && (
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={onScorePreviousMeasure}
-                  disabled={!onScorePreviousMeasure || scorePerformanceIndex <= 0}
-                  className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
-                  aria-label="Previous measure"
-                >
-                  ← Previous
-                </button>
-                <span className="text-[11px] font-mono text-zinc-400">
-                  {scorePerformanceIndex + 1} / {scoreRoute?.measures.length ?? 0}
-                  {scoreIsPlaying ? " · playing" : ""}
-                </span>
-                <button
-                  type="button"
-                  onClick={onScoreNextMeasure}
-                  disabled={!onScoreNextMeasure ||
-                    scorePerformanceIndex >= (scoreRoute?.measures.length ?? 1) - 1}
-                  className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
-                  aria-label="Next measure"
-                >
-                  Next →
-                </button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={onScorePreviousMeasure}
+                    disabled={!onScorePreviousMeasure || scorePerformanceIndex <= 0}
+                    className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
+                    aria-label="Previous measure"
+                  >
+                    ← Previous
+                  </button>
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    {scorePerformanceIndex + 1} / {scoreRoute?.measures.length ?? 0}
+                    {scoreIsPlaying ? " · playing" : ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onScoreNextMeasure}
+                    disabled={!onScoreNextMeasure ||
+                      scorePerformanceIndex >= (scoreRoute?.measures.length ?? 1) - 1}
+                    className="min-h-[44px] px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200 disabled:opacity-40"
+                    aria-label="Next measure"
+                  >
+                    Next →
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={onToggleScoreLoop}
+                    disabled={!onToggleScoreLoop}
+                    className={`min-h-[44px] px-3 rounded-lg border text-xs font-semibold transition-colors disabled:opacity-40 ${
+                      scoreLoopEnabled
+                        ? "border-emerald-600/70 bg-emerald-950/50 text-emerald-200"
+                        : "border-zinc-700 bg-zinc-900 text-zinc-300"
+                    }`}
+                    aria-pressed={scoreLoopEnabled}
+                    aria-label={scoreLoopEnabled ? "Disable phrase loop" : "Loop current phrase"}
+                  >
+                    {scoreLoopEnabled ? "Loop phrase · On" : "Loop phrase"}
+                  </button>
+                  <span className="text-[11px] text-zinc-500" aria-live="polite">
+                    {scoreCountInBeats > 0
+                      ? `Count-in · ${scoreCountInBeats}`
+                      : "Count-in on start"}
+                  </span>
+                </div>
               </div>
             )}
           </div>

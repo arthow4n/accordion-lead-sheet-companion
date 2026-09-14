@@ -259,8 +259,11 @@ export default function App({ initialSongs = PRESET_SONGS }: AppProps = {}): Rea
               selectedChord={activeChord}
               scorePerformanceIndex={scorePlayback.performanceIndex}
               scoreIsPlaying={scorePlayback.isPlaying}
+              scoreCountInBeats={scorePlayback.countInBeats}
+              scoreLoopEnabled={scorePlayback.loopEnabled}
               onScoreNextMeasure={scorePlayback.nextMeasure}
               onScorePreviousMeasure={scorePlayback.previousMeasure}
+              onToggleScoreLoop={scorePlayback.toggleLoop}
             />
           )
           : (

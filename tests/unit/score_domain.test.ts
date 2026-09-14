@@ -21,6 +21,11 @@ import { enrichHarmonySequence } from "../../src/lib/score/harmony.ts";
 import { parseMusicXml } from "../../src/lib/score/musicxml.ts";
 import { parseMxl } from "../../src/lib/score/mxl.ts";
 import { createMusicXmlExcerpt } from "../../src/lib/score/osmd.ts";
+import {
+  getNextScorePlaybackIndex,
+  getPhraseLoopRange,
+  getScoreCountInBeats,
+} from "../../src/hooks/useScorePlayback.ts";
 import { zipSync } from "fflate";
 import { DOMParser as TestDomParser, XMLSerializer as TestXmlSerializer } from "@xmldom/xmldom";
 
@@ -487,6 +492,21 @@ Deno.test("score harmony adapter applies transposition and selected CBA profile"
   });
   assertEquals(events[0].detail?.soundingChord.raw, "D");
   assertEquals(events[0]?.detail?.cba?.buttons?.every((button) => button.row <= 3), true);
+});
+
+Deno.test("score playback helpers bound count-in and select contiguous phrase loops", () => {
+  assertEquals(getScoreCountInBeats(undefined, { beats: 7, beatType: 8 }), 4);
+  assertEquals(getScoreCountInBeats(undefined, { beats: 3, beatType: 4 }), 3);
+  const measures = [
+    measure({ id: "m1", phraseId: "A" }),
+    measure({ id: "m2", phraseId: "A" }),
+    measure({ id: "m3", phraseId: "B" }),
+  ];
+  assertEquals(getPhraseLoopRange(measures, 1), { start: 0, end: 1 });
+  assertEquals(getPhraseLoopRange(measures, 2), { start: 2, end: 2 });
+  assertEquals(getPhraseLoopRange([], 0), null);
+  assertEquals(getNextScorePlaybackIndex(1, 3, { start: 0, end: 1 }), 0);
+  assertEquals(getNextScorePlaybackIndex(1, 3, null), 2);
 });
 
 Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", () => {

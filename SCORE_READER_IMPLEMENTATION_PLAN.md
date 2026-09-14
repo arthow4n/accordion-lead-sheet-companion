@@ -286,16 +286,20 @@ slice and checkpoint: `ID`, `status` (`pending`, `active`, `complete`, `blocked`
 future agent must read the ledger, verify the recorded HEAD and worktree, and resume at the first
 incomplete row rather than replaying completed work.
 
-| ID  | Status   | Commit  | Checks                    | Review disposition  | Notes                                                                                                    |
-| --- | -------- | ------- | ------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
-| M0  | complete | 464cb54 | fmt/lint/test/build green | N/A                 | Baseline, provenance policy, authority record, and reuse inventory.                                      |
-| M1A | complete | 2c8e738 | fmt/lint/test/build green | N/A                 | Versioned contracts, rational timing, and validation.                                                    |
-| M1B | complete | fad8be5 | fmt/lint/test/build green | N/A                 | Songbook envelope, migrations, quarantine, and cleanup hooks.                                            |
-| M1C | complete | af09031 | fmt/lint/test/build green | N/A                 | Route, tempo, transposition, and shared harmony adapter.                                                 |
-| M2A | complete | d4523e0 | fmt/lint/test/build green | R1 corrective slice | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                   |
-| M2B | complete | d4523e0 | fmt/lint/test/build green | R1 corrective slice | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                     |
-| M2C | complete | caca12a | fmt/lint/test/build green | R1 corrective slice | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                           |
-| R1  | active   | —       | pending corrective gate   | pending             | Read-only architecture/security review returned blocking/high findings; corrective slice is in progress. |
+| ID  | Status   | Commit  | Checks                                  | Review disposition       | Notes                                                                                                                                                                                     |
+| --- | -------- | ------- | --------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | complete | 464cb54 | fmt/lint/test/build green               | N/A                      | Baseline, provenance policy, authority record, and reuse inventory.                                                                                                                       |
+| M1A | complete | 2c8e738 | fmt/lint/test/build green               | N/A                      | Versioned contracts, rational timing, and validation.                                                                                                                                     |
+| M1B | complete | fad8be5 | fmt/lint/test/build green               | N/A                      | Songbook envelope, migrations, quarantine, and cleanup hooks.                                                                                                                             |
+| M1C | complete | af09031 | fmt/lint/test/build green               | N/A                      | Route, tempo, transposition, and shared harmony adapter.                                                                                                                                  |
+| M2A | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice      | Bounded MusicXML/MXL parser, strict source limits, and semantic tests.                                                                                                                    |
+| M2B | complete | d4523e0 | fmt/lint/test/build green               | R1 corrective slice      | Lazy OSMD SVG adapter; source-only strategy remains explicit pending spike evidence.                                                                                                      |
+| M2C | complete | caca12a | fmt/lint/test/build green               | R1 corrective slice      | Existing import modal accepts MusicXML/MXL and preserves atomic preview state.                                                                                                            |
+| R1  | complete | b700e1e | fmt/lint/test/build green (281 passing) | APPROVED                 | Corrective parser/domain validation, nested-repeat rejection, bounded validation, and last-playable guidance continuity reviewed and approved by the exact `gpt-5.6-sol`/medium reviewer. |
+| M3A | complete | pending | fmt/lint/test/build green (282 passing) | N/A                      | Musical clock, repeat-aware route, pedal measure stepping, manual-hold boundaries, visual count-in, and bounded phrase-loop playback are implemented and unit-tested.                     |
+| M3B | complete | pending | fmt/lint/test/build green (282 passing) | N/A                      | Preview/learn/perform score cards show current/next measure context, key/meter/form/tempo metadata, and the existing LH/RH guidance without a second application shell.                   |
+| M3C | complete | pending | fmt/lint/test/build green (282 passing) | N/A                      | Score reader controls expose 44px touch targets, live count-in status, loop state, and accessible current-measure semantics; mobile audit passed all 42 assertions at 360–1024 px.        |
+| M4A | pending  | —       | —                                       | blocked by user approval | Before any CBA melody geometry/solver work, obtain approval for each `CbaKeyboardLayout` profile as required by the plan and `AGENTS.md`.                                                 |
 
 ### Required slice order
 
