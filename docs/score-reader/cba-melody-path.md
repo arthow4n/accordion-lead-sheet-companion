@@ -89,8 +89,9 @@ columnTravel = |dc|
 rowTravel = |dr|
 sameMidiDifferentButton = prev.midi == next.midi && button differs ? 1 : 0
 sameFingerDifferentButton = prev.finger == next.finger && button differs ? 1 : 0
-fingerCrossing = (dc > 0 && next.finger < prev.finger) ||
-                 (dc < 0 && next.finger > prev.finger) ? 1 : 0
+physicalDelta = 3 * dc + (next.row - prev.row)  // signed C-system travel in semitones
+fingerCrossing = (physicalDelta > 0 && next.finger < prev.finger) ||
+                 (physicalDelta < 0 && next.finger > prev.finger) ? 1 : 0
 
 edgeCost = 4.0 * columnTravel
          + 1.5 * rowTravel
@@ -105,9 +106,11 @@ For the first note in a phrase, `previousTransition` is null and the hand-positi
 profile reference coordinate. The initial reposition cost is
 `4*|candidate.column-reference.column| + 1.5*|candidate.row-reference.row| + thumbCost`. After a
 rest or explicit phrase boundary, the previous state is cleared, the hand position resets to that
-same reference coordinate, and the next note pays the initial reposition cost. Ties prefer the same
-button and finger; a tie that cannot retain them is diagnosed rather than silently substituted. V1
-has `lookAheadWeight = 0`: no hidden second transition is added, so there is no double-counting. A
+same reference coordinate, and the next note pays the initial reposition cost. A tie continuation is
+a hard transition rule: the next event must use the previous button and finger; if that physical
+button/finger is not among the candidates, the event is diagnosed as `invalid_tie` and no guidance
+is emitted. Thus the thumb penalty and tie-breaking order can never replace a tied finger. V1 has
+`lookAheadWeight = 0`: no hidden second transition is added, so there is no double-counting. A
 non-zero look-ahead requires a second-order DP and a schema/version change.
 
 User locks are hard constraints filtered before optimization. A lock that names a missing
@@ -126,5 +129,8 @@ Before the solver is enabled, tests must cover every physical coordinate and eve
 note, all twelve pitch classes, ascending and descending scales, repeated notes, chromatic runs,
 large leaps, rests, ties, phrase resets, transposition, out-of-range notes, three-row projection,
 and five-row auxiliary duplicates. Existing chord-grid tests must continue to prove the established
-canonical/inversion fingering invariants independently of this melody profile; the melody profile
-must not change chord-grip behavior.
+canonical/inversion fingering invariants independently of this melody profile, including the
+isomorphic `1-2-4` and optional `2-3-5` triad patterns. The existing canonical grip API keeps
+`1-2-4` as its backwards-compatible default; callers must opt into `2-3-5`, and the alternate
+pattern reuses the same pitch-valid coordinates. The melody profile must not change chord-grip
+behavior.

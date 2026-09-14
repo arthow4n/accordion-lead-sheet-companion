@@ -242,9 +242,13 @@ Deno.test("CBA-19: Canonical root grips remain isomorphic in 3-row and 5-row mod
       const chord = `${root}${suffix}`;
       const threeRow = generateCanonicalRootGrip(chord, 5, "3row");
       const fiveRow = generateCanonicalRootGrip(chord, 5, "5row");
+      const shifted = generateCanonicalRootGrip(chord, 5, "5row", "auto", "2-3-5");
       assertEquals(threeRow.notes, fiveRow.notes, `${chord} note spelling changed by row mode`);
       assertEquals(threeRow.fingeringPattern, "1-2-4");
       assertEquals(fiveRow.fingeringPattern, "1-2-4");
+      assertEquals(shifted.notes, fiveRow.notes);
+      assertEquals(shifted.fingeringPattern, "2-3-5");
+      assertEquals(shifted.buttonCoords?.map((button) => button.finger), [2, 3, 5]);
       for (const button of threeRow.buttonCoords ?? []) {
         assertEquals(button.row >= 1 && button.row <= 3, true, `${chord} escaped 3-row core`);
         assertEquals(getPitchClass(button.note), getPitchClassAt(button.row, button.column));

@@ -190,6 +190,15 @@ Deno.test("CBA keyboard profile: finite coordinates and metadata are validated",
     ),
   );
   assertEquals(getCbaPhysicalLocationsForMidi(invalidRange, 54), []);
+
+  const interiorHole: CbaKeyboardLayout = {
+    ...profile,
+    id: "invalid-interior-hole",
+    rows: profile.rows.map((bounds) => bounds.row === 3 ? { ...bounds, minColumn: 4 } : bounds),
+  };
+  assert(
+    validateCbaKeyboardLayout(interiorHole).includes("playable MIDI 56 has no physical button"),
+  );
 });
 
 Deno.test("CBA keyboard profile: melodic contour fixtures enumerate deterministic candidate paths", () => {

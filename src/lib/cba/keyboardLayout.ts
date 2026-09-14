@@ -174,6 +174,17 @@ export function validateCbaKeyboardLayout(layout: CbaKeyboardLayout): string[] {
     if (lowest !== layout.playableMidi.lowest || highest !== layout.playableMidi.highest) {
       issues.push("playable MIDI bounds do not match finite physical buttons");
     }
+    if (
+      Number.isSafeInteger(layout.playableMidi.lowest) &&
+      Number.isSafeInteger(layout.playableMidi.highest)
+    ) {
+      const physicalMidiSet = new Set(physicalMidis);
+      for (let midi = layout.playableMidi.lowest; midi <= layout.playableMidi.highest; midi++) {
+        if (!physicalMidiSet.has(midi)) {
+          issues.push(`playable MIDI ${midi} has no physical button`);
+        }
+      }
+    }
   }
 
   for (const duplicate of layout.duplicatedRows) {

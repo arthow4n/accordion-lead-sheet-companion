@@ -354,12 +354,15 @@ export function generateCbaGrip(
 /**
  * Generates the canonical, 100% predictable isomorphic root-position chord grip
  * on the 5-row CBA C-System, ensuring invariant muscle memory across all 12 keys.
+ * The optional triad pattern keeps the historical 1-2-4 default while allowing the
+ * established 2-3-5 isomorphic alternative without changing existing callers.
  */
 export function generateCanonicalRootGrip(
   chordInput: string | ParsedChord,
   targetColumnCenter = 5,
   rowTierMode: "3row" | "5row" = "5row",
   noteSpelling: NoteSpelling = "auto",
+  triadFingering: "1-2-4" | "2-3-5" = "1-2-4",
 ): CbaGrip {
   const parsed = typeof chordInput === "string" ? parseChord(chordInput) : chordInput;
   const rootPc = parsed.rootPitchClass;
@@ -411,7 +414,18 @@ export function generateCanonicalRootGrip(
   }
 
   const { column: centroid, row: centroidRow } = computeCbaCentroid(coords);
-  const fingeringPattern = coords.length >= 4 ? "1-2-4-5" : coords.length === 2 ? "1-2" : "1-2-4";
+  if (coords.length === 3 && triadFingering === "2-3-5") {
+    coords[0].finger = 2;
+    coords[1].finger = 3;
+    coords[2].finger = 5;
+  }
+  const fingeringPattern = coords.length >= 4
+    ? "1-2-4-5"
+    : coords.length === 2
+    ? "1-2"
+    : coords.length === 3
+    ? triadFingering
+    : "1-2-4";
 
   return {
     chord: parsed.raw || parsed.root,
