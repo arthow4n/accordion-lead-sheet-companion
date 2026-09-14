@@ -89,7 +89,7 @@ columnTravel = |dc|
 rowTravel = |dr|
 sameMidiDifferentButton = prev.midi == next.midi && button differs ? 1 : 0
 sameFingerDifferentButton = prev.finger == next.finger && button differs ? 1 : 0
-physicalDelta = 3 * dc + (next.row - prev.row)  // signed C-system travel in semitones
+physicalDelta = 3 * dc + o(next.row) - o(prev.row)  // signed sounding travel in semitones
 fingerCrossing = (physicalDelta > 0 && next.finger < prev.finger) ||
                  (physicalDelta < 0 && next.finger > prev.finger) ? 1 : 0
 
