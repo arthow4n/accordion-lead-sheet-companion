@@ -10,9 +10,16 @@ import {
   getCbaPhysicalLocationsForPitch,
   getCbaRowBounds,
   spelledPitchToMidi,
+  validateCbaKeyboardLayout,
 } from "./keyboardLayout.ts";
 
 const profile = DEFAULT_CBA_KEYBOARD_LAYOUT;
+
+function midiAt(layout: CbaKeyboardLayout, row: 1 | 2 | 3 | 4 | 5, column: number): number {
+  const midi = getCbaMidiAt(layout, row, column);
+  assert(midi !== undefined);
+  return midi;
+}
 
 function pitch(step: SpelledPitch["step"], octave: number, alter = 0): SpelledPitch {
   return { step, octave, alter };
@@ -56,6 +63,7 @@ Deno.test("CBA keyboard profile: every physical coordinate round-trips to one MI
   for (const bounds of profile.rows) {
     for (let column = bounds.minColumn; column <= bounds.maxColumn; column++) {
       const midi = getCbaMidiAt(profile, bounds.row, column);
+      assert(midi !== undefined);
       const key = `${bounds.row}:${column}`;
       assert(!seen.has(key));
       seen.add(key);
@@ -84,8 +92,10 @@ Deno.test("CBA keyboard profile: all chromatic MIDI notes in the range have cand
 
 Deno.test("CBA keyboard profile: duplicated rows provide stable auxiliary candidates", () => {
   for (let column = 3; column <= 14; column++) {
-    const core = getCbaPhysicalLocationsForMidi(profile, getCbaMidiAt(profile, 1, column));
-    const auxiliary = getCbaPhysicalLocationsForMidi(profile, getCbaMidiAt(profile, 4, column));
+    const core = column >= 4
+      ? getCbaPhysicalLocationsForMidi(profile, midiAt(profile, 1, column))
+      : [];
+    const auxiliary = getCbaPhysicalLocationsForMidi(profile, midiAt(profile, 4, column));
     assertEquals(
       auxiliary.some((location) => location.row === 4 && location.column === column),
       true,
@@ -94,8 +104,10 @@ Deno.test("CBA keyboard profile: duplicated rows provide stable auxiliary candid
       core.some((location) => location.row === 1 && location.column === column) || column === 3,
       true,
     );
-    assertEquals(getCbaMidiAt(profile, 1, column), getCbaMidiAt(profile, 4, column));
-    assertEquals(getCbaMidiAt(profile, 2, column), getCbaMidiAt(profile, 5, column));
+    if (column >= 4) {
+      assertEquals(midiAt(profile, 1, column), midiAt(profile, 4, column));
+    }
+    assertEquals(midiAt(profile, 2, column), midiAt(profile, 5, column));
   }
 });
 
@@ -133,6 +145,7 @@ Deno.test("CBA keyboard profile: three-row core projection keeps the same pitch 
     assert(bounds);
     for (let column = bounds.minColumn; column <= bounds.maxColumn; column++) {
       const midi = getCbaMidiAt(threeRowLayout, row, column);
+      assert(midi !== undefined);
       assert(
         getCbaPhysicalLocationsForMidi(threeRowLayout, midi).some((location) =>
           location.row === row && location.column === column
@@ -143,6 +156,40 @@ Deno.test("CBA keyboard profile: three-row core projection keeps the same pitch 
   assertEquals(CBA_ROW_SEMITONE_OFFSETS[1], 0);
   assertEquals(CBA_ROW_SEMITONE_OFFSETS[2], 1);
   assertEquals(CBA_ROW_SEMITONE_OFFSETS[3], 2);
+  const threeRowMidis = { lowest: 55, highest: 91 };
+  threeRowLayout.playableMidi = threeRowMidis;
+  assertEquals(validateCbaKeyboardLayout(threeRowLayout), []);
+  for (let midi = threeRowMidis.lowest; midi <= threeRowMidis.highest; midi++) {
+    assert(getCbaPhysicalLocationsForMidi(threeRowLayout, midi).length > 0);
+  }
+});
+
+Deno.test("CBA keyboard profile: finite coordinates and metadata are validated", () => {
+  assertEquals(getCbaMidiAt(profile, 1, 3), undefined);
+  assertEquals(getCbaMidiAt(profile, 5, 15), undefined);
+  assertEquals(getCbaMidiAt(profile, 1, 5.5), undefined);
+  assertEquals(validateCbaKeyboardLayout(profile), []);
+
+  const invalidReference: CbaKeyboardLayout = {
+    ...profile,
+    id: "invalid-reference",
+    reference: { ...profile.reference, midi: 61 },
+  };
+  assert(
+    validateCbaKeyboardLayout(invalidReference).includes("reference pitch and MIDI do not agree"),
+  );
+
+  const invalidRange: CbaKeyboardLayout = {
+    ...profile,
+    id: "invalid-range",
+    playableMidi: { lowest: 55, highest: 91 },
+  };
+  assert(
+    validateCbaKeyboardLayout(invalidRange).includes(
+      "playable MIDI bounds do not match finite physical buttons",
+    ),
+  );
+  assertEquals(getCbaPhysicalLocationsForMidi(invalidRange, 54), []);
 });
 
 Deno.test("CBA keyboard profile: melodic contour fixtures enumerate deterministic candidate paths", () => {

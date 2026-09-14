@@ -92,6 +92,21 @@ export function getCbaMidiAt(
   layout: CbaKeyboardLayout,
   row: CbaPhysicalRow,
   column: number,
+): number | undefined {
+  const bounds = getCbaRowBounds(layout, row);
+  if (
+    !bounds || !Number.isSafeInteger(column) || column < bounds.minColumn ||
+    column > bounds.maxColumn
+  ) {
+    return undefined;
+  }
+  return getCbaMidiAtUnchecked(layout, row, column);
+}
+
+function getCbaMidiAtUnchecked(
+  layout: CbaKeyboardLayout,
+  row: CbaPhysicalRow,
+  column: number,
 ): number {
   const referenceRowOffset = CBA_ROW_SEMITONE_OFFSETS[layout.reference.row];
   const rowOffset = CBA_ROW_SEMITONE_OFFSETS[row];
@@ -104,6 +119,76 @@ export function getCbaMidiAt(
 }
 
 /**
+ * Validate the finite physical profile before using it for melody guidance.
+ * Returning strings keeps this helper usable in import/preflight code without throwing.
+ */
+export function validateCbaKeyboardLayout(layout: CbaKeyboardLayout): string[] {
+  const issues: string[] = [];
+  if (!Array.isArray(layout.rows) || layout.rows.length === 0) {
+    issues.push("rows must contain at least one physical row");
+    return issues;
+  }
+
+  const seenRows = new Set<number>();
+  for (const bounds of layout.rows) {
+    if (seenRows.has(bounds.row)) issues.push(`duplicate row ${bounds.row}`);
+    seenRows.add(bounds.row);
+    if (!Number.isSafeInteger(bounds.minColumn) || !Number.isSafeInteger(bounds.maxColumn)) {
+      issues.push(`row ${bounds.row} columns must be safe integers`);
+    } else if (bounds.minColumn > bounds.maxColumn) {
+      issues.push(`row ${bounds.row} has minColumn greater than maxColumn`);
+    }
+  }
+
+  const referenceBounds = getCbaRowBounds(layout, layout.reference.row);
+  if (
+    !referenceBounds || layout.reference.column < referenceBounds.minColumn ||
+    layout.reference.column > referenceBounds.maxColumn
+  ) {
+    issues.push("reference coordinate is outside the finite layout");
+  }
+  if (spelledPitchToMidi(layout.reference.pitch) !== layout.reference.midi) {
+    issues.push("reference pitch and MIDI do not agree");
+  }
+  if (
+    !Number.isSafeInteger(layout.playableMidi.lowest) ||
+    !Number.isSafeInteger(layout.playableMidi.highest)
+  ) {
+    issues.push("playable MIDI bounds must be safe integers");
+  } else if (layout.playableMidi.lowest > layout.playableMidi.highest) {
+    issues.push("playable MIDI lowest is greater than highest");
+  }
+
+  const physicalMidis: number[] = [];
+  for (const bounds of layout.rows) {
+    if (!Number.isSafeInteger(bounds.minColumn) || !Number.isSafeInteger(bounds.maxColumn)) {
+      continue;
+    }
+    for (let column = bounds.minColumn; column <= bounds.maxColumn; column++) {
+      physicalMidis.push(getCbaMidiAtUnchecked(layout, bounds.row, column));
+    }
+  }
+  if (physicalMidis.length > 0) {
+    const lowest = Math.min(...physicalMidis);
+    const highest = Math.max(...physicalMidis);
+    if (lowest !== layout.playableMidi.lowest || highest !== layout.playableMidi.highest) {
+      issues.push("playable MIDI bounds do not match finite physical buttons");
+    }
+  }
+
+  for (const duplicate of layout.duplicatedRows) {
+    const sourceOffset = CBA_ROW_SEMITONE_OFFSETS[duplicate.sourceRow];
+    const duplicateOffset = CBA_ROW_SEMITONE_OFFSETS[duplicate.row];
+    if (sourceOffset !== duplicateOffset) {
+      issues.push(
+        `duplicated row ${duplicate.row} does not share pitch offset with row ${duplicate.sourceRow}`,
+      );
+    }
+  }
+  return issues;
+}
+
+/**
  * Enumerate every physical button that can produce one absolute MIDI note.
  * Results are stable in row/column order so persisted guidance is deterministic.
  */
@@ -111,13 +196,18 @@ export function getCbaPhysicalLocationsForMidi(
   layout: CbaKeyboardLayout,
   midi: number,
 ): CbaPhysicalLocation[] {
-  if (!Number.isSafeInteger(midi)) return [];
+  if (
+    !Number.isSafeInteger(midi) || midi < layout.playableMidi.lowest ||
+    midi > layout.playableMidi.highest
+  ) {
+    return [];
+  }
 
   const locations: CbaPhysicalLocation[] = [];
   for (const bounds of layout.rows) {
     for (let column = bounds.minColumn; column <= bounds.maxColumn; column++) {
       const row = bounds.row;
-      if (getCbaMidiAt(layout, row, column) !== midi) continue;
+      if (getCbaMidiAtUnchecked(layout, row, column) !== midi) continue;
       locations.push({
         row,
         column,

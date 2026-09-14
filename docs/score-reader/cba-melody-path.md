@@ -74,35 +74,57 @@ set is an out-of-range diagnostic, never an invented octave or nearest-note subs
 ## Melody-path state and cost (solver milestone)
 
 The eventual dynamic-programming state is `(button, finger, handPosition, previousTransition)`.
-`button` is a physical row/column candidate; `finger` is 1–5; `handPosition` is a bounded centroid
-estimate; and `previousTransition` records direction and whether the preceding event was a rest,
-tie, or phrase boundary. A state is invalid when it violates a user lock or an instrument bound.
+`button` is a physical row/column candidate; `finger` is 1–5; `handPosition` is a bounded
+`{row, column}` coordinate; and `previousTransition` records direction plus whether the preceding
+event was a rest, tie, or phrase boundary. For a single-note melody, the hand position is updated to
+the selected button after each note and is clamped to the finite layout. (A future chord-aware mode
+may use a weighted centroid.) A state is invalid when it violates a user lock or an instrument
+bound.
 
-For adjacent events, the initial versioned cost terms are:
+For adjacent sounding events, v1 uses this exact edge cost. `dc` and `dr` are the column and row
+deltas, `stretch = |dc| + |dr|`, and “different button” means different physical coordinates:
 
 ```text
-4.0 * |Δcolumn|                         column travel
-1.5 * |Δrow|                            row travel
-2.0 * repeated-button indicator        repeated-note stability
-3.0 * same-finger/different-button     awkward re-articulation
-6.0 * finger-crossing indicator        crossing penalty
-3.0 * max(0, stretch-2)^2              excessive span
-1.0 * thumb-use indicator               thumb is allowed but discouraged
+columnTravel = |dc|
+rowTravel = |dr|
+sameMidiDifferentButton = prev.midi == next.midi && button differs ? 1 : 0
+sameFingerDifferentButton = prev.finger == next.finger && button differs ? 1 : 0
+fingerCrossing = (dc > 0 && next.finger < prev.finger) ||
+                 (dc < 0 && next.finger > prev.finger) ? 1 : 0
+
+edgeCost = 4.0 * columnTravel
+         + 1.5 * rowTravel
+         + 2.0 * sameMidiDifferentButton  // re-articulation penalty; same button is preferred
+         + 3.0 * sameFingerDifferentButton
+         + 6.0 * fingerCrossing
+         + 3.0 * max(0, stretch - 2)^2
+         + 1.0 * (next.finger == 1 ? 1 : 0) // thumb is allowed but discouraged
 ```
 
-After a rest or explicit phrase boundary, the hand-position term resets and the first move pays a
-bounded reposition cost rather than inheriting the previous centroid. Ties keep the same physical
-button when possible. Look-ahead is represented by adding the next transition cost before choosing
-the current state; it must not make the result nondeterministic.
+For the first note in a phrase, `previousTransition` is null and the hand-position anchor is the
+profile reference coordinate. The initial reposition cost is
+`4*|candidate.column-reference.column| + 1.5*|candidate.row-reference.row| + thumbCost`. After a
+rest or explicit phrase boundary, the previous state is cleared, the hand position resets to that
+same reference coordinate, and the next note pays the initial reposition cost. Ties prefer the same
+button and finger; a tie that cannot retain them is diagnosed rather than silently substituted. V1
+has `lookAheadWeight = 0`: no hidden second transition is added, so there is no double-counting. A
+non-zero look-ahead requires a second-order DP and a schema/version change.
 
-Tie-breaking order is: lower total cost, lower column travel, lower row travel, lower finger, lower
-row, then lower column. User-locked coordinates/fingers are hard constraints and are applied before
-optimization. No LLM is involved in candidate lookup or path optimization.
+User locks are hard constraints filtered before optimization. A lock that names a missing
+coordinate, an out-of-range note, or conflicting coordinate/finger choices returns an `invalid_lock`
+diagnostic and no melody guidance; the solver never falls back to a nearest button. An out-of-range
+pitch returns `out_of_range` and no guidance.
+
+Tie-breaking is complete and deterministic: lower total cost; lower final column travel; lower final
+row travel; lower final finger; lower final row; lower final column; then lexicographically earlier
+event-index/candidate order. The path result stores the solver schema version. No LLM is involved in
+candidate lookup or path optimization.
 
 ## Required fixture coverage
 
 Before the solver is enabled, tests must cover every physical coordinate and every playable MIDI
 note, all twelve pitch classes, ascending and descending scales, repeated notes, chromatic runs,
 large leaps, rests, ties, phrase resets, transposition, out-of-range notes, three-row projection,
-and five-row auxiliary duplicates. Existing chord-grid tests must continue to prove the `1-2-4` and
-`2-3-5` grip invariants independently of this melody profile.
+and five-row auxiliary duplicates. Existing chord-grid tests must continue to prove the established
+canonical/inversion fingering invariants independently of this melody profile; the melody profile
+must not change chord-grip behavior.

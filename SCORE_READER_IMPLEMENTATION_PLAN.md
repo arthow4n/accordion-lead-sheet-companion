@@ -518,11 +518,13 @@ mandated by `AGENTS.md` before production implementation.
 - [x] Preserve pitch spelling for display while using pitch class/octave for physical location.
 - [x] Define deterministic tie-breaking so tests and persisted results remain stable.
 - [x] Specify how user-locked fingerings constrain subsequent optimization.
-- [x] Write table-driven expected paths covering every absolute pitch in each supported keyboard,
-      all 12 pitch classes, ascending and descending scales, repeated notes, chromatic runs, leaps,
-      rests, ties, phrase boundaries, out-of-range notes, 3-row layouts, and 5-row auxiliary rows.
-- [x] Add invariants: every output button sounds the input pitch, no impossible finger is emitted,
-      locked choices are preserved, and identical input/preferences produce identical output.
+- [ ] Implement table-driven expected solver paths covering every absolute pitch in each supported
+      keyboard, all 12 pitch classes, ascending and descending scales, repeated notes, chromatic
+      runs, leaps, rests, ties, phrase boundaries, out-of-range notes, 3-row layouts, and 5-row
+      auxiliary rows (Milestone 4B, after the solver exists).
+- [ ] Add executable solver invariants: every output button sounds the input pitch, no impossible
+      finger is emitted, locked choices are preserved, and identical input/preferences produce
+      identical output (Milestone 4B).
 
 #### Review checkpoint 2 — Pre-implementation domain validation
 
@@ -544,6 +546,9 @@ mandated by `AGENTS.md` before production implementation.
 - [ ] Keep melody-path logic separate from chord-grip voice leading while sharing only validated
       physical-layout primitives.
 - [ ] Return per-event coordinate, finger, transition, confidence/ambiguity, and locked status.
+- [ ] Make invalid locks, conflicting locks, out-of-range notes, rests, ties, and phrase resets
+      explicit result diagnostics; never substitute a nearest button.
+- [ ] Add the table-driven path fixtures and solver invariants deferred from Milestone 4A.
 - [ ] Add a melody-focused CBA visualization by extending shared grid primitives rather than
       duplicating the full grid.
 - [ ] Show current, next, and optionally previous melody buttons; keep the established semantic

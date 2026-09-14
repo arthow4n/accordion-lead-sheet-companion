@@ -3,6 +3,7 @@ import type { CbaGrip } from "../../types/index.ts";
 import { generateCanonicalRootGrip, generateCbaGrip } from "./grips.ts";
 import { getCbaVisualRowOffset, getPitchClassAt } from "./grid.ts";
 import { computeCbaTransition, optimizeVoiceLeading } from "./voiceLeading.ts";
+import { getPitchClass, parseChord } from "../capo/transposition.ts";
 
 Deno.test("CBA geometry: five-row auxiliary lattice alternates physical diagonal direction", () => {
   assertEquals(
@@ -231,6 +232,81 @@ Deno.test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscl
     const rows = rootGrip.buttonCoords!.map((b) => b.row);
     const rowSpan = Math.max(...rows) - Math.min(...rows);
     assertEquals(rowSpan <= 2, true, `Chord ${chord} row span ${rowSpan} exceeds 2`);
+  }
+});
+
+Deno.test("CBA-19: Canonical root grips remain isomorphic in 3-row and 5-row modes", () => {
+  const roots = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+  for (const root of roots) {
+    for (const suffix of ["", "m"]) {
+      const chord = `${root}${suffix}`;
+      const threeRow = generateCanonicalRootGrip(chord, 5, "3row");
+      const fiveRow = generateCanonicalRootGrip(chord, 5, "5row");
+      assertEquals(threeRow.notes, fiveRow.notes, `${chord} note spelling changed by row mode`);
+      assertEquals(threeRow.fingeringPattern, "1-2-4");
+      assertEquals(fiveRow.fingeringPattern, "1-2-4");
+      for (const button of threeRow.buttonCoords ?? []) {
+        assertEquals(button.row >= 1 && button.row <= 3, true, `${chord} escaped 3-row core`);
+        assertEquals(getPitchClass(button.note), getPitchClassAt(button.row, button.column));
+      }
+      for (const button of fiveRow.buttonCoords ?? []) {
+        assertEquals(button.row >= 1 && button.row <= 5, true, `${chord} escaped 5-row layout`);
+        assertEquals(getPitchClass(button.note), getPitchClassAt(button.row, button.column));
+      }
+    }
+  }
+});
+
+Deno.test("CBA-20: Existing chord qualities retain collision-free grips and voice-leading transitions", () => {
+  const fixtures = [
+    "C",
+    "Cm",
+    "Cdim",
+    "Caug",
+    "C7",
+    "Cmaj7",
+    "Cm7",
+    "Cdim7",
+    "Cm7b5",
+    "C9",
+    "Cmaj9",
+    "Cm9",
+    "C11",
+    "Cm11",
+    "C7sus4",
+    "Csus2",
+    "Cadd9",
+    "C5",
+    "CmMaj7",
+    "C13",
+    "C7#9",
+    "C7#5",
+    "Cadd4",
+    "C6",
+    "Cm6",
+    "C7#11",
+    "C7b9",
+    "C6/9",
+    "C7alt",
+  ];
+  for (const token of fixtures) {
+    const grip = generateCbaGrip(token, 0, 5);
+    const buttons = grip.buttonCoords ?? [];
+    assertEquals(buttons.length, grip.notes.length, `${token} lost a button`);
+    assertEquals(
+      new Set(buttons.map((button) => `${button.row}:${button.column}`)).size,
+      buttons.length,
+    );
+    for (const button of buttons) {
+      assertEquals(getPitchClass(button.note), getPitchClassAt(button.row, button.column));
+    }
+    const next = optimizeVoiceLeading(token, grip);
+    assertEquals(
+      next.buttonCoords?.length,
+      grip.notes.length,
+      `${token} voice-leading changed note count`,
+    );
+    assertEquals(parseChord(token).root, "C");
   }
 });
 
