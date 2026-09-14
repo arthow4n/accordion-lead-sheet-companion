@@ -414,84 +414,84 @@ at the relevant decision gate; it does not block earlier local work that is inde
 
 ### Milestone 2 — MusicXML/MXL import before photograph recognition
 
-- [ ] Add MusicXML and MXL file choices to the existing import experience.
-- [ ] Add dependencies through `deno.json` only and pin versions.
-- [ ] Parse exactly the MusicXML v1 support matrix above into `ScoreDocument`, independently of
+- [x] Add MusicXML and MXL file choices to the existing import experience.
+- [x] Add dependencies through `deno.json` only and pin versions.
+- [x] Parse exactly the MusicXML v1 support matrix above into `ScoreDocument`, independently of
       undocumented OSMD internals. Persist a sanitized MusicXML render source separately from the
       domain model.
-- [ ] For MXL, use a pinned, browser-compatible audited ZIP library. Accept at most 10 MiB
+- [x] For MXL, use a pinned, browser-compatible audited ZIP library. Accept at most 10 MiB
       compressed, 32 MiB uncompressed, and 128 entries; reject traversal, duplicate normalized
       paths, encrypted entries, symlinks, multiple/absent roots, and decompression limit violations.
-- [ ] For XML, reject DTDs/external entities and unsupported encodings. Enforce 10 MiB XML, bounded
+- [x] For XML, reject DTDs/external entities and unsupported encodings. Enforce 10 MiB XML, bounded
       element count/event count, and maximum depth 128 before domain conversion. Tighten these
       initial caps when profiling proves a smaller safe limit.
-- [ ] Preserve the clef, key, meter, measures, events, harmonies, and navigation constructs marked
+- [x] Preserve the clef, key, meter, measures, events, harmonies, and navigation constructs marked
       `Parse`; emit the specified issues for every other matrix row.
-- [ ] Return structured, user-readable issues for unsupported polyphony or malformed documents.
-- [ ] Add authored MusicXML fixtures for every supported construct.
-- [ ] Add round-trip or semantic-equivalence tests where export is supported.
-- [ ] Integrate OpenSheetMusicDisplay lazily using its SVG backend.
-- [ ] Run an early OSMD spike comparing: bounded excerpt documents, a cached full render cropped by
+- [x] Return structured, user-readable issues for unsupported polyphony or malformed documents.
+- [x] Add authored MusicXML fixtures for every supported construct.
+- [x] Add round-trip or semantic-equivalence tests where export is supported.
+- [x] Integrate OpenSheetMusicDisplay lazily using its SVG backend.
+- [x] Run an early OSMD spike comparing: bounded excerpt documents, a cached full render cropped by
       mapped system/measure boxes, and supported incremental rendering. Record the selected strategy
       and prove that current/next display does not depend on undocumented OSMD internals.
-- [ ] If no OSMD strategy meets public-API stability, measure mapping, bounded work, and mobile
+- [x] If no OSMD strategy meets public-API stability, measure mapping, bounded work, and mobile
       performance gates, stop for user direction. Authorized choices requiring explicit approval are
       sanitized full-score OSMD display or a separately scoped minimal notation renderer; photo
       inputs may continue to use source-image crops.
-- [ ] Add cursor and measure-highlight tests at the abstraction boundary rather than snapshotting
+- [x] Add cursor and measure-highlight tests at the abstraction boundary rather than snapshotting
       volatile SVG internals.
 
 **Exit criteria**
 
-- [ ] A supported MusicXML/MXL file opens offline and creates the same harmony guidance as an
+- [x] A supported MusicXML/MXL file opens offline and creates the same harmony guidance as an
       equivalent lead sheet.
-- [ ] Unsupported inputs fail safely without corrupting the songbook.
-- [ ] No photograph or OMR dependency is required for this path.
+- [x] Unsupported inputs fail safely without corrupting the songbook.
+- [x] No photograph or OMR dependency is required for this path.
 
 #### Review checkpoint 1 — Architecture, regression, and secure import
 
-- [ ] Invoke the Section 5 reviewer contract after Milestone 2.
-- [ ] Ask it to inspect the score schema, storage migrations, source lifecycle, written/performance
+- [x] Invoke the Section 5 reviewer contract after Milestone 2.
+- [x] Ask it to inspect the score schema, storage migrations, source lifecycle, written/performance
       ordering, transposition and harmony reuse, XML/MXL adversarial limits, OSMD isolation, bounded
       rendering, and import failure atomicity.
-- [ ] Resolve high/blocking findings, rerun the four checks, and record the disposition.
+- [x] Resolve high/blocking findings, rerun the four checks, and record the disposition.
 
 ### Milestone 3 — Measure-aware playing experience
 
-- [ ] Add `preview`, `learn`, and `perform` score experiences without adding a second application
+- [x] Add `preview`, `learn`, and `perform` score experiences without adding a second application
       shell.
-- [ ] Keep the unified responsive configuration bar and reuse existing view preferences.
-- [ ] Preview automatically shows key, meter, written form, performance route, and existing unique
+- [x] Keep the unified responsive configuration bar and reuse existing view preferences.
+- [x] Preview automatically shows key, meter, written form, performance route, and existing unique
       chord mini-cards.
-- [ ] Learn mode shows the current measure prominently, the next measure as context, a count-in,
+- [x] Learn mode shows the current measure prominently, the next measure as context, a count-in,
       tempo, phrase loop, and the selected accordion guidance.
-- [ ] Perform mode removes nonessential controls and keeps the current measure, next destination,
+- [x] Perform mode removes nonessential controls and keeps the current measure, next destination,
       and minimal hand guidance visible.
-- [ ] Reuse `ChordBadge`, `StradellaMiniCard`, `CbaMiniCard`, and `MiniGripDrawer`; do not fork
+- [x] Reuse `ChordBadge`, `StradellaMiniCard`, `CbaMiniCard`, and `MiniGripDrawer`; do not fork
       score-specific copies of them.
-- [ ] Feed measure harmony through existing Stradella display modes: badges, line cards, and micro
+- [x] Feed measure harmony through existing Stradella display modes: badges, line cards, and micro
       grids.
-- [ ] Retain existing CBA chord-grip modes for preview, chord taps, and optional harmony playing.
-- [ ] Default jam fills off during faithful melody-score reading.
-- [ ] Extend auto-scroll with a musical clock based on tempo, time signature, and measure duration;
+- [x] Retain existing CBA chord-grip modes for preview, chord taps, and optional harmony playing.
+- [x] Default jam fills off during faithful melody-score reading.
+- [x] Extend auto-scroll with a musical clock based on tempo, time signature, and measure duration;
       retain touch pause/resume and stop at fermata/manual holds.
-- [ ] Extend pedal navigation so callbacks advance exactly one measure or phrase in score mode while
+- [x] Extend pedal navigation so callbacks advance exactly one measure or phrase in score mode while
       preserving viewport paging for classic lead sheets.
-- [ ] Reuse wake lock unchanged except for integration tests.
-- [ ] Ensure chord/grid taps stop propagation and never trigger navigation.
-- [ ] Add unit and UX tests for tempo changes, pickups, fermata/manual holds, malformed route
+- [x] Reuse wake lock unchanged except for integration tests.
+- [x] Ensure chord/grid taps stop propagation and never trigger navigation.
+- [x] Add unit and UX tests for tempo changes, pickups, fermata/manual holds, malformed route
       cycles, repeat-aware next destination, count-in, looping, touch pause, pedal direction, drawer
       interaction, and switching back to classic lead sheets.
-- [ ] At introduction—not only final hardening—verify keyboard/focus behavior, reduced motion,
+- [x] At introduction—not only final hardening—verify keyboard/focus behavior, reduced motion,
       progress announcements, long-direction overflow, drawer occlusion, and overlay/pedal
       conflicts.
-- [ ] Run the UI audit at 360, 390, and 430 px widths.
+- [x] Run the UI audit at 360, 390, and 430 px widths.
 
 **Exit criteria**
 
-- [ ] A MusicXML score can be played hands-free using existing LH/RH guidance.
-- [ ] Classic lead sheets behave exactly as before.
-- [ ] There is no horizontal document overflow and interactive targets remain at least 44 by 44 px.
+- [x] A MusicXML score can be played hands-free using existing LH/RH guidance.
+- [x] Classic lead sheets behave exactly as before.
+- [x] There is no horizontal document overflow and interactive targets remain at least 44 by 44 px.
 
 ### Milestone 4 — CBA melody-path mathematical model
 
