@@ -318,8 +318,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         onProgress: (p) => setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`),
       });
 
+      const { fuseScoreDocument } = await import("../lib/score/scoreFusion.ts");
+      const fusedResult = fuseScoreDocument(scoreDoc);
+      const finalDoc = fusedResult.document;
+
       if (avgConfidence < 0.6) {
-        scoreDoc.issues.push({
+        finalDoc.issues.push({
           code: "low_omr_confidence",
           message: `OMR recognition confidence was low (${
             Math.round(avgConfidence * 100)
@@ -329,8 +333,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         });
       }
 
-      scoreDoc.photoLayout = prep.layout;
-      scoreDoc.title = selectedImage.name.replace(/\.[^.]+$/, "") || "Scanned Lead Sheet";
+      finalDoc.photoLayout = prep.layout;
+      finalDoc.title = selectedImage.name.replace(/\.[^.]+$/, "") || "Scanned Lead Sheet";
 
       const now = Date.now();
       const assetId = `asset_${now}_${Math.random().toString(36).slice(2, 9)}`;
@@ -338,18 +342,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
       if (photoKeepSource) {
         await saveScoreAsset(assetId, selectedImage);
-        scoreDoc.source = { kind: "photo", assetId, persistence: "opted_in" };
+        finalDoc.source = { kind: "photo", assetId, persistence: "opted_in" };
       } else {
-        scoreDoc.source = { kind: "photo", assetId, persistence: "ephemeral" };
+        finalDoc.source = { kind: "photo", assetId, persistence: "ephemeral" };
       }
 
       setPreviewSong({
         id: `photo_${now}_${Math.random().toString(36).slice(2, 9)}`,
-        title: scoreDoc.title,
+        title: finalDoc.title,
         capoFret: 0,
         rawText: "",
         lines: [],
-        score: scoreDoc,
+        score: finalDoc,
         createdAt: now,
         updatedAt: now,
       });
