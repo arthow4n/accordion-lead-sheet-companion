@@ -464,6 +464,20 @@ Deno.test("MusicXML parser blocks unsafe numeric domains and nested repeats", ()
   assertEquals(result.issues.some((item) => item.code === "unsupported_nested_repeat"), true);
 });
 
+Deno.test("MusicXML parser blocks malformed harmony, transpose, and repeat domains", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
+    <measure number="1"><attributes><divisions>1</divisions><clef><sign>G</sign></clef><transpose><chromatic>0.5</chromatic></transpose></attributes>
+      <barline location="right"><repeat direction="backward" times="2.5"/></barline>
+      <harmony><kind>major</kind></harmony><note><rest/><duration>1</duration></note>
+    </measure>
+  </part></score-partwise>`;
+  const result = parseMusicXml(xml);
+  assertEquals(result.issues.some((item) => item.code === "invalid_transpose"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_repeat_count"), true);
+  assertEquals(result.issues.some((item) => item.code === "invalid_harmony"), true);
+  assertEquals(result.document?.measures[0].harmonies[0].unsupported, true);
+});
+
 Deno.test("score harmony adapter applies transposition and selected CBA profile", () => {
   const events = enrichHarmonySequence([{ id: "h1", offset: rational(0), raw: "C" }], {
     transpositionSemitones: 2,

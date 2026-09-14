@@ -172,9 +172,26 @@ function hasNonZeroTranspose(attributes: Element): boolean {
   const transpose = child(attributes, "transpose");
   if (!transpose) return false;
   return ["diatonic", "chromatic", "octave-change"].some((name) => {
-    const value = Number.parseInt(text(child(transpose, name)), 10);
-    return Number.isFinite(value) && value !== 0;
+    const value = safeIntText(child(transpose, name));
+    return value !== undefined && value !== 0;
   });
+}
+
+function hasInvalidTranspose(attributes: Element): boolean {
+  const transpose = child(attributes, "transpose");
+  if (!transpose) return false;
+  const fields = ["diatonic", "chromatic", "octave-change"]
+    .map((name) => child(transpose, name))
+    .filter((element): element is Element => element !== undefined);
+  return fields.length === 0 || fields.some((element) => safeIntText(element) === undefined);
+}
+
+function parseRepeatCount(value: string | null): number | undefined {
+  if (value === null) return 2;
+  const normalized = value.trim();
+  if (!/^[-+]?\d+$/.test(normalized)) return undefined;
+  const parsed = Number(normalized);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function accidental(alter: number): string {
@@ -215,21 +232,29 @@ function parseHarmony(
 ): HarmonyEvent {
   const root = child(element, "root");
   const rootStep = text(child(root || element, "root-step"));
-  const rootAlter = intText(child(root || element, "root-alter"));
+  const rootAlterElement = child(root || element, "root-alter");
+  const rootAlter = intText(rootAlterElement);
+  const validRoot = root !== undefined && isPitchStep(rootStep) &&
+    (rootAlterElement === undefined ||
+      (safeIntText(rootAlterElement) !== undefined && rootAlter >= -2 && rootAlter <= 2));
   const kindElement = child(element, "kind");
   const suffix = chordKindSuffix(text(kindElement));
   const hasDegree = children(element, "degree").length > 0;
-  const raw = rootStep && suffix !== undefined
-    ? `${rootStep}${accidental(rootAlter)}${suffix}`
-    : text(kindElement) || "";
   const bass = child(element, "bass");
   const bassStep = text(child(bass || element, "bass-step"));
-  const bassAlter = intText(child(bass || element, "bass-alter"));
+  const bassAlterElement = child(bass || element, "bass-alter");
+  const bassAlter = intText(bassAlterElement);
+  const validBass = !bass || (isPitchStep(bassStep) &&
+    (bassAlterElement === undefined ||
+      (safeIntText(bassAlterElement) !== undefined && bassAlter >= -2 && bassAlter <= 2)));
+  const raw = validRoot && suffix !== undefined
+    ? `${rootStep}${accidental(rootAlter)}${suffix}`
+    : text(kindElement) || "";
   return {
     id: `h${index}`,
     offset,
     raw: bassStep ? `${raw}/${bassStep}${accidental(bassAlter)}` : raw,
-    unsupported: suffix === undefined || hasDegree,
+    unsupported: suffix === undefined || hasDegree || !validRoot || !validBass,
   };
 }
 
@@ -243,8 +268,10 @@ function parseNavigation(measureElement: Element): NavigationMark[] {
     const repeat = child(barline, "repeat");
     if (repeat?.getAttribute("direction") === "forward") marks.push({ kind: "repeat-start" });
     if (repeat?.getAttribute("direction") === "backward") {
-      const times = Number.parseInt(repeat.getAttribute("times") || "2", 10);
-      marks.push({ kind: "repeat-end", repeatCount: Number.isFinite(times) ? times : 2 });
+      marks.push({
+        kind: "repeat-end",
+        repeatCount: parseRepeatCount(repeat.getAttribute("times")),
+      });
     }
     for (const ending of children(barline, "ending")) {
       const numbers = (ending.getAttribute("number") || "").split(/[ ,]+/).map(Number).filter(
@@ -462,11 +489,20 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
           issue("unsupported_score_shape", "Multiple staves are not supported in score reader v1."),
         );
       }
-      if (hasNonZeroTranspose(attributes)) {
+      if (hasInvalidTranspose(attributes)) {
         issues.push(
-          issue(
+          measureIssue(
+            "invalid_transpose",
+            "MusicXML transpose values must be whole numbers and include at least one field.",
+            id,
+          ),
+        );
+      } else if (hasNonZeroTranspose(attributes)) {
+        issues.push(
+          measureIssue(
             "unsupported_instrument_transposition",
             "MusicXML transpose instructions are not supported.",
+            id,
           ),
         );
       }
@@ -660,9 +696,9 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
         const bassAlterElement = child(bass || element, "bass-alter");
         const bassAlter = safeIntText(bassAlterElement);
         if (
-          (root && (!isPitchStep(rootStep) ||
-            (rootAlterElement !== undefined &&
-              (rootAlter === undefined || rootAlter < -2 || rootAlter > 2)))) ||
+          !root || !isPitchStep(rootStep) ||
+          (rootAlterElement !== undefined &&
+            (rootAlter === undefined || rootAlter < -2 || rootAlter > 2)) ||
           (bass && (!isPitchStep(bassStep) ||
             (bassAlterElement !== undefined &&
               (bassAlter === undefined || bassAlter < -2 || bassAlter > 2))))
@@ -754,6 +790,21 @@ export function parseMusicXml(xml: string): MusicXmlParseResult {
     }
     const printedNumber = Number.parseInt(measureElement.getAttribute("number") || "", 10);
     const navigation = parseNavigation(measureElement);
+    for (const barline of children(measureElement, "barline")) {
+      const repeat = child(barline, "repeat");
+      if (
+        repeat?.getAttribute("direction") === "backward" &&
+        parseRepeatCount(repeat.getAttribute("times")) === undefined
+      ) {
+        issues.push(
+          measureIssue(
+            "invalid_repeat_count",
+            "MusicXML repeat counts must be positive whole numbers.",
+            id,
+          ),
+        );
+      }
+    }
     for (const mark of navigation) {
       if (mark.kind === "repeat-start") {
         if (repeatDepth > 0 && !nestedRepeatReported) {

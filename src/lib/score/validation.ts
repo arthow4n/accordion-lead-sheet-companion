@@ -16,6 +16,29 @@ const MAX_HARMONIES_PER_MEASURE = 1_024;
 const MAX_NAVIGATION_PER_MEASURE = 256;
 const MAX_SECTIONS = 1_024;
 const MAX_ISSUES = 4_096;
+const MAX_TOTAL_EVENT_VISITS = 100_000;
+
+interface ValidationBudget {
+  remainingEventVisits: number;
+  exhausted: boolean;
+}
+
+function createIssueList(): ScoreIssue[] {
+  const issues: ScoreIssue[] = [];
+  const nativePush = issues.push.bind(issues);
+  issues.push = (...values: ScoreIssue[]) => {
+    const remaining = Math.max(0, MAX_ISSUES - issues.length);
+    return nativePush(...values.slice(0, remaining));
+  };
+  return issues;
+}
+
+function consumeEventVisits(budget: ValidationBudget, requested: number): number {
+  const allowed = Math.min(requested, budget.remainingEventVisits);
+  budget.remainingEventVisits -= allowed;
+  if (allowed < requested) budget.exhausted = true;
+  return allowed;
+}
 
 function issue(
   code: string,
@@ -137,8 +160,8 @@ function isValidIssue(value: unknown): value is ScoreIssue {
     isFiniteBox(candidate.sourceBox as ImageBox | undefined);
 }
 
-function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
-  const issues: ScoreIssue[] = [];
+function validateMelody(measure: ScoreMeasure, budget: ValidationBudget): ScoreIssue[] {
+  const issues = createIssueList();
   if (!Array.isArray(measure.melody)) {
     issues.push(issue("invalid_melody", "Measure melody must be an array.", measure.id));
     return issues;
@@ -147,7 +170,11 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
     issues.push(issue("event_limit", "Measure contains too many melody events.", measure.id));
   }
   let previousOffset = RATIONAL_ZERO;
-  for (const event of measure.melody.slice(0, MAX_EVENTS_PER_MEASURE)) {
+  const visitCount = consumeEventVisits(
+    budget,
+    Math.min(measure.melody.length, MAX_EVENTS_PER_MEASURE),
+  );
+  for (const event of measure.melody.slice(0, visitCount)) {
     if (
       !event || typeof event !== "object" || !isRational(event.offset) ||
       !isRational(event.duration) || typeof event.id !== "string" || typeof event.rest !== "boolean"
@@ -234,10 +261,12 @@ function validateMelody(measure: ScoreMeasure): ScoreIssue[] {
 
 function validateMeasure(
   measure: ScoreMeasure,
+  budget: ValidationBudget,
   fallbackTime?: ScoreTimeSignature,
   globalEventIds?: Set<string>,
 ): ScoreIssue[] {
-  const issues = [...validateMelody(measure)];
+  const issues = createIssueList();
+  issues.push(...validateMelody(measure, budget));
   const activeTime = measure.time || fallbackTime;
   const measureLength = activeTime && isValidTime(activeTime)
     ? rational(activeTime.beats * 4, activeTime.beatType)
@@ -260,10 +289,11 @@ function validateMeasure(
     }
     eventIds.add(id);
   };
+  const melodyVisitCount = Array.isArray(measure.melody)
+    ? consumeEventVisits(budget, Math.min(measure.melody.length, MAX_EVENTS_PER_MEASURE))
+    : 0;
   for (
-    const event of Array.isArray(measure.melody)
-      ? measure.melody.slice(0, MAX_EVENTS_PER_MEASURE)
-      : []
+    const event of Array.isArray(measure.melody) ? measure.melody.slice(0, melodyVisitCount) : []
   ) {
     if (!event || typeof event !== "object") continue;
     registerEventId(event.id, event.sourceBox);
@@ -350,7 +380,11 @@ function validateMeasure(
       );
     }
   }
-  for (const harmony of measure.harmonies.slice(0, MAX_HARMONIES_PER_MEASURE)) {
+  const harmonyVisitCount = consumeEventVisits(
+    budget,
+    Math.min(measure.harmonies.length, MAX_HARMONIES_PER_MEASURE),
+  );
+  for (const harmony of measure.harmonies.slice(0, harmonyVisitCount)) {
     const harmonyId = harmony && typeof harmony === "object" && typeof harmony.id === "string"
       ? harmony.id
       : "(unknown)";
@@ -429,7 +463,7 @@ function validateMeasure(
 
 /** Validate a score without mutating it. */
 export function validateScoreDocument(document: ScoreDocument): ScoreValidationResult {
-  const issues: ScoreIssue[] = [];
+  const issues = createIssueList();
   if (!document || typeof document !== "object") {
     return {
       valid: false,
@@ -544,6 +578,10 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
   const writtenIndexes = new Set<number>();
   const fallbackTime = isValidTime(document.time) ? document.time : undefined;
   const eventIds = new Set<string>();
+  const budget: ValidationBudget = {
+    remainingEventVisits: MAX_TOTAL_EVENT_VISITS,
+    exhausted: false,
+  };
   for (
     const measure of Array.isArray(document.measures)
       ? document.measures.slice(0, MAX_MEASURES)
@@ -569,7 +607,7 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
     }
     ids.add(measure.id);
     writtenIndexes.add(measure.writtenIndex);
-    issues.push(...validateMeasure(measure, fallbackTime, eventIds));
+    issues.push(...validateMeasure(measure, budget, fallbackTime, eventIds));
   }
   const measureIds = new Set(
     (Array.isArray(document.measures) ? document.measures.slice(0, MAX_MEASURES) : [])
@@ -592,6 +630,14 @@ export function validateScoreDocument(document: ScoreDocument): ScoreValidationR
         issue("invalid_section_reference", `Section ${section.id} ends at an unknown measure.`),
       );
     }
+  }
+  if (budget.exhausted) {
+    issues.push(
+      issue(
+        "validation_limit",
+        "Score validation stopped after reaching the total event inspection limit.",
+      ),
+    );
   }
   return {
     valid: issues.every((candidate) => candidate.severity !== "error"),
