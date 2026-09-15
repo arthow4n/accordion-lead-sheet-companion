@@ -52,6 +52,22 @@ export default defineConfig({
           "**/tesseract*",
           "**/*.traineddata*",
         ],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/onnxruntime-web@1\.29\.0\/dist\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "ort-wasm-v1",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 365 * 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

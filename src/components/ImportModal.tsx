@@ -4,6 +4,7 @@ import {
   Camera,
   Clipboard,
   Globe,
+  Image as ImageIcon,
   Loader2,
   Music,
   Sparkles,
@@ -771,19 +772,33 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   Photo / Chords
                 </h3>
                 <div className="flex flex-col gap-2">
-                  <label className="flex items-center justify-center gap-2 p-3 bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
-                    <Camera className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs font-medium text-zinc-200">
-                      {selectedImage ? "Change score photo" : "Take / choose score photo"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center justify-center gap-2 p-3 min-h-[44px] bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
+                      <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="text-xs font-medium text-zinc-200 truncate">
+                        {selectedImage ? "Change gallery" : "Choose gallery"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <label className="flex items-center justify-center gap-2 p-3 min-h-[44px] bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
+                      <Camera className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-xs font-medium text-zinc-200 truncate">
+                        {selectedImage ? "Retake photo" : "Take photo"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+                        capture="environment"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
 
                   {selectedImage && (
                     <div className="flex items-center justify-between px-3 py-2 bg-zinc-900/60 border border-zinc-800 rounded-lg text-xs">

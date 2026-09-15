@@ -10,6 +10,8 @@ const ALLOWED_ARTIFACTS = new Set([
   "encoder.onnx",
   "decoder.onnx",
   "eng.traineddata",
+  "ort-wasm-simd-threaded.jsep.mjs",
+  "ort-wasm-simd-threaded.jsep.wasm",
 ]);
 
 const UPSTREAM_RELEASE_BASE =
@@ -90,7 +92,12 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
   }
 
   const responseHeaders = new Headers(corsHeaders || {});
-  responseHeaders.set("Content-Type", "application/octet-stream");
+  const mimeType = filename.endsWith(".mjs") || filename.endsWith(".js")
+    ? "application/javascript; charset=utf-8"
+    : filename.endsWith(".wasm")
+    ? "application/wasm"
+    : "application/octet-stream";
+  responseHeaders.set("Content-Type", mimeType);
   const contentLength = upstreamRes.headers.get("content-length");
   if (contentLength) responseHeaders.set("Content-Length", contentLength);
   const contentRange = upstreamRes.headers.get("content-range");
