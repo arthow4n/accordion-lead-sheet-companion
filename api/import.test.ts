@@ -610,3 +610,51 @@ Deno.test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains a
     assertStringIncludes(json.error, "Disallowed URL domain");
   }
 });
+
+// ============================================================================
+// 6. OMR Artifact Proxy Verification (API-OMR-01 through API-OMR-04)
+// ============================================================================
+
+Deno.test("API-OMR-01: OPTIONS preflight for OMR artifacts returns 204 with CORS headers", async () => {
+  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+    method: "OPTIONS",
+    headers: { Origin: "https://arthow4n.github.io" },
+  });
+
+  const res = await handleRequest(req);
+  assertEquals(res.status, 204);
+  assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://arthow4n.github.io");
+  assertEquals(res.headers.get("Access-Control-Allow-Methods"), "GET, HEAD, OPTIONS");
+});
+
+Deno.test("API-OMR-02: Disallowed origin is rejected with 403", async () => {
+  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+    method: "GET",
+    headers: { Origin: "https://evil.com" },
+  });
+
+  const res = await handleRequest(req);
+  assertEquals(res.status, 403);
+});
+
+Deno.test("API-OMR-03: Unsupported HTTP method returns 405 Method Not Allowed", async () => {
+  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+    method: "POST",
+    headers: { Origin: "https://arthow4n.github.io" },
+  });
+
+  const res = await handleRequest(req);
+  assertEquals(res.status, 405);
+});
+
+Deno.test("API-OMR-04: Non-whitelisted artifact returns 404", async () => {
+  const req = new Request("https://edge.deno.dev/api/omr-artifacts/malicious.exe", {
+    method: "GET",
+    headers: { Origin: "https://arthow4n.github.io" },
+  });
+
+  const res = await handleRequest(req);
+  assertEquals(res.status, 404);
+  const json = await res.json();
+  assertEquals(json.error, "Invalid artifact requested");
+});

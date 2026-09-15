@@ -18,6 +18,7 @@ import {
 } from "./parsers/index.ts";
 import { getCorsHeaders } from "./cors.ts";
 import { handleScanChordsRequest } from "./scan-chords.ts";
+import { handleOmrArtifactRequest } from "./omr-artifacts.ts";
 
 export type { TabImportResponse, TabSource };
 export {
@@ -26,6 +27,7 @@ export {
   extractCapoFret,
   extractMetadataFromHtml,
   getCorsHeaders,
+  handleOmrArtifactRequest,
   handleScanChordsRequest,
   parseChordie,
   parseCifraClub,
@@ -39,11 +41,14 @@ export {
  * Main HTTP request handler for the Deno Deploy edge scraper & scan function.
  */
 export async function handleRequest(req: Request): Promise<Response> {
-  // Dispatch /api/scan-chords route
+  // Dispatch /api/scan-chords and /api/omr-artifacts routes
   try {
     const url = new URL(req.url);
     if (url.pathname === "/api/scan-chords" || url.pathname.endsWith("/api/scan-chords")) {
       return await handleScanChordsRequest(req);
+    }
+    if (url.pathname.startsWith("/api/omr-artifacts") || url.pathname.includes("/omr-artifacts")) {
+      return await handleOmrArtifactRequest(req);
     }
   } catch {
     // If URL parsing fails, continue to standard import validation

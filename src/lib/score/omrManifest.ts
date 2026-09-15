@@ -71,7 +71,7 @@ export interface OmrDownloadProgress {
 }
 
 export const DEFAULT_OMR_RELEASE_BASE_URL =
-  "https://github.com/arthow4n/accordion-lead-sheet-companion/releases/download/omr-v1";
+  "https://accordion-lead-sheet-companion.arthow4n.deno.net/api/omr-artifacts";
 
 /** Canonical URI prefix used to store and look up artifacts in Cache Storage. */
 export const OMR_CACHE_KEY_PREFIX = "https://accordion-app.local/omr-artifacts-v1/";

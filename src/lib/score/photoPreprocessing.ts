@@ -310,6 +310,77 @@ export function groupLinesIntoStaves(
 }
 
 /**
+ * Refine the horizontal bounding box of staves using column projections on horizMat.
+ * Tightens staff boundaries to the sheet paper, eliminating dark stand margins.
+ */
+export function refineStaffHorizontalBounds(
+  cv: OpenCvInstance,
+  tracker: MatTracker,
+  horizMat: DeletableMat,
+  staves: StaffGeometry[],
+  width: number,
+): void {
+  if (!horizMat.roi) return;
+
+  for (const staff of staves) {
+    const topY = staff.lineYCoordinates[0];
+    const bottomY = staff.lineYCoordinates[4];
+    const staffH = bottomY - topY;
+    if (staffH < 4) continue;
+
+    try {
+      const roiRect = new cv.Rect(0, topY, width, staffH);
+      const roi = tracker.track(horizMat.roi(roiRect));
+      const colProj = tracker.track(new cv.Mat());
+      cv.reduce(roi, colProj, 0, cv.REDUCE_SUM, cv.CV_32S);
+      const colSums = colProj.data32S;
+      if (!colSums) continue;
+
+      const windowSize = Math.max(10, Math.round(staff.lineSpacing * 1.5));
+      let minX = -1;
+      let maxX = -1;
+
+      // Scan from left to right for sustained staff lines
+      for (let x = 0; x <= width - windowSize; x++) {
+        let active = 0;
+        for (let k = 0; k < windowSize; k++) {
+          if (colSums[x + k] >= 200) active++;
+        }
+        if (active >= windowSize * 0.5) {
+          minX = x;
+          break;
+        }
+      }
+
+      // Scan from right to left for sustained staff lines
+      for (let x = width - 1; x >= windowSize; x--) {
+        let active = 0;
+        for (let k = 0; k < windowSize; k++) {
+          if (colSums[x - k] >= 200) active++;
+        }
+        if (active >= windowSize * 0.5) {
+          maxX = x;
+          break;
+        }
+      }
+
+      if (
+        minX >= 0 && maxX > minX &&
+        (maxX - minX) >= Math.max(width * 0.2, staff.lineSpacing * 8)
+      ) {
+        const pad = Math.round(staff.lineSpacing * 1.5);
+        const left = Math.max(0, minX - pad);
+        const right = Math.min(width, maxX + pad);
+        staff.box.x = left;
+        staff.box.width = right - left;
+      }
+    } catch {
+      // If projection refinement fails, retain default width
+    }
+  }
+}
+
+/**
  * Detect vertical barlines across a staff and divide it into measures.
  */
 export function detectBarlinesAndSliceMeasures(
@@ -328,11 +399,13 @@ export function detectBarlinesAndSliceMeasures(
     const topY = staff.lineYCoordinates[0];
     const bottomY = staff.lineYCoordinates[4];
     const staffH = bottomY - topY;
-    if (staffH < 4) continue;
+    const staffX = Math.max(0, staff.box.x);
+    const staffW = Math.min(pageWidth - staffX, staff.box.width);
+    if (staffH < 4 || staffW < 20) continue;
 
     if (!binaryInvMat.roi) continue;
-    // Crop binaryInv to the staff lines region
-    const roiRect = new cv.Rect(0, topY, pageWidth, staffH);
+    // Crop binaryInv strictly to the staff lines region on the paper
+    const roiRect = new cv.Rect(staffX, topY, staffW, staffH);
     const roi = tracker.track(binaryInvMat.roi(roiRect));
 
     // Vertical morphological kernel to isolate barlines spanning the staff
@@ -346,7 +419,7 @@ export function detectBarlinesAndSliceMeasures(
     const vertFiltered = tracker.track(new cv.Mat());
     cv.morphologyEx(roi, vertFiltered, cv.MORPH_OPEN, vertKernel);
 
-    // Horizontal reduce: sum along columns
+    // Horizontal reduce: sum along columns within the staff ROI
     const vertProj = tracker.track(new cv.Mat());
     cv.reduce(vertFiltered, vertProj, 0, cv.REDUCE_SUM, cv.CV_32S);
     const colSums = vertProj.data32S;
@@ -358,7 +431,7 @@ export function detectBarlinesAndSliceMeasures(
     let inBarline = false;
     let startX = 0;
 
-    for (let x = 0; x < pageWidth; x++) {
+    for (let x = 0; x < staffW; x++) {
       if (colSums[x] >= minInk) {
         if (!inBarline) {
           inBarline = true;
@@ -367,18 +440,18 @@ export function detectBarlinesAndSliceMeasures(
       } else {
         if (inBarline) {
           inBarline = false;
-          barlineXs.push(Math.round((startX + x - 1) / 2));
+          barlineXs.push(staffX + Math.round((startX + x - 1) / 2));
         }
       }
     }
     if (inBarline) {
-      barlineXs.push(Math.round((startX + pageWidth - 1) / 2));
+      barlineXs.push(staffX + Math.round((startX + staffW - 1) / 2));
     }
 
-    // Filter barlines: deduplicate adjacent barlines within 6px
+    // Filter barlines: deduplicate adjacent barlines within 8px
     const filteredXs: number[] = [];
     for (const bx of barlineXs) {
-      if (filteredXs.length === 0 || bx - filteredXs[filteredXs.length - 1] > 6) {
+      if (filteredXs.length === 0 || bx - filteredXs[filteredXs.length - 1] > 8) {
         filteredXs.push(bx);
       }
     }
@@ -397,23 +470,27 @@ export function detectBarlinesAndSliceMeasures(
       allBarlines.push(barlineGeom);
     }
 
-    // Slice staff into measures
+    // Slice staff into measures within the staff horizontal bounds
     const boundaries = [...filteredXs];
-    if (boundaries.length === 0 || boundaries[0] > 60) {
-      boundaries.unshift(Math.max(0, staff.box.x));
+    const pad = Math.round(staff.lineSpacing * 2);
+    if (boundaries.length === 0 || boundaries[0] > staffX + pad) {
+      boundaries.unshift(staffX);
     }
-    if (boundaries[boundaries.length - 1] < pageWidth - 60) {
-      boundaries.push(pageWidth);
+    if (boundaries[boundaries.length - 1] < staffX + staffW - pad) {
+      boundaries.push(staffX + staffW);
     }
 
     boundaries.sort((a, b) => a - b);
-    const validBoundaries = boundaries.filter((v, idx, arr) => idx === 0 || v - arr[idx - 1] >= 20);
+    const minMeasureWidth = Math.max(35, Math.round(staff.lineSpacing * 3.5));
+    const validBoundaries = boundaries.filter((v, idx, arr) =>
+      idx === 0 || v - arr[idx - 1] >= minMeasureWidth
+    );
 
     for (let mIdx = 0; mIdx < validBoundaries.length - 1; mIdx++) {
       const x0 = validBoundaries[mIdx];
       const x1 = validBoundaries[mIdx + 1];
       const mWidth = x1 - x0;
-      if (mWidth < 20) continue;
+      if (mWidth < minMeasureWidth) continue;
 
       const measureBox: ImageBox = {
         x: x0,
@@ -574,6 +651,9 @@ export function processScoreImageWithCv(
       height,
       options?.lineSpacingTolerance ?? 0.35,
     );
+
+    // Refine horizontal boundaries to isolate the sheet from dark stand margins
+    refineStaffHorizontalBounds(cv, tracker, horizMat, staves, width);
 
     checkAborted(options?.signal);
 

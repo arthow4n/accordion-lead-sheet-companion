@@ -284,3 +284,45 @@ Deno.test("PREP-07: Degenerate image dimensions (< 32x32) gracefully return fall
   assertEquals(result.layout.page.height, 10);
   assertEquals(result.layout.measures.length, 1);
 });
+
+Deno.test("PREP-08: processScoreImageWithCv isolates sheet margins and bounds measures to music staves", async () => {
+  const cv = await loadOpenCv();
+  const width = 500;
+  const height = 200;
+  const img = createBlankImage(width, height);
+
+  // Simulate photo with sheet paper in the center (x: 100 to 400) and dark stand on sides
+  // Draw dark stand background on left (0-100) and right (400-500)
+  for (let y = 0; y < height; y++) {
+    for (const x of [0, 20, 50, 80, 420, 450, 480]) {
+      const idx = (y * width + x) * 4;
+      img.data[idx] = 40;
+      img.data[idx + 1] = 40;
+      img.data[idx + 2] = 40;
+    }
+  }
+
+  // Draw 5 staff lines strictly within the paper sheet: x = 100 to 400
+  for (let i = 0; i < 5; i++) {
+    drawHorizontalLine(img, 60 + i * 12, 100, 400, 2);
+  }
+
+  // Draw 2 barlines at x = 200, x = 300
+  drawVerticalLine(img, 200, 60, 108, 2);
+  drawVerticalLine(img, 300, 60, 108, 2);
+
+  const result = processScoreImageWithCv(cv, img, { enableDeskew: false });
+  assertEquals(result.usedFallback, false);
+  assertEquals(result.staves.length, 1);
+
+  const staff = result.staves[0];
+  // Staff horizontal bounds should tightly encapsulate paper staves, avoiding x: 0
+  assertEquals(staff.box.x >= 70, true);
+  assertEquals(staff.box.x + staff.box.width <= 430, true);
+
+  // Measures should be bounded within the music area, not spanning the dark borders
+  for (const m of result.layout.measures) {
+    assertEquals(m.box.x >= staff.box.x, true);
+    assertEquals(m.box.x + m.box.width <= staff.box.x + staff.box.width, true);
+  }
+});
