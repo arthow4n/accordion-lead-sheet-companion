@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
+  Check,
+  ChevronDown,
+  ChevronUp,
   Clipboard,
+  Copy,
   Globe,
   Image as ImageIcon,
   Loader2,
   Music,
   Sparkles,
+  Terminal,
   Type,
   X,
 } from "lucide-react";
@@ -49,6 +54,13 @@ export interface ScanFrontendError {
   message: string;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(0)} KiB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
 export const ImportModal: React.FC<ImportModalProps> = ({
   isOpen,
   onClose,
@@ -83,6 +95,41 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [scoreIssues, setScoreIssues] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Live diagnostics trace logs for photo & OMR/OCR processing
+  const [traceLogs, setTraceLogs] = useState<string[]>([]);
+  const [showTraces, setShowTraces] = useState(true);
+  const [copiedTraces, setCopiedTraces] = useState(false);
+  const traceContainerRef = useRef<HTMLDivElement>(null);
+
+  const addTrace = useCallback((msg: string) => {
+    const time = new Date().toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3,
+    });
+    setTraceLogs((prev) => [...prev, `[${time}] ${msg}`]);
+  }, []);
+
+  useEffect(() => {
+    if (traceContainerRef.current) {
+      traceContainerRef.current.scrollTop = traceContainerRef.current.scrollHeight;
+    }
+  }, [traceLogs]);
+
+  const handleCopyTraces = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(traceLogs.join("\n"));
+        setCopiedTraces(true);
+        setTimeout(() => setCopiedTraces(false), 2000);
+      }
+    } catch (_err) {
+      // ignore
+    }
+  };
+
   // Reset transient lookup and error state when modal opens or closes
   useEffect(() => {
     if (!isOpen) {
@@ -95,6 +142,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setIsTranscribingOmr(false);
       setOmrProgressText(null);
       setOmrError(null);
+      setTraceLogs([]);
+      setCopiedTraces(false);
       setManualChordInput("");
       setLookupChords([]);
       setInvalidManualTokens([]);
@@ -193,6 +242,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
     if (!file) {
       setSelectedImage(null);
+      setTraceLogs([]);
       return;
     }
 
@@ -226,6 +276,17 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     }
 
     setSelectedImage(file);
+    setTraceLogs([
+      `[${
+        new Date().toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          fractionalSecondDigits: 3,
+        })
+      }] Image selected: ${file.name} (${formatFileSize(file.size)})`,
+    ]);
   };
 
   const handleCreateGuidedPhoto = () => {
@@ -281,11 +342,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const handleStartOmrRecognition = async () => {
     if (!selectedImage) return;
 
+    addTrace(`Starting local score recognition for "${selectedImage.name}"...`);
+    addTrace("Checking local OMR models...");
+
     const ready = await areOmrModelsReady();
     if (!ready) {
+      addTrace("OMR models not downloaded yet. Opening download modal.");
       setIsOmrModalOpen(true);
       return;
     }
+    addTrace("OMR and OCR models verified in local Cache Storage.");
 
     setIsTranscribingOmr(true);
     setOmrProgressText("Analyzing score staves and geometry...");
@@ -293,7 +359,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
     let decoded: Awaited<ReturnType<typeof decodePhotoForGuidance>> | null = null;
     try {
+      addTrace("Decoding image bitmap for layout guidance...");
       decoded = await decodePhotoForGuidance(selectedImage);
+      addTrace(`Decoded photo dimensions: ${decoded.width}x${decoded.height} px`);
+
       const canvas = new OffscreenCanvas(decoded.width, decoded.height);
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Could not initialize canvas context.");
@@ -301,6 +370,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       const imgData = ctx.getImageData(0, 0, decoded.width, decoded.height);
       const raw = { data: imgData.data, width: decoded.width, height: decoded.height };
 
+      addTrace("Analyzing staves with OpenCV preprocessing...");
       const { preprocessScorePhoto } = await import("../lib/score/photoPreprocessing.ts");
       const prep = await preprocessScorePhoto(raw);
 
@@ -309,30 +379,55 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           "No musical staves were detected in this image. Please ensure the score is well-lit and clearly visible.",
         );
       }
+      addTrace(
+        `Preprocessing complete: detected ${prep.staves.length} staves (system spacing ~${
+          Math.round(prep.staves[0]?.lineSpacing ?? 24)
+        }px)`,
+      );
 
       const strips = prep.staves.map((staff, idx) =>
         extractStaffCropTensor(raw, staff.box, staff.id || `staff-${idx}`)
       );
+      addTrace(`Prepared ${strips.length} staff crops for ONNX model.`);
 
       setOmrProgressText(`Transcribing ${strips.length} staves with AI...`);
+      addTrace("Starting OMR ONNX transcription in Web Worker...");
       const { scoreDoc, avgConfidence } = await transcribeStripsWithOmr(strips, {
-        onProgress: (p) => setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`),
+        onProgress: (p) => {
+          setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`);
+          addTrace(`OMR: transcribed staff ${p.current}/${p.total}`);
+        },
       });
+      addTrace(
+        `OMR transcription complete: ${scoreDoc.measures.length} measures, avg confidence: ${
+          Math.round(avgConfidence * 100)
+        }%`,
+      );
 
       setOmrProgressText("Performing bounded chord and text OCR...");
+      addTrace("Starting bounded chord and text OCR...");
       const { recognizeStaffBoundedOcr } = await import("../lib/score/ocrRecognition.ts");
       const ocrData = await recognizeStaffBoundedOcr(
         raw,
         prep.staves,
         prep.staves[0]?.lineSpacing || 24,
+        (msg) => {
+          setOmrProgressText(msg);
+          addTrace(msg);
+        },
+      );
+      addTrace(
+        `Bounded OCR complete: ${ocrData.measures?.length ?? 0} measure bands processed`,
       );
 
+      addTrace("Fusing OMR notes with OCR chords & form...");
       const { fuseScoreDocument } = await import("../lib/score/scoreFusion.ts");
       const fusedResult = fuseScoreDocument(scoreDoc, ocrData);
       let finalDoc = fusedResult.document;
 
       // Preserve user corrections across rescan (MED-04)
       if (previewSong?.score) {
+        addTrace("Preserving existing user corrections...");
         const { mergeUserCorrections } = await import("../lib/score/correction.ts");
         finalDoc = mergeUserCorrections(previewSong.score, finalDoc);
       }
@@ -362,6 +457,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         finalDoc.source = { kind: "photo", assetId, persistence: "ephemeral" };
       }
 
+      addTrace(`Done! Loaded score with ${finalDoc.measures.length} measures.`);
+
       setPreviewSong({
         id: `photo_${now}_${Math.random().toString(36).slice(2, 9)}`,
         title: finalDoc.title,
@@ -375,7 +472,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
       setActiveTab("score");
     } catch (err) {
-      setOmrError(err instanceof Error ? err.message : "Recognition failed.");
+      const errMsg = err instanceof Error ? err.message : "Recognition failed.";
+      addTrace(`ERROR: ${errMsg}`);
+      setOmrError(errMsg);
     } finally {
       if (decoded) {
         decoded.close();
@@ -541,13 +640,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     if (onLookupChord) {
       onLookupChord(chord);
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(0)} KiB`;
-    }
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
   };
 
   return (
@@ -855,6 +947,83 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                               Retry recognition
                             </button>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Live Diagnostic Traces Console */}
+                      {traceLogs.length > 0 && (
+                        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowTraces((prev) => !prev)}
+                              className="min-h-[44px] flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-white cursor-pointer px-1 -ml-1"
+                              aria-expanded={showTraces}
+                            >
+                              <Terminal className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span className="truncate">Diagnostics & Traces</span>
+                              <span className="px-1.5 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-400 font-mono">
+                                {traceLogs.length}
+                              </span>
+                              {showTraces
+                                ? <ChevronUp className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                                : <ChevronDown className="w-3.5 h-3.5 text-zinc-500 shrink-0" />}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleCopyTraces}
+                              className="min-h-[44px] px-3 flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-xs text-zinc-200 transition-colors cursor-pointer shrink-0"
+                              title="Copy diagnostic traces to clipboard"
+                            >
+                              {copiedTraces
+                                ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span className="text-emerald-400 font-medium">Copied!</span>
+                                  </>
+                                )
+                                : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                                    <span>Copy Traces</span>
+                                  </>
+                                )}
+                            </button>
+                          </div>
+
+                          {showTraces && (
+                            <div
+                              ref={traceContainerRef}
+                              className="max-h-48 overflow-y-auto rounded-lg bg-zinc-900/90 p-2.5 font-mono text-[11px] leading-relaxed border border-zinc-800 space-y-1 select-text"
+                            >
+                              {traceLogs.map((log, index) => {
+                                const isError = log.includes("ERROR") ||
+                                  log.includes("timed out") ||
+                                  log.includes("skipped");
+                                const isSuccess = log.includes("Done!") ||
+                                  log.includes("complete") ||
+                                  log.includes("ready");
+                                const isOcr = log.includes("OCR:");
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`break-words ${
+                                      isError
+                                        ? "text-red-400"
+                                        : isSuccess
+                                        ? "text-emerald-400"
+                                        : isOcr
+                                        ? "text-amber-300"
+                                        : "text-zinc-300"
+                                    }`}
+                                  >
+                                    {log}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

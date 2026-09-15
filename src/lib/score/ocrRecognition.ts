@@ -417,14 +417,39 @@ function rawImageToCanvas(crop: RawImageData): unknown {
   return crop.data as unknown as Blob;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMsg: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(timeoutMsg));
+    }, ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+interface OcrWorkerLike {
+  recognize(image: unknown): Promise<{ data?: { text?: string } }>;
+  terminate(): Promise<unknown>;
+}
+
 /**
  * Perform bounded OCR on cropped staff chord banners and header regions.
  * Resolves HIGH-01 by executing local Tesseract.js against local Cache Storage language data.
+ * Includes timeouts on worker initialization and individual crops to avoid mobile hangs.
  */
 export async function recognizeStaffBoundedOcr(
   image: RawImageData,
   staves: Array<{ box: ImageBox; id?: string }>,
   lineSpacing: number = 24,
+  onProgress?: (msg: string) => void,
 ): Promise<import("./scoreFusion.ts").OcrScoreData> {
   const ocrData: import("./scoreFusion.ts").OcrScoreData = {
     measures: [],
@@ -434,8 +459,10 @@ export async function recognizeStaffBoundedOcr(
 
   let langPath: string;
   try {
+    onProgress?.("Locating offline OCR language model...");
     langPath = await getLocalOcrLangPath();
   } catch (_e) {
+    onProgress?.("Offline OCR language model not cached, skipping OCR.");
     // If language artifact is not cached yet, return empty OCR data gracefully
     return ocrData;
   }
@@ -443,67 +470,117 @@ export async function recognizeStaffBoundedOcr(
   if (!langPath) return ocrData;
 
   // Lazily import tesseract.js and run bounded recognition
-  let worker;
+  let worker: OcrWorkerLike | undefined;
   try {
+    onProgress?.("Initializing OCR worker...");
     const { createWorker } = await import("tesseract.js");
-    worker = await createWorker("eng", 1, {
-      langPath,
-      gzip: false,
-      cacheMethod: "none",
-    });
+    worker = (await withTimeout(
+      createWorker("eng", 1, {
+        langPath,
+        gzip: false,
+        cacheMethod: "none",
+        logger: (m: { status?: string; progress?: number }) => {
+          if (m?.status) {
+            const pct = typeof m.progress === "number" && !isNaN(m.progress)
+              ? ` (${Math.round(m.progress * 100)}%)`
+              : "";
+            onProgress?.(`OCR engine: ${m.status}${pct}`);
+          }
+        },
+      }),
+      12000,
+      "OCR worker initialization timed out (12s)",
+    )) as unknown as OcrWorkerLike;
 
     // 1. Recognize header region of first staff for key & meter
     if (staves.length > 0) {
-      const headerCrop = cropStaffHeaderRegion(image, staves[0].box, lineSpacing);
-      const canvas = rawImageToCanvas(headerCrop);
-      // deno-lint-ignore no-explicit-any
-      const headerRes = await (worker as any).recognize(canvas);
-      const headerText = headerRes.data?.text || "";
-      const parsedKey = parseKeySignatureSymbols(headerText);
-      if (parsedKey) ocrData.keySignature = parsedKey;
-      const parsedMeter = parseMeterToken(headerText);
-      if (parsedMeter) ocrData.timeSignature = parsedMeter;
+      try {
+        onProgress?.("Reading key & meter from staff header...");
+        const headerCrop = cropStaffHeaderRegion(image, staves[0].box, lineSpacing);
+        const canvas = rawImageToCanvas(headerCrop);
+        const headerRes = await withTimeout(
+          worker.recognize(canvas),
+          5000,
+          "Header OCR timed out (5s)",
+        );
+        const headerText = headerRes.data?.text || "";
+        const parsedKey = parseKeySignatureSymbols(headerText);
+        if (parsedKey) {
+          ocrData.keySignature = parsedKey;
+          onProgress?.(`Detected key: ${parsedKey.fifths} ${parsedKey.mode}`);
+        }
+        const parsedMeter = parseMeterToken(headerText);
+        if (parsedMeter) {
+          ocrData.timeSignature = parsedMeter;
+          onProgress?.(`Detected meter: ${parsedMeter.beats}/${parsedMeter.beatType}`);
+        }
+      } catch (headerErr) {
+        console.warn("Staff header OCR skipped:", headerErr);
+        onProgress?.(`Header OCR skipped: ${(headerErr as Error).message}`);
+      }
     }
 
     // 2. Recognize bounded chord banners above each staff
     for (let i = 0; i < staves.length; i++) {
-      const bannerCrop = cropStaffChordBanner(image, staves[i].box, lineSpacing);
-      const canvas = rawImageToCanvas(bannerCrop);
-      // deno-lint-ignore no-explicit-any
-      const bannerRes = await (worker as any).recognize(canvas);
-      const bannerText = bannerRes.data?.text || "";
+      onProgress?.(`Reading chord banner for staff ${i + 1}/${staves.length}...`);
+      try {
+        const bannerCrop = cropStaffChordBanner(image, staves[i].box, lineSpacing);
+        const canvas = rawImageToCanvas(bannerCrop);
+        const bannerRes = await withTimeout(
+          worker.recognize(canvas),
+          6000,
+          `Staff ${i + 1} OCR timed out (6s)`,
+        );
+        const bannerText = bannerRes.data?.text || "";
 
-      // Extract chords from banner
-      const chords = extractChordsFromOcrText(bannerText);
-
-      // Extract navigation & sections from banner
-      const form = extractNavigationAndSectionsFromOcrText(bannerText);
-      if (form.keySignature && !ocrData.keySignature) {
-        ocrData.keySignature = form.keySignature;
-      }
-      if (form.timeSignature && !ocrData.timeSignature) {
-        ocrData.timeSignature = form.timeSignature;
-      }
-      if (form.sections.length > 0) {
-        for (const s of form.sections) {
-          ocrData.sections?.push({
-            label: s.label,
-            startMeasureIndex: i,
-          });
+        // Extract chords from banner
+        const chords = extractChordsFromOcrText(bannerText);
+        if (chords.length > 0) {
+          onProgress?.(
+            `Staff ${i + 1}: ${chords.length} chords (${
+              chords.map((c) => c.normalized).join(", ")
+            })`,
+          );
         }
-      }
-      if (form.unrecognizedDirections.length > 0) {
-        ocrData.unrecognizedDirections?.push(...form.unrecognizedDirections);
-      }
 
-      ocrData.measures?.push({
-        measureIndex: i,
-        chords,
-        navigation: form.navigation,
-      });
+        // Extract navigation & sections from banner
+        const form = extractNavigationAndSectionsFromOcrText(bannerText);
+        if (form.keySignature && !ocrData.keySignature) {
+          ocrData.keySignature = form.keySignature;
+        }
+        if (form.timeSignature && !ocrData.timeSignature) {
+          ocrData.timeSignature = form.timeSignature;
+        }
+        if (form.sections.length > 0) {
+          for (const s of form.sections) {
+            ocrData.sections?.push({
+              label: s.label,
+              startMeasureIndex: i,
+            });
+          }
+        }
+        if (form.unrecognizedDirections.length > 0) {
+          ocrData.unrecognizedDirections?.push(...form.unrecognizedDirections);
+        }
+
+        ocrData.measures?.push({
+          measureIndex: i,
+          chords,
+          navigation: form.navigation,
+        });
+      } catch (staffErr) {
+        console.warn(`Staff ${i + 1} OCR skipped:`, staffErr);
+        onProgress?.(`Staff ${i + 1} OCR skipped: ${(staffErr as Error).message}`);
+        ocrData.measures?.push({
+          measureIndex: i,
+          chords: [],
+          navigation: [],
+        });
+      }
     }
   } catch (err) {
     console.warn("Bounded OCR recognition skipped or failed:", err);
+    onProgress?.(`OCR interrupted: ${(err as Error).message}`);
   } finally {
     if (worker) {
       try {
