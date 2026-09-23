@@ -28,17 +28,12 @@ Deno.test("OMR-MAN-01: Artifact manifest definitions and total byte counts", () 
     "6428e512cfdc4f5c3a805a13e87e289eab29726d19a906e3a4bae1fd8c270a17",
   );
 
-  assertEquals(OMR_ARTIFACTS.ocr.id, "ocr");
-  assertEquals(OMR_ARTIFACTS.ocr.byteLength, 4113088);
-  assertEquals(
-    OMR_ARTIFACTS.ocr.sha256,
-    "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
-  );
+  // Tesseract OCR eliminated: eng.traineddata is removed from OMR_ARTIFACTS
+  assertEquals((OMR_ARTIFACTS as Record<string, unknown>).ocr, undefined);
 
   assertEquals(
     OMR_TOTAL_DOWNLOAD_BYTES,
-    OMR_ARTIFACTS.encoder.byteLength + OMR_ARTIFACTS.decoder.byteLength +
-      OMR_ARTIFACTS.ocr.byteLength,
+    OMR_ARTIFACTS.encoder.byteLength + OMR_ARTIFACTS.decoder.byteLength,
   );
   assertEquals(OMR_FIRST_USE_DISCLOSURE.totalBytes, OMR_TOTAL_DOWNLOAD_BYTES);
 });

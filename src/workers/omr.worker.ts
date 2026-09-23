@@ -69,8 +69,15 @@ async function ensureSessions(): Promise<{
 
   // Force single-thread WASM execution for maximum mobile stability & compatibility
   ort.env.wasm.numThreads = 1;
-  // Use jsdelivr CDN for ONNX Runtime Web 1.29.0 WASM engine binaries
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/";
+  // Configure local WASM binary path for 100% offline hermetic execution (no external CDN network requests)
+  const isCdn = typeof ort.env.wasm.wasmPaths === "string" &&
+    ort.env.wasm.wasmPaths.includes("cdn.jsdelivr.net");
+  if (!ort.env.wasm.wasmPaths || isCdn) {
+    const localWasmPath = typeof self !== "undefined" && self.location && self.location.origin
+      ? `${self.location.origin}/models/omr/`
+      : "/models/omr/";
+    ort.env.wasm.wasmPaths = localWasmPath;
+  }
 
   encSession = await ort.InferenceSession.create(encBuf, {
     executionProviders: ["wasm"],

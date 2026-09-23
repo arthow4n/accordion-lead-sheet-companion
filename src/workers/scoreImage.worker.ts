@@ -61,12 +61,22 @@ self.onmessage = async (event: MessageEvent<ScoreImageWorkerRequest>) => {
 
     try {
       const cv = await loadOpenCv();
+      const rawData = imageData.data instanceof Uint8ClampedArray
+        ? imageData.data
+        : new Uint8ClampedArray(imageData.data);
+
+      const normalizedImage: RawImageData = {
+        data: rawData,
+        width: imageData.width,
+        height: imageData.height,
+      };
+
       const mergedOptions: ScorePreprocessingOptions = {
         ...options,
         signal: controller.signal,
       };
 
-      const result = processScoreImageWithCv(cv, imageData, mergedOptions);
+      const result = processScoreImageWithCv(cv, normalizedImage, mergedOptions);
       activeAborts.delete(id);
       self.postMessage({ type: "result", id, result } satisfies ScoreImageWorkerResponse);
     } catch (err) {

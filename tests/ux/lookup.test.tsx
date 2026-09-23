@@ -3,6 +3,7 @@
  * Path: tests/ux/lookup.test.tsx
  */
 
+import React from "react";
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ImportModal } from "../../src/components/ImportModal.tsx";
@@ -229,10 +230,43 @@ Deno.test("UX-LOOKUP-06: Manual lookup does not create or call onSaveSong", () =
 });
 
 Deno.test("UX-LOOKUP-07: Lookup result chips have >=44px touch target classes", () => {
-  // Test chord chips styling contract
-  const minTouchTargetClass = "min-h-[44px] min-w-[44px]";
-  assertStringIncludes(minTouchTargetClass, "min-h-[44px]");
-  assertStringIncludes(minTouchTargetClass, "min-w-[44px]");
+  // Intercept state dispatcher to render ImportModal on Lookup tab with populated chord chips
+  // deno-lint-ignore no-explicit-any
+  const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+
+  function LookupStateMock({ children }: { children: React.ReactNode }) {
+    const origUseState = internals.H.useState;
+    let callIdx = 0;
+    // deno-lint-ignore no-explicit-any
+    internals.H.useState = function (initial: any) {
+      const idx = callIdx++;
+      if (idx === 0) return ["lookup", () => {}]; // activeTab = "lookup"
+      if (idx === 15) return [["C", "G/B", "Am7"], () => {}]; // lookupChords
+      return origUseState(initial);
+    };
+    return <>{children}</>;
+  }
+
+  const html = renderToStaticMarkup(
+    <LookupStateMock>
+      <ImportModal
+        isOpen
+        onClose={() => {}}
+        onSaveSong={() => {}}
+        onLookupChord={() => {}}
+      />
+    </LookupStateMock>,
+  );
+
+  // Verify lookup result chips are genuinely rendered from the component
+  assertStringIncludes(html, "Found chords (3)");
+  assertStringIncludes(html, 'aria-label="View grip for C"');
+  assertStringIncludes(html, 'aria-label="View grip for G/B"');
+  assertStringIncludes(html, 'aria-label="View grip for Am7"');
+
+  // Verify touch target contract on rendered chord chip buttons
+  assertStringIncludes(html, "min-h-[44px]");
+  assertStringIncludes(html, "min-w-[44px]");
 });
 
 Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, and privacy notice", async () => {
@@ -246,7 +280,7 @@ Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, 
   );
 
   assertStringIncludes(html, "Download Offline Music Recognition Model");
-  assertStringIncludes(html, "191.0 MB");
+  assertStringIncludes(html, "187.1 MB");
   assertStringIncludes(html, "100% On-Device");
   assertStringIncludes(html, "Download &amp; Start");
 });

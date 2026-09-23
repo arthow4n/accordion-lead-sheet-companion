@@ -13,6 +13,7 @@
 
 import type {
   HarmonyEvent,
+  ImageBox,
   NavigationMark,
   ScoreDocument,
   ScoreIssue,
@@ -22,15 +23,22 @@ import type {
   ScoreTimeSignature,
 } from "../../types/score.ts";
 import { normalizeChordLookupCandidates } from "../lookup/lookupParser.ts";
+import { mxhmToChordSymbol } from "./humdrumParser.ts";
 import { RATIONAL_ZERO } from "./rational.ts";
 import { validateScoreDocument } from "./validation.ts";
-import type { OcrChordCandidate } from "./ocrRecognition.ts";
+import {
+  calculateCompoundMeterFromMeasures,
+  detectKeyFromHarmonicContext,
+  type OcrChordCandidate,
+} from "./ocrRecognition.ts";
 
 export interface OcrStaffMeasureData {
   measureIndex: number;
   chords?: OcrChordCandidate[];
   navigation?: NavigationMark[];
   sectionLabel?: string;
+  sourceBox?: ImageBox;
+  staffIndex?: number;
 }
 
 export interface OcrScoreData {
@@ -83,7 +91,7 @@ export function fuseScoreDocument(
   const issues: ScoreIssue[] = [...omrDoc.issues];
   const sections: ScoreSection[] = [...omrDoc.sections];
 
-  // 1. Deterministic Time Signature Supplementation (e.g. 6/8 meter absent from JAZZMUS)
+  // 1. Deterministic Time Signature Supplementation (e.g. 6/8 compound meter calculation)
   let docTime = omrDoc.time;
   if (ocrData?.timeSignature) {
     const isOmrDefaultOrDifferent = !docTime ||
@@ -98,16 +106,45 @@ export function fuseScoreDocument(
         }
       }
     }
+  } else if (!docTime || (docTime.beats === 4 && docTime.beatType === 4)) {
+    // Pure mathematical compound 6/8 meter calculation from measure note durations
+    const detectedMeter = calculateCompoundMeterFromMeasures(measures);
+    if (detectedMeter) {
+      docTime = { ...detectedMeter };
+      for (const m of measures) {
+        if (!m.time || (m.time.beats === 4 && m.time.beatType === 4)) {
+          m.time = { ...detectedMeter };
+        }
+      }
+    }
   }
 
   // 2. Deterministic Key Signature Supplementation (0 to 6 sharps/flats)
   let docKey = omrDoc.key;
   if (ocrData?.keySignature) {
-    if (!docKey || (docKey.fifths === 0 && ocrData.keySignature.fifths !== 0)) {
+    if (
+      !docKey ||
+      (docKey.fifths === 0 &&
+        (ocrData.keySignature.fifths !== 0 || ocrData.keySignature.mode === "minor"))
+    ) {
       docKey = { ...ocrData.keySignature };
       for (const m of measures) {
-        if (!m.key || m.key.fifths === 0) {
+        if (!m.key || (m.key.fifths === 0 && m.key.mode !== "minor")) {
           m.key = { ...ocrData.keySignature };
+        }
+      }
+    }
+  } else if (!docKey || docKey.fifths === 0) {
+    // Harmonic key root analysis across detected chords
+    const allChords = measures.flatMap((m) => m.harmonies.map((h) => h.raw));
+    if (allChords.length > 0) {
+      const harmonicKey = detectKeyFromHarmonicContext(allChords);
+      if (harmonicKey && (harmonicKey.fifths !== 0 || harmonicKey.mode === "minor")) {
+        docKey = { ...harmonicKey };
+        for (const m of measures) {
+          if (!m.key || (m.key.fifths === 0 && m.key.mode !== "minor")) {
+            m.key = { ...harmonicKey };
+          }
         }
       }
     }
@@ -121,13 +158,40 @@ export function fuseScoreDocument(
     }
   }
 
+  // Helper to find OCR measure data by writtenIndex or spatial bounding coordinates
+  const findOcrMeasureData = (m: ScoreMeasure): OcrStaffMeasureData | undefined => {
+    // 1. Direct match by writtenIndex
+    const direct = ocrMeasureMap.get(m.writtenIndex);
+    if (direct) return direct;
+
+    // 2. Spatial coordinate match if sourceBox is present on measure and OCR data
+    if (m.sourceBox && ocrData?.measures) {
+      const mCenterX = m.sourceBox.x + m.sourceBox.width / 2;
+      const mCenterY = m.sourceBox.y + m.sourceBox.height / 2;
+
+      for (const ocrM of ocrData.measures) {
+        if (ocrM.sourceBox) {
+          const inX = mCenterX >= ocrM.sourceBox.x &&
+            mCenterX <= ocrM.sourceBox.x + ocrM.sourceBox.width;
+          const inY = Math.abs(mCenterY - (ocrM.sourceBox.y + ocrM.sourceBox.height / 2)) <=
+            Math.max(40, ocrM.sourceBox.height);
+          if (inX && inY) {
+            return ocrM;
+          }
+        }
+      }
+    }
+
+    return undefined;
+  };
+
   // 3. Process Measure Chords & Melody Confidence
   let totalConfidenceSum = 0;
   let totalConfidenceCount = 0;
 
   for (let idx = 0; idx < measures.length; idx++) {
     const m = measures[idx];
-    const ocrM = ocrMeasureMap.get(m.writtenIndex);
+    const ocrM = findOcrMeasureData(m);
 
     // --- Melody Confidence & Policy ---
     if (m.melody.length > 0) {
@@ -162,6 +226,13 @@ export function fuseScoreDocument(
     }
 
     // --- Harmony / Chord Normalization & Fusion ---
+    // Pre-normalize all harmonies in measure (handling native **mxhm or standard chords)
+    for (const h of m.harmonies) {
+      const cleaned = h.raw.includes(":") ? (mxhmToChordSymbol(h.raw) || h.raw) : h.raw;
+      const normalized = normalizeChordLookupCandidates([cleaned]).chords[0] || cleaned;
+      h.raw = normalized;
+    }
+
     const omrHarmony = m.harmonies[0];
     const ocrChords = ocrM?.chords || [];
     const ocrCandidate = ocrChords[0];

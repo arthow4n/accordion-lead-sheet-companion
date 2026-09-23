@@ -119,7 +119,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
       </div>
       {measure && activeLayout && (
         <details>
-          <summary className="cursor-pointer text-[11px] font-semibold text-zinc-300">
+          <summary className="cursor-pointer text-[11px] font-semibold text-zinc-300 min-h-[44px] flex items-center">
             Adjust measure boundary {activeLayout.measures.length > 1 &&
               `(${selectedMeasureIndex + 1}/${activeLayout.measures.length})`}
           </summary>
@@ -130,7 +130,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
                 <select
                   value={selectedMeasureIndex}
                   onChange={(e) => setSelectedMeasureIndex(Number(e.target.value))}
-                  className="mt-0.5 min-h-[36px] w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
+                  className="mt-0.5 min-h-[44px] w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
                 >
                   {activeLayout.measures.map((m, idx) => (
                     <option key={m.id} value={idx}>
@@ -151,7 +151,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
                   value={Math.round(measure.box[field])}
                   onChange={(event) =>
                     updateBox(field, Number(event.target.value))}
-                  className="mt-0.5 min-h-[36px] w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
+                  className="mt-0.5 min-h-[44px] w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200"
                 />
               </label>
             ))}

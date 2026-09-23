@@ -46,6 +46,8 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
         globIgnores: [
           "**/opencv*",
+          "**/scoreImage*",
+          "**/photoPreprocessing*",
           "**/onnx*",
           "**/ort*",
           "**/*.wasm",

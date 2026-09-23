@@ -9,7 +9,7 @@
  */
 
 export interface OmrArtifactSpec {
-  id: "encoder" | "decoder" | "ocr";
+  id: "encoder" | "decoder";
   filename: string;
   byteLength: number;
   sha256: string;
@@ -19,7 +19,7 @@ export interface OmrArtifactSpec {
 
 export const OMR_CACHE_NAME = "omr-artifacts-v1";
 
-export const OMR_ARTIFACTS: Record<"encoder" | "decoder" | "ocr", OmrArtifactSpec> = {
+export const OMR_ARTIFACTS: Record<"encoder" | "decoder", OmrArtifactSpec> = {
   encoder: {
     id: "encoder",
     filename: "encoder.onnx",
@@ -36,19 +36,10 @@ export const OMR_ARTIFACTS: Record<"encoder" | "decoder" | "ocr", OmrArtifactSpe
     description: "JAZZMUS SMT Autoregressive Humdrum Decoder (ONNX)",
     license: "MIT",
   },
-  ocr: {
-    id: "ocr",
-    filename: "eng.traineddata",
-    byteLength: 4113088,
-    sha256: "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
-    description: "Tesseract OCR Fast English Language Model (rev 8741641)",
-    license: "Apache-2.0",
-  },
 } as const;
 
 export const OMR_TOTAL_DOWNLOAD_BYTES = OMR_ARTIFACTS.encoder.byteLength +
-  OMR_ARTIFACTS.decoder.byteLength +
-  OMR_ARTIFACTS.ocr.byteLength;
+  OMR_ARTIFACTS.decoder.byteLength;
 
 export const OMR_TOTAL_DOWNLOAD_MB = (OMR_TOTAL_DOWNLOAD_BYTES / (1024 * 1024)).toFixed(1);
 
@@ -95,15 +86,14 @@ export function makeArtifactFetchRequest(filename: string, baseUrl?: string): Re
   return new Request(`${base}${sep}${filename}`);
 }
 
-/** Check whether all required artifacts (encoder, decoder, OCR) exist in the OMR cache. */
+/** Check whether all required artifacts (encoder, decoder) exist in the OMR cache. */
 export async function isOmrCached(): Promise<boolean> {
   if (typeof caches === "undefined") return false;
   try {
     const cache = await caches.open(OMCACHE_NAME_SAFE());
     const enc = await cache.match(makeArtifactCacheRequest(OMR_ARTIFACTS.encoder.filename));
     const dec = await cache.match(makeArtifactCacheRequest(OMR_ARTIFACTS.decoder.filename));
-    const ocr = await cache.match(makeArtifactCacheRequest(OMR_ARTIFACTS.ocr.filename));
-    return enc !== undefined && dec !== undefined && ocr !== undefined;
+    return enc !== undefined && dec !== undefined;
   } catch {
     return false;
   }
@@ -155,8 +145,10 @@ export async function getCachedArtifactBuffer(
   id: "encoder" | "decoder" | "ocr",
 ): Promise<ArrayBuffer | null> {
   if (typeof caches === "undefined") return null;
+  if (id === "ocr") return null;
   const cache = await caches.open(OMCACHE_NAME_SAFE());
-  const spec = OMR_ARTIFACTS[id];
+  const spec = OMR_ARTIFACTS[id as "encoder" | "decoder"];
+  if (!spec) return null;
   const response = await cache.match(makeArtifactCacheRequest(spec.filename));
   if (!response) return null;
   return await response.arrayBuffer();
@@ -178,7 +170,6 @@ export async function downloadAndCacheOmrArtifacts(options?: {
   const artifacts: OmrArtifactSpec[] = [
     OMR_ARTIFACTS.encoder,
     OMR_ARTIFACTS.decoder,
-    OMR_ARTIFACTS.ocr,
   ];
   let loadedTotal = 0;
 

@@ -163,7 +163,7 @@ export const ScoreReviewQueue: React.FC<ScoreReviewQueueProps> = ({
       </div>
 
       {isOpen && (
-        <div className="space-y-3 pt-2 border-t border-amber-900/50">
+        <div className="space-y-3 pt-2 border-t border-amber-900/50 max-h-[35vh] overflow-y-auto">
           {actionableIssues.map((issue, idx) => {
             const measure = session.document.measures.find((m) => m.id === issue.measureId);
             const measureIndex = measure ? measure.writtenIndex + 1 : undefined;

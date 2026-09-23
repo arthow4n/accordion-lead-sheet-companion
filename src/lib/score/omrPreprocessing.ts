@@ -21,22 +21,39 @@ export interface StaffCropTensor {
   height: number;
 }
 
+export interface StaffCropOptions {
+  headroomRatio?: number; // Default 0.65 to capture chord banner situated 35-60px above staff
+  footroomRatio?: number; // Default 0.25 for ledger lines below staff
+}
+
 /**
  * Extract and resize a bounded staff region into normalized Float32Array tensor.
- * Includes optional vertical padding so ledger lines, note stems, and chord symbols
- * above/below staff lines are preserved.
+ * Includes headroom padding (default 0.65) so chord symbols above staff lines are preserved
+ * for JAZZMUS SMT model, and footroom padding (default 0.25) for ledger lines below staff.
  */
 export function extractStaffCropTensor(
   source: RawImageData,
   box: ImageBox,
   id: string,
-  verticalPaddingRatio = 0.25,
+  optionsOrPadding: number | StaffCropOptions = { headroomRatio: 0.65, footroomRatio: 0.25 },
 ): StaffCropTensor {
-  const padY = Math.round(box.height * verticalPaddingRatio);
+  let headroomRatio = 0.65;
+  let footroomRatio = 0.25;
+
+  if (typeof optionsOrPadding === "number") {
+    headroomRatio = Math.max(0.65, optionsOrPadding);
+    footroomRatio = optionsOrPadding;
+  } else if (typeof optionsOrPadding === "object" && optionsOrPadding !== null) {
+    headroomRatio = optionsOrPadding.headroomRatio ?? 0.65;
+    footroomRatio = optionsOrPadding.footroomRatio ?? 0.25;
+  }
+
+  const padTop = Math.round(box.height * headroomRatio);
+  const padBottom = Math.round(box.height * footroomRatio);
   const cropX = Math.max(0, Math.floor(box.x));
-  const cropY = Math.max(0, Math.floor(box.y - padY));
+  const cropY = Math.max(0, Math.floor(box.y - padTop));
   const cropRight = Math.min(source.width, Math.ceil(box.x + box.width));
-  const cropBottom = Math.min(source.height, Math.ceil(box.y + box.height + padY));
+  const cropBottom = Math.min(source.height, Math.ceil(box.y + box.height + padBottom));
 
   const cropW = Math.max(1, cropRight - cropX);
   const cropH = Math.max(1, cropBottom - cropY);

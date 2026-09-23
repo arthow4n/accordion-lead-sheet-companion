@@ -393,6 +393,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setOmrProgressText(`Transcribing ${strips.length} staves with AI...`);
       addTrace("Starting OMR ONNX transcription in Web Worker...");
       const { scoreDoc, avgConfidence } = await transcribeStripsWithOmr(strips, {
+        transferBuffer: true,
         onProgress: (p) => {
           setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`);
           addTrace(`OMR: transcribed staff ${p.current}/${p.total}`);
@@ -421,9 +422,43 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       );
 
       addTrace("Fusing OMR notes with OCR chords & form...");
+
+      // Wire layout bounding boxes (sourceBox) to OMR measures before fusion
+      if (prep.layout?.measures && prep.layout.measures.length > 0) {
+        for (let i = 0; i < scoreDoc.measures.length; i++) {
+          const m = scoreDoc.measures[i];
+          const geom = prep.layout.measures[i] ??
+            prep.layout.measures.find((g) => g.writtenIndex === m.writtenIndex);
+          if (geom?.box) {
+            m.sourceBox = { ...geom.box };
+          }
+        }
+      }
+
       const { fuseScoreDocument } = await import("../lib/score/scoreFusion.ts");
       const fusedResult = fuseScoreDocument(scoreDoc, ocrData);
       let finalDoc = fusedResult.document;
+
+      // Ensure all finalDoc measures retain genuine sourceBox from prep.layout
+      if (prep.layout?.measures && prep.layout.measures.length > 0) {
+        for (let i = 0; i < finalDoc.measures.length; i++) {
+          const m = finalDoc.measures[i];
+          if (!m.sourceBox) {
+            const geom = prep.layout.measures[i] ??
+              prep.layout.measures.find((g) => g.writtenIndex === m.writtenIndex);
+            if (geom?.box) {
+              m.sourceBox = { ...geom.box };
+            }
+          }
+          if (m.sourceBox) {
+            for (const h of m.harmonies) {
+              if (!h.sourceBox) {
+                h.sourceBox = { ...m.sourceBox };
+              }
+            }
+          }
+        }
+      }
 
       // Preserve user corrections across rescan (MED-04)
       if (previewSong?.score) {
@@ -664,7 +699,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         </header>
 
         {/* Tab Switcher */}
-        <div className="p-3 border-b border-zinc-800/80 bg-zinc-900/40 flex gap-2">
+        <div className="p-3 border-b border-zinc-800/80 bg-zinc-900/40 flex gap-2 overflow-x-auto">
           <button
             type="button"
             onClick={() => {

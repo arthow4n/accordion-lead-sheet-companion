@@ -85,6 +85,70 @@ export interface ScorePreprocessingOptions {
   minStaffLines?: number;
   lineSpacingTolerance?: number;
   signal?: AbortSignal;
+  useWorker?: boolean;
+  maxMeasuresPerSystem?: number;
+  transferBuffer?: boolean;
+}
+
+export const MAX_PHOTO_PREPROCESS_LONG_EDGE = 1600;
+
+/**
+ * Rescale raw image buffer so its longest dimension does not exceed maxLongEdge (default 1600px).
+ * Prevents memory exhaustion and unresponsiveness during computer vision processing.
+ */
+export function downscaleRawImageData(
+  input: RawImageData,
+  maxLongEdge = MAX_PHOTO_PREPROCESS_LONG_EDGE,
+): RawImageData {
+  const maxDim = Math.max(input.width, input.height);
+  if (maxDim <= maxLongEdge) {
+    return input;
+  }
+
+  const scale = maxLongEdge / maxDim;
+  const targetW = Math.max(1, Math.round(input.width * scale));
+  const targetH = Math.max(1, Math.round(input.height * scale));
+
+  if (typeof OffscreenCanvas !== "undefined") {
+    try {
+      const srcCanvas = new OffscreenCanvas(input.width, input.height);
+      const srcCtx = srcCanvas.getContext("2d");
+      if (srcCtx) {
+        const imgData = srcCtx.createImageData(input.width, input.height);
+        imgData.data.set(input.data);
+        srcCtx.putImageData(imgData, 0, 0);
+        const dstCanvas = new OffscreenCanvas(targetW, targetH);
+        const dstCtx = dstCanvas.getContext("2d");
+        if (dstCtx) {
+          dstCtx.drawImage(srcCanvas, 0, 0, targetW, targetH);
+          const scaled = dstCtx.getImageData(0, 0, targetW, targetH);
+          return { data: scaled.data, width: targetW, height: targetH };
+        }
+      }
+    } catch {
+      // Fall through to software resampler
+    }
+  }
+
+  // Pure software resampling fallback for environments without OffscreenCanvas
+  const outData = new Uint8ClampedArray(targetW * targetH * 4);
+  const xRatio = input.width / targetW;
+  const yRatio = input.height / targetH;
+  for (let dy = 0; dy < targetH; dy++) {
+    const sy = Math.min(input.height - 1, Math.floor(dy * yRatio));
+    const srcRowOffset = sy * input.width * 4;
+    const dstRowOffset = dy * targetW * 4;
+    for (let dx = 0; dx < targetW; dx++) {
+      const sx = Math.min(input.width - 1, Math.floor(dx * xRatio));
+      const srcIdx = srcRowOffset + sx * 4;
+      const dstIdx = dstRowOffset + dx * 4;
+      outData[dstIdx] = input.data[srcIdx];
+      outData[dstIdx + 1] = input.data[srcIdx + 1];
+      outData[dstIdx + 2] = input.data[srcIdx + 2];
+      outData[dstIdx + 3] = input.data[srcIdx + 3];
+    }
+  }
+  return { data: outData, width: targetW, height: targetH };
 }
 
 export interface RawImageData {
@@ -116,9 +180,11 @@ export class MatTracker {
   }
 }
 
+import cvModule from "@techstark/opencv-js";
+
 let openCvPromise: Promise<OpenCvInstance> | null = null;
 
-/** Lazy-load @techstark/opencv-js outside of initial app startup. */
+/** Load @techstark/opencv-js instance. */
 export async function loadOpenCv(): Promise<OpenCvInstance> {
   const g = globalThis as unknown as { cv?: OpenCvInstance };
   if (g.cv?.Mat) {
@@ -126,10 +192,8 @@ export async function loadOpenCv(): Promise<OpenCvInstance> {
   }
   if (!openCvPromise) {
     openCvPromise = (async (): Promise<OpenCvInstance> => {
-      const cvModule = await import("@techstark/opencv-js") as {
-        default?: { ready?: Promise<OpenCvInstance> } | OpenCvInstance;
-      };
-      const cvObj = cvModule.default || cvModule;
+      // deno-lint-ignore no-explicit-any
+      const cvObj: any = (cvModule as any)?.default || cvModule;
       if (cvObj && typeof cvObj === "object" && "ready" in cvObj && cvObj.ready) {
         return (await cvObj.ready) as OpenCvInstance;
       }
@@ -381,7 +445,32 @@ export function refineStaffHorizontalBounds(
 }
 
 /**
+ * Check whether foreground ink exists in binaryInvMat within a small neighborhood of (x, y).
+ */
+export function hasInkNear(
+  binData: Uint8Array | Uint8ClampedArray | undefined,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius = 2,
+): boolean {
+  if (!binData) return true; // Safe fallback if raw byte array is detached/unavailable
+  for (let dy = -radius; dy <= radius; dy++) {
+    const cy = y + dy;
+    if (cy < 0 || cy >= height) continue;
+    for (let dx = -radius; dx <= radius; dx++) {
+      const cx = x + dx;
+      if (cx < 0 || cx >= width) continue;
+      if (binData[cy * width + cx] > 0) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Detect vertical barlines across a staff and divide it into measures.
+ * Enforces stem immunity, line 1-5 spanning, musical deduplication, and max 6 measures per system.
  */
 export function detectBarlinesAndSliceMeasures(
   cv: OpenCvInstance,
@@ -390,6 +479,7 @@ export function detectBarlinesAndSliceMeasures(
   staves: StaffGeometry[],
   pageWidth: number,
   pageHeight: number,
+  options?: ScorePreprocessingOptions,
 ): { barlines: BarlineGeometry[]; measures: ScorePhotoMeasureGeometry[] } {
   const allBarlines: BarlineGeometry[] = [];
   const allMeasures: ScorePhotoMeasureGeometry[] = [];
@@ -408,8 +498,9 @@ export function detectBarlinesAndSliceMeasures(
     const roiRect = new cv.Rect(staffX, topY, staffW, staffH);
     const roi = tracker.track(binaryInvMat.roi(roiRect));
 
-    // Vertical morphological kernel to isolate barlines spanning the staff
-    const vertKernelH = Math.min(staffH, Math.max(1, Math.round(staffH * 0.65)));
+    // Vertical morphological kernel: set to 90% of staff height so note stems
+    // (which span ~75%-85% of staff height), accidentals, and clefs are removed by MORPH_OPEN.
+    const vertKernelH = Math.min(staffH, Math.max(1, Math.round(staffH * 0.90)));
     const vertKernel = tracker.track(
       cv.getStructuringElement(
         cv.MORPH_RECT,
@@ -425,8 +516,8 @@ export function detectBarlinesAndSliceMeasures(
     const colSums = vertProj.data32S;
     if (!colSums) continue;
 
-    // Detect barline peaks
-    const minInk = staffH * 255 * 0.55;
+    // Detect barline peaks (spanning almost the entire staff)
+    const minInk = staffH * 255 * 0.70;
     const barlineXs: number[] = [];
     let inBarline = false;
     let startX = 0;
@@ -448,15 +539,27 @@ export function detectBarlinesAndSliceMeasures(
       barlineXs.push(staffX + Math.round((startX + staffW - 1) / 2));
     }
 
-    // Filter barlines: deduplicate adjacent barlines within 8px
-    const filteredXs: number[] = [];
+    // Verify true barlines connect both line 1 (topY) and line 5 (bottomY) of the staff
+    const verifiedBarlines: number[] = [];
     for (const bx of barlineXs) {
-      if (filteredXs.length === 0 || bx - filteredXs[filteredXs.length - 1] > 8) {
+      if (
+        hasInkNear(binaryInvMat.data, bx, topY, pageWidth, pageHeight, 2) &&
+        hasInkNear(binaryInvMat.data, bx, bottomY, pageWidth, pageHeight, 2)
+      ) {
+        verifiedBarlines.push(bx);
+      }
+    }
+
+    // Filter barlines: deduplicate adjacent barlines within musically sound distance (staff.lineSpacing * 3)
+    const minBarlineDist = Math.max(16, Math.round(staff.lineSpacing * 3));
+    const filteredXs: number[] = [];
+    for (const bx of verifiedBarlines) {
+      if (filteredXs.length === 0 || bx - filteredXs[filteredXs.length - 1] > minBarlineDist) {
         filteredXs.push(bx);
       }
     }
 
-    // Record barlines
+    // Record verified barlines
     for (let bIdx = 0; bIdx < filteredXs.length; bIdx++) {
       const bx = filteredXs[bIdx];
       const barlineGeom: BarlineGeometry = {
@@ -481,30 +584,82 @@ export function detectBarlinesAndSliceMeasures(
     }
 
     boundaries.sort((a, b) => a - b);
-    const minMeasureWidth = Math.max(35, Math.round(staff.lineSpacing * 3.5));
-    const validBoundaries = boundaries.filter((v, idx, arr) =>
-      idx === 0 || v - arr[idx - 1] >= minMeasureWidth
+    const minMeasureWidth = Math.max(
+      Math.round(staff.lineSpacing * 8),
+      Math.min(180, Math.round(staff.lineSpacing * 10)),
     );
+    const validBoundaries: number[] = [];
+    for (const b of boundaries) {
+      if (
+        validBoundaries.length === 0 ||
+        b - validBoundaries[validBoundaries.length - 1] >= minMeasureWidth
+      ) {
+        validBoundaries.push(b);
+      }
+    }
 
+    // Ensure the right boundary covers the staff end if close
+    if (validBoundaries.length >= 2) {
+      const lastX = staffX + staffW;
+      if (lastX - validBoundaries[validBoundaries.length - 1] < minMeasureWidth) {
+        validBoundaries[validBoundaries.length - 1] = lastX;
+      } else {
+        validBoundaries.push(lastX);
+      }
+    }
+
+    const staffMeasures: ImageBox[] = [];
     for (let mIdx = 0; mIdx < validBoundaries.length - 1; mIdx++) {
       const x0 = validBoundaries[mIdx];
       const x1 = validBoundaries[mIdx + 1];
       const mWidth = x1 - x0;
-      if (mWidth < minMeasureWidth) continue;
+      if (mWidth <= 0) continue;
 
-      const measureBox: ImageBox = {
+      staffMeasures.push({
         x: x0,
         y: staff.box.y,
         width: mWidth,
         height: staff.box.height,
         sourceWidth: pageWidth,
         sourceHeight: pageHeight,
-      };
+      });
+    }
 
+    // Cap measures per system to <= 6 by iteratively merging narrowest slices
+    const maxMeasures = Math.max(1, options?.maxMeasuresPerSystem ?? 6);
+    while (staffMeasures.length > maxMeasures) {
+      let minIdx = 0;
+      let minW = staffMeasures[0].width;
+      for (let i = 1; i < staffMeasures.length; i++) {
+        if (staffMeasures[i].width < minW) {
+          minW = staffMeasures[i].width;
+          minIdx = i;
+        }
+      }
+      if (minIdx === 0) {
+        staffMeasures[0].width += staffMeasures[1].width;
+        staffMeasures.splice(1, 1);
+      } else if (minIdx === staffMeasures.length - 1) {
+        staffMeasures[minIdx - 1].width += staffMeasures[minIdx].width;
+        staffMeasures.splice(minIdx, 1);
+      } else {
+        const prevW = staffMeasures[minIdx - 1].width;
+        const nextW = staffMeasures[minIdx + 1].width;
+        if (prevW <= nextW) {
+          staffMeasures[minIdx - 1].width += staffMeasures[minIdx].width;
+          staffMeasures.splice(minIdx, 1);
+        } else {
+          staffMeasures[minIdx].width += staffMeasures[minIdx + 1].width;
+          staffMeasures.splice(minIdx + 1, 1);
+        }
+      }
+    }
+
+    for (const box of staffMeasures) {
       allMeasures.push({
         id: `photo-measure-${allMeasures.length + 1}`,
         writtenIndex: allMeasures.length,
-        box: measureBox,
+        box,
         source: "automatic",
       });
     }
@@ -527,7 +682,8 @@ export function processScoreImageWithCv(
   checkAborted(options?.signal);
 
   try {
-    const { width, height } = imageData;
+    const scaledImage = downscaleRawImageData(imageData, MAX_PHOTO_PREPROCESS_LONG_EDGE);
+    const { width, height } = scaledImage;
     if (width < 32 || height < 32) {
       return {
         layout: createInitialPhotoLayout(Math.max(1, width), Math.max(1, height)),
@@ -541,7 +697,7 @@ export function processScoreImageWithCv(
     }
 
     const srcMat = tracker.track(new cv.Mat(height, width, cv.CV_8UC4));
-    srcMat.data.set(imageData.data);
+    srcMat.data.set(scaledImage.data);
 
     checkAborted(options?.signal);
 
@@ -665,6 +821,7 @@ export function processScoreImageWithCv(
       staves,
       width,
       height,
+      options,
     );
 
     const systems: SystemGeometry[] = staves.map((staff, idx) => ({
@@ -720,20 +877,37 @@ export async function preprocessScorePhoto(
 
   let raw: RawImageData;
   if ("data" in input && input.data instanceof Uint8ClampedArray) {
-    raw = input;
+    raw = downscaleRawImageData(input, MAX_PHOTO_PREPROCESS_LONG_EDGE);
   } else if (typeof OffscreenCanvas !== "undefined") {
     const bitmap = input as ImageBitmap;
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const maxDim = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1.0, MAX_PHOTO_PREPROCESS_LONG_EDGE / maxDim);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not create OffscreenCanvas 2D context.");
-    ctx.drawImage(bitmap, 0, 0);
-    const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-    raw = { data: imgData.data, width: bitmap.width, height: bitmap.height };
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const imgData = ctx.getImageData(0, 0, width, height);
+    raw = { data: imgData.data, width, height };
   } else {
     throw new Error("Cannot extract pixels from ImageBitmap in this environment.");
   }
 
   checkAborted(options?.signal);
+
+  if (typeof Worker !== "undefined" && options?.useWorker !== false) {
+    try {
+      const { getScoreImageClient } = await import("./scoreImageClient.ts");
+      const client = getScoreImageClient();
+      return await client.process(raw, options, options?.signal);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw err;
+      }
+      // Fallback to direct CV execution if worker cannot start in current environment
+    }
+  }
 
   const cv = await loadOpenCv();
   return processScoreImageWithCv(cv, raw, options);
