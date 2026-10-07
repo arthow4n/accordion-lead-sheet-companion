@@ -31,7 +31,7 @@
     "tailwind-merge": "npm:tailwind-merge@^3.7.0",
     "@xmldom/xmldom": "npm:@xmldom/xmldom@0.9.12",
     "fflate": "npm:fflate@0.8.3",
-    "opensheetmusicdisplay": "npm:opensheetmusicdisplay@2.1.2",
+    "opensheetmusicdisplay": "npm:opensheetmusicdisplay@2.2.0",
     "@techstark/opencv-js": "npm:@techstark/opencv-js@5.0.0-release.1",
     "onnxruntime-web": "npm:onnxruntime-web@1.29.0",
     "@types/react": "npm:@types/react@^19.3.0",
