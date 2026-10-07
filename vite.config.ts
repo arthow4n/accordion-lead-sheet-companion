@@ -56,7 +56,7 @@ export default defineConfig({
         ],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/onnxruntime-web@1\.29\.0\/dist\//,
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/onnxruntime-web@[^/]+\/dist\//,
             handler: "CacheFirst",
             options: {
               cacheName: "ort-wasm-v1",

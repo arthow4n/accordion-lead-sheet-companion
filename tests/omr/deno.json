@@ -1,6 +1,6 @@
 {
   "imports": {
-    "onnxruntime-web": "npm:onnxruntime-web@1.29.0",
+    "onnxruntime-web": "npm:onnxruntime-web@1.30.0",
     "@std/assert": "jsr:@std/assert@^1.0.0",
     "@std/expect": "jsr:@std/expect@^1.0.0"
   },

@@ -22,7 +22,7 @@
     "npm:idb-keyval@^6.3.0": "6.3.0",
     "npm:jpeg-js@*": "0.4.4",
     "npm:lucide-react@^1.52.0": "1.52.0_@types+react@19.3.0_react@19.3.0",
-    "npm:onnxruntime-web@1.29.0": "1.29.0",
+    "npm:onnxruntime-web@1.30.0": "1.30.0",
     "npm:opensheetmusicdisplay@2.2.0": "2.2.0",
     "npm:react-dom@^19.3.0": "19.3.0_react@19.3.0",
     "npm:react@^19.3.0": "19.3.0",
@@ -2641,11 +2641,11 @@
         "wrappy"
       ]
     },
-    "onnxruntime-common@1.29.0": {
-      "integrity": "sha512-/F63/e2VJoaVXGGNu6S5QH7jivBThGO95OzAVXXQ8hTta/b1QxI8udHa6cI3+3mAb5WWIIaMMwfZw01oivjJ1g=="
+    "onnxruntime-common@1.30.0": {
+      "integrity": "sha512-7fdVWjAID1dVhH/G8qK3APARunV4VkBFoCQAP7qp4Wkab0mrorvmc+sqiT+mKXOzDqdjN5j+/Z9nb4gzNPWcyA=="
     },
-    "onnxruntime-web@1.29.0": {
-      "integrity": "sha512-LuQlpX6MFLJZu756erwUeb1mNfoJGbs1kzDwJGNlf5RvfYMdqhcY3vNpDPK40CUV2HoWTkIj+uS0o36GFHjeYw==",
+    "onnxruntime-web@1.30.0": {
+      "integrity": "sha512-q0y+JrrtukXSzsBWEMccVfqX25LRmosXHF+CaRJmg8pZClzcV7svNc4rKY3jL02Vb7QmRMDs1SigqR4CXAfKYQ==",
       "dependencies": [
         "flatbuffers",
         "guid-typescript",
@@ -3639,7 +3639,7 @@
       "npm:fflate@0.8.3",
       "npm:idb-keyval@^6.3.0",
       "npm:lucide-react@^1.52.0",
-      "npm:onnxruntime-web@1.29.0",
+      "npm:onnxruntime-web@1.30.0",
       "npm:opensheetmusicdisplay@2.2.0",
       "npm:react-dom@^19.3.0",
       "npm:react@^19.3.0",
