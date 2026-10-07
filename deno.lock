@@ -8,9 +8,7 @@
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.6",
     "jsr:@std/path@^1.1.6": "1.1.6",
-    "npm:@google/genai@*": "2.19.0",
-    "npm:@google/genai@2.19.0": "2.19.0",
-    "npm:@google/genai@^2.19.0": "2.19.0",
+    "npm:@google/genai@2.27.0": "2.27.0",
     "npm:@tailwindcss/vite@^4.3.3": "4.3.3_vite@8.3.3",
     "npm:@techstark/opencv-js@5.0.0-release.1": "5.0.0-release.1",
     "npm:@types/react-dom@19": "19.2.4_@types+react@19.2.18",
@@ -837,8 +835,8 @@
         "@babel/helper-validator-identifier"
       ]
     },
-    "@google/genai@2.19.0": {
-      "integrity": "sha512-IM3u1FjpOLyOPsPh0smGA6Ntj2olUWCPbTs/WQj7cA/2AKCGw/652W7IaySx0XtwuscFnMYBoraebQusSZ0zSQ==",
+    "@google/genai@2.27.0": {
+      "integrity": "sha512-W6F9Y9d4h7cVQNa85IPCOVVP9PiUzve/ZQPBvQnBmnBJcLvxstEw+R2X/RyCH0SOe0HVDQzeKDpDUf6ZRtbmdQ==",
       "dependencies": [
         "google-auth-library",
         "p-retry",
@@ -3631,7 +3629,7 @@
     "dependencies": [
       "jsr:@std/assert@1",
       "jsr:@std/expect@1",
-      "npm:@google/genai@2.19.0",
+      "npm:@google/genai@2.27.0",
       "npm:@tailwindcss/vite@^4.3.3",
       "npm:@techstark/opencv-js@5.0.0-release.1",
       "npm:@types/react-dom@19",

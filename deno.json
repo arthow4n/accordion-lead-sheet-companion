@@ -14,7 +14,7 @@
     "fmt:check": "deno fmt --check"
   },
   "imports": {
-    "@google/genai": "npm:@google/genai@2.19.0",
+    "@google/genai": "npm:@google/genai@2.27.0",
     "react": "npm:react@^19.0.0",
     "react/jsx-runtime": "npm:react@^19.0.0/jsx-runtime",
     "react-dom": "npm:react-dom@^19.0.0",
