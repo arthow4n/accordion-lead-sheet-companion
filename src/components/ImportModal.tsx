@@ -33,6 +33,7 @@ import { rational } from "../lib/score/rational.ts";
 import { registerEphemeralScoreAsset, saveScoreAsset } from "../lib/storage/songbook.ts";
 import { LineRenderer } from "./LineRenderer.tsx";
 import { GuidedPhotoPreview } from "./GuidedPhotoPreview.tsx";
+import { GeminiPhotoImport } from "./GeminiPhotoImport.tsx";
 import { OmrDownloadModal } from "./OmrDownloadModal.tsx";
 import {
   areOmrModelsReady,
@@ -991,6 +992,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                     />
                   )}
 
+                  <GeminiPhotoImport
+                    file={selectedImage}
+                    onOpenSheet={(text, title) => {
+                      setRawText(text);
+                      handleProcessText(text, title);
+                      setActiveTab("manual");
+                    }}
+                  />
+
                   {selectedImage && (
                     <div className="space-y-2">
                       <button
@@ -1144,21 +1154,28 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={handleScanChords}
-                    disabled={!selectedImage || isScanning}
-                    className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
-                  >
-                    {isScanning
-                      ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Scanning chords...</span>
-                        </>
-                      )
-                      : <span>Scan chords</span>}
-                  </button>
+                  <details className="rounded-lg border border-zinc-800 p-2 text-xs text-zinc-400">
+                    <summary className="min-h-[44px] cursor-pointer">Advanced: server scan</summary>
+                    <p className="pb-2">
+                      This separate route requires a recognition key configured on the app’s API
+                      server.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleScanChords}
+                      disabled={!selectedImage || isScanning}
+                      className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                    >
+                      {isScanning
+                        ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Scanning chords...</span>
+                          </>
+                        )
+                        : <span>Scan chords</span>}
+                    </button>
+                  </details>
                 </div>
               </div>
 

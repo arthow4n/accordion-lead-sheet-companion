@@ -46,8 +46,8 @@ hands-free stage controls.
   - 100% offline capability via Service Worker precache and IndexedDB local persistence
     (`idb-keyval`).
 - **📸 Temporary Score Photo & Chord Lookup:**
-  - **Photo Scan:** Upload a printed score page image to extract chords using Google Gemini
-    (`gemini-3.5-flash-lite`) structured JSON output.
+  - **Gemini Photo Recognition:** Call Google directly from the browser with your own API key,
+    discover available models, choose thinking effort, and review structured chord-sheet output.
   - **Manual Chord List:** Fast comma/newline chord list parsing with offline local normalization
     (`C, G/B, Am7, C/D`, `Em(maj7)/D#`).
   - Single-overlay modal: tapping any recognized chord chip immediately opens the focused Left-Hand
@@ -58,11 +58,26 @@ hands-free stage controls.
 ## Using a printed sheet to find accordion buttons
 
 1. Open **Import → Lookup**, then **Choose gallery** or **Take photo**.
-2. Choose **Scan chords** to extract the chord symbols printed on the sheet. This sends the image to
-   the configured API and Google recognition provider; it requires internet access and a server with
-   `GOOGLE_GENAI_API_KEY` configured. It does not transcribe the melody.
-3. Tap a found chord to open its left-hand Stradella or right-hand C-System button guide. Check
-   recognized symbols against the sheet, especially accidentals and slash basses.
+2. In **Gemini photo recognition**, enter your own API key, choose **Save key and load models**,
+   then select a model from your key's available models. Leave **Thinking effort** at **Model
+   default**, or choose a supported effort explicitly.
+3. Choose **Recognize with Gemini**. The browser prepares the image locally to remove metadata and
+   sends its pixels directly to Google using the official SDK and CORS. No Deno backend is needed.
+   It reads printed chord symbols, not melody notes. Model discovery is not a guarantee of image or
+   JSON-schema support; incompatible models report an error without silently switching models.
+4. Review **Gemini chord sheet**, then choose **Open chord sheet → Save to Songbook**. Repeated
+   chords and staff reading order are preserved. Tap chords in the saved sheet for left-hand
+   Stradella or right-hand C-System button guides.
+
+The key is stored in this app's namespaced localStorage, separately from songs and JSON exports. It
+is masked after saving and can be deleted with **Remove Gemini key**. Browser storage is readable by
+code on the same origin, including other GitHub Pages apps on that origin. Requests happen only
+after explicit model-refresh or recognition actions; scanning may incur Google API charges.
+
+This device-local key/model/thinking approach follows
+[Dibwyl's Gemini integration](https://github.com/arthow4n/did-it-become-what-you-like/tree/master/src/adapters/gemini).
+The old backend scanner remains under **Advanced: server scan** and still requires a server-side
+`GOOGLE_GENAI_API_KEY`; it is independent of direct browser Gemini recognition.
 
 For an offline alternative, enter unfamiliar symbols in **Lookup → Chord list**, separated by commas
 or newlines, then choose **Look up**. Lookup results are temporary and are cleared when the import
@@ -107,7 +122,8 @@ deno --version
 
 ### Local End-to-End Workflow
 
-For end-to-end testing of score photo scanning with the local edge server:
+Direct-browser Gemini recognition only needs `deno task dev`; enter your key in the app. For
+optional testing of **Advanced: server scan** with the local edge server:
 
 ```bash
 # Terminal 1: Run Deno API server (reads GOOGLE_GENAI_API_KEY)
