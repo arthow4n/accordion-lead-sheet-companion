@@ -592,3 +592,22 @@ Deno.test("PREPROCESS-16: ScoreImageWorkerClient aborts on pre-aborted signal an
   // Terminate client cleanly
   client.terminate();
 });
+
+Deno.test("PREPROCESS: deskew applies the selected correction for either slope direction", async () => {
+  const cv = await loadOpenCv();
+  for (const slopeDegrees of [-3, 3]) {
+    const img = createBlankImage(600, 300);
+    const slope = Math.tan(slopeDegrees * Math.PI / 180);
+    for (let line = 0; line < 5; line++) {
+      for (let x = 45; x < 555; x++) {
+        const y = Math.round(110 + line * 12 + slope * (x - 300));
+        const idx = (y * img.width + x) * 4;
+        img.data[idx] = img.data[idx + 1] = img.data[idx + 2] = 0;
+      }
+    }
+    const result = processScoreImageWithCv(cv, img);
+    assertEquals(result.staves.length, 1, `Staff lost at ${slopeDegrees} degrees`);
+    assertEquals(result.staves[0].lineYCoordinates.length, 5);
+    assertEquals(result.deskewAngleDegrees, slopeDegrees);
+  }
+});

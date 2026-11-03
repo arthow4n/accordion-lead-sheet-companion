@@ -284,3 +284,48 @@ Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, 
   assertStringIncludes(html, "100% On-Device");
   assertStringIncludes(html, "Download &amp; Start");
 });
+
+Deno.test("UX-OMR-02: photo results expose editable chord-only import beside the source", () => {
+  // Render the actual recognition-result state without performing network inference in unit tests.
+  // deno-lint-ignore no-explicit-any
+  const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  function PhotoResultState({ children, chords = "[Dm/B] [Cdim/F#]" }: {
+    children: React.ReactNode;
+    chords?: string;
+  }) {
+    const originalUseState = internals.H.useState;
+    let index = 0;
+    // deno-lint-ignore no-explicit-any
+    internals.H.useState = (initial: any) => {
+      const current = index++;
+      if (current === 0) return ["score", () => {}];
+      if (current === 1) return [chords, () => {}];
+      if (current === 5) {
+        return [{
+          title: "Synthetic recognition result",
+          score: { source: { kind: "photo" }, measures: [], issues: [] },
+        }, () => {}];
+      }
+      if (current === 6) return [new File(["synthetic"], "score.png"), () => {}];
+      return originalUseState(initial);
+    };
+    return <>{children}</>;
+  }
+  const html = renderToStaticMarkup(
+    <PhotoResultState>
+      <ImportModal isOpen onClose={() => {}} onSaveSong={() => {}} />
+    </PhotoResultState>,
+  );
+  assertStringIncludes(html, "Review chord sheet");
+  assertStringIncludes(html, "[Dm/B] [Cdim/F#]");
+  assertStringIncludes(html, "Use chords only");
+  assertStringIncludes(html, "does not guarantee a correct symbol");
+  assertEquals(html.includes("Choose MusicXML / MXL"), false);
+  const emptyHtml = renderToStaticMarkup(
+    <PhotoResultState chords="">
+      <ImportModal isOpen onClose={() => {}} onSaveSong={() => {}} />
+    </PhotoResultState>,
+  );
+  assertStringIncludes(emptyHtml, "Review chord sheet");
+  assertExists(emptyHtml.match(/<button[^>]*disabled=""[^>]*>Use chords only<\/button>/));
+});

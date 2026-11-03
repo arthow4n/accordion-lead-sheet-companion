@@ -351,7 +351,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       setIsOmrModalOpen(true);
       return;
     }
-    addTrace("OMR and OCR models verified in local Cache Storage.");
+    addTrace("OMR model files found in local Cache Storage.");
 
     setIsTranscribingOmr(true);
     setOmrProgressText("Analyzing score staves and geometry...");
@@ -386,7 +386,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       );
 
       const strips = prep.staves.map((staff, idx) =>
-        extractStaffCropTensor(raw, staff.box, staff.id || `staff-${idx}`)
+        extractStaffCropTensor(raw, staff.box, staff.id || `staff-${idx}`, {
+          // Staff geometry already includes the chord banner and ledger-line margins.
+          headroomRatio: 0,
+          footroomRatio: 0,
+          deskewAngleDegrees: prep.deskewAngleDegrees,
+        })
       );
       addTrace(`Prepared ${strips.length} staff crops for ONNX model.`);
 
@@ -396,7 +401,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         transferBuffer: true,
         onProgress: (p) => {
           setOmrProgressText(`Transcribing staff ${p.current}/${p.total}...`);
-          addTrace(`OMR: transcribed staff ${p.current}/${p.total}`);
+          addTrace(`OMR: processing staff ${p.current}/${p.total}`);
         },
       });
       addTrace(
@@ -405,23 +410,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         }%`,
       );
 
-      setOmrProgressText("Performing bounded chord and text OCR...");
-      addTrace("Starting bounded chord and text OCR...");
-      const { recognizeStaffBoundedOcr } = await import("../lib/score/ocrRecognition.ts");
-      const ocrData = await recognizeStaffBoundedOcr(
-        raw,
-        prep.staves,
-        prep.staves[0]?.lineSpacing || 24,
-        (msg) => {
-          setOmrProgressText(msg);
-          addTrace(msg);
-        },
-      );
-      addTrace(
-        `Bounded OCR complete: ${ocrData.measures?.length ?? 0} measure bands processed`,
-      );
-
-      addTrace("Fusing OMR notes with OCR chords & form...");
+      setOmrProgressText("Checking recognized notes and chords...");
+      addTrace("Checking recognized notes, chords, and score timing...");
 
       // Wire layout bounding boxes (sourceBox) to OMR measures before fusion
       if (prep.layout?.measures && prep.layout.measures.length > 0) {
@@ -436,7 +426,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       }
 
       const { fuseScoreDocument } = await import("../lib/score/scoreFusion.ts");
-      const fusedResult = fuseScoreDocument(scoreDoc, ocrData);
+      // The deterministic text helpers cannot read image pixels. Use the model's
+      // actual harmonies, rather than reporting an independent OCR verification.
+      const fusedResult = fuseScoreDocument(scoreDoc);
       let finalDoc = fusedResult.document;
 
       // Ensure all finalDoc measures retain genuine sourceBox from prep.layout
@@ -493,6 +485,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       }
 
       addTrace(`Done! Loaded score with ${finalDoc.measures.length} measures.`);
+      setRawText(
+        finalDoc.measures.map((measure) =>
+          measure.harmonies.map((harmony) => `[${harmony.raw}]`).join(" ")
+        ).filter(Boolean).join("\n"),
+      );
 
       setPreviewSong({
         id: `photo_${now}_${Math.random().toString(36).slice(2, 9)}`,
@@ -854,23 +851,71 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           {/* MusicXML/MXL Tab */}
           {activeTab === "score" && (
             <div className="space-y-3">
-              <p className="text-xs text-zinc-400">
-                Import a MusicXML or compressed MXL file for measure-aware melody and accordion
-                guidance. Unsupported constructs are preserved as source issues and never guessed.
-              </p>
-              <label className="flex items-center justify-center gap-2 p-4 bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
-                <Music className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium text-zinc-200">
-                  {isParsingScore ? "Parsing score..." : scoreFileName || "Choose MusicXML / MXL"}
-                </span>
-                <input
-                  type="file"
-                  accept=".xml,.musicxml,.mxl,application/xml,text/xml,application/vnd.recordare.musicxml"
-                  onChange={handleScoreFileChange}
-                  className="hidden"
-                  disabled={isParsingScore}
-                />
-              </label>
+              {previewSong?.score?.source.kind === "photo" && selectedImage
+                ? (
+                  <>
+                    <p className="text-xs text-zinc-300">
+                      Compare the recognized chords with your photo, especially slash basses and
+                      accidentals. A high model confidence does not guarantee a correct symbol.
+                    </p>
+                    <GuidedPhotoPreview
+                      file={selectedImage}
+                      layout={photoLayout}
+                      showMeasureBoxes={false}
+                    />
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-zinc-300">
+                        Review chord sheet
+                        <textarea
+                          value={rawText}
+                          onChange={(event) => setRawText(event.target.value)}
+                          rows={6}
+                          className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm font-mono text-zinc-100"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={!rawText.trim()}
+                        onClick={() => {
+                          handleProcessText(rawText, previewSong.title);
+                          setActiveTab("manual");
+                        }}
+                        className="min-h-[44px] w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40"
+                      >
+                        Use chords only
+                      </button>
+                      <p className="text-xs text-zinc-400">
+                        Save these chords to your songbook for accordion button guides without
+                        depending on recognized melody timing. Keep each chord in brackets, such as
+                        [Dm/B].
+                      </p>
+                    </div>
+                  </>
+                )
+                : (
+                  <>
+                    <p className="text-xs text-zinc-400">
+                      Import a MusicXML or compressed MXL file for measure-aware melody and
+                      accordion guidance. Unsupported constructs are preserved as source issues and
+                      never guessed.
+                    </p>
+                    <label className="flex items-center justify-center gap-2 p-4 bg-zinc-900/80 hover:bg-zinc-900 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl cursor-pointer transition-all">
+                      <Music className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs font-medium text-zinc-200">
+                        {isParsingScore
+                          ? "Parsing score..."
+                          : scoreFileName || "Choose MusicXML / MXL"}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".xml,.musicxml,.mxl,application/xml,text/xml,application/vnd.recordare.musicxml"
+                        onChange={handleScoreFileChange}
+                        className="hidden"
+                        disabled={isParsingScore}
+                      />
+                    </label>
+                  </>
+                )}
               {previewSong?.score && activeTab === "score" && (
                 <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs space-y-1">
                   <p className="font-semibold text-zinc-200">{previewSong.title}</p>

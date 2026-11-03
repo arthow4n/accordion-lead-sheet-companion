@@ -74,6 +74,11 @@ photo recognition workflow with a first-use model download; it is not required f
 guided photo fallback lets you supply chord labels manually and optionally retain the photo on your
 device.
 
+After local photo recognition, review the editable **Review chord sheet** against your photo. Choose
+**Use chords only**, then **Save to Songbook** to open accordion chord guides even when recognized
+melody timing needs correction. Local recognition can misread accidentals, slash basses, and
+repeated measures despite a high confidence score; review the symbols before practicing.
+
 Photos attached to coding sessions under `.codex-attachments/` are ignored by Git.
 
 ---

@@ -274,8 +274,13 @@ export function parseHumdrumScore(
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Ignore spine terminators or linebreaks
-    if (trimmed.startsWith("*-") || trimmed === "!!linebreak" || trimmed.startsWith("!")) {
+    // Each model crop is an independent Humdrum segment. Its final barline may
+    // be omitted; never merge its last measure into the next staff's first one.
+    if (trimmed.startsWith("*-") || trimmed === "!!linebreak" || trimmed.startsWith("**kern")) {
+      closeActiveMeasure();
+      continue;
+    }
+    if (trimmed.startsWith("!")) {
       continue;
     }
 

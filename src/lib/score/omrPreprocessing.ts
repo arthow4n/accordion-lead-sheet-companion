@@ -24,6 +24,8 @@ export interface StaffCropTensor {
 export interface StaffCropOptions {
   headroomRatio?: number; // Default 0.65 to capture chord banner situated 35-60px above staff
   footroomRatio?: number; // Default 0.25 for ledger lines below staff
+  /** Rotation applied by layout detection, in OpenCV's image-coordinate convention. */
+  deskewAngleDegrees?: number;
 }
 
 /**
@@ -39,6 +41,7 @@ export function extractStaffCropTensor(
 ): StaffCropTensor {
   let headroomRatio = 0.65;
   let footroomRatio = 0.25;
+  let deskewAngleDegrees = 0;
 
   if (typeof optionsOrPadding === "number") {
     headroomRatio = Math.max(0.65, optionsOrPadding);
@@ -46,14 +49,18 @@ export function extractStaffCropTensor(
   } else if (typeof optionsOrPadding === "object" && optionsOrPadding !== null) {
     headroomRatio = optionsOrPadding.headroomRatio ?? 0.65;
     footroomRatio = optionsOrPadding.footroomRatio ?? 0.25;
+    deskewAngleDegrees = optionsOrPadding.deskewAngleDegrees ?? 0;
   }
 
+  // Boxes belong to the resized, deskewed layout, not necessarily the input pixels.
+  const layoutWidth = box.sourceWidth ?? source.width;
+  const layoutHeight = box.sourceHeight ?? source.height;
   const padTop = Math.round(box.height * headroomRatio);
   const padBottom = Math.round(box.height * footroomRatio);
   const cropX = Math.max(0, Math.floor(box.x));
   const cropY = Math.max(0, Math.floor(box.y - padTop));
-  const cropRight = Math.min(source.width, Math.ceil(box.x + box.width));
-  const cropBottom = Math.min(source.height, Math.ceil(box.y + box.height + padBottom));
+  const cropRight = Math.min(layoutWidth, Math.ceil(box.x + box.width));
+  const cropBottom = Math.min(layoutHeight, Math.ceil(box.y + box.height + padBottom));
 
   const cropW = Math.max(1, cropRight - cropX);
   const cropH = Math.max(1, cropBottom - cropY);
@@ -67,18 +74,33 @@ export function extractStaffCropTensor(
   // Bilinear sampling from source image
   const scaleX = cropW / targetWidth;
   const scaleY = cropH / targetHeight;
+  const sourceScaleX = source.width / layoutWidth;
+  const sourceScaleY = source.height / layoutHeight;
+  const angle = deskewAngleDegrees * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const centerX = layoutWidth / 2;
+  const centerY = layoutHeight / 2;
 
   for (let ty = 0; ty < targetHeight; ty++) {
-    const srcY = cropY + (ty + 0.5) * scaleY - 0.5;
-    const y0 = Math.max(0, Math.min(source.height - 1, Math.floor(srcY)));
-    const y1 = Math.max(0, Math.min(source.height - 1, y0 + 1));
-    const dy = Math.max(0, Math.min(1, srcY - y0));
-
     for (let tx = 0; tx < targetWidth; tx++) {
-      const srcX = cropX + (tx + 0.5) * scaleX - 0.5;
+      const layoutX = cropX + (tx + 0.5) * scaleX - 0.5;
+      const layoutY = cropY + (ty + 0.5) * scaleY - 0.5;
+      // Invert the layout rotation before sampling the original photo.
+      const srcX = (centerX + cos * (layoutX - centerX) - sin * (layoutY - centerY) + 0.5) *
+          sourceScaleX - 0.5;
+      const srcY = (centerY + sin * (layoutX - centerX) + cos * (layoutY - centerY) + 0.5) *
+          sourceScaleY - 0.5;
+      if (srcX < 0 || srcX > source.width - 1 || srcY < 0 || srcY > source.height - 1) {
+        tensorData[ty * targetWidth + tx] = 1;
+        continue;
+      }
       const x0 = Math.max(0, Math.min(source.width - 1, Math.floor(srcX)));
       const x1 = Math.max(0, Math.min(source.width - 1, x0 + 1));
       const dx = Math.max(0, Math.min(1, srcX - x0));
+      const y0 = Math.max(0, Math.min(source.height - 1, Math.floor(srcY)));
+      const y1 = Math.max(0, Math.min(source.height - 1, y0 + 1));
+      const dy = Math.max(0, Math.min(1, srcY - y0));
 
       // Sample 4 neighbor pixels (RGBA)
       const idx00 = (y0 * source.width + x0) * 4;

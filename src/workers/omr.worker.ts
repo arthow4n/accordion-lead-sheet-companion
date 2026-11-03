@@ -155,7 +155,7 @@ self.onmessage = async (event: MessageEvent<OmrWorkerRequest>) => {
         const encoderOutput = encOut.encoder_output;
 
         // 2. Autoregressive decode loop
-        const tokens: number[] = [OMR_TOKEN_IDS.BOS, OMR_TOKEN_IDS.KERN];
+        const tokens: number[] = [OMR_TOKEN_IDS.BOS];
 
         for (let step = 0; step < maxTokens; step++) {
           if (controller.signal.aborted) {

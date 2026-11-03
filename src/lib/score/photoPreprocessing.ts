@@ -739,7 +739,7 @@ export function processScoreImageWithCv(
       if (Math.abs(deskewAngle) >= 0.25) {
         const center = new cv.Point(width / 2, height / 2);
         const rotM = tracker.track(
-          cv.getRotationMatrix2D(center, -deskewAngle, 1.0) as DeletableMat,
+          cv.getRotationMatrix2D(center, deskewAngle, 1.0) as DeletableMat,
         );
         const deskewed = tracker.track(new cv.Mat());
         cv.warpAffine(

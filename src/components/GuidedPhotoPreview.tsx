@@ -10,6 +10,7 @@ export interface GuidedPhotoPreviewProps {
   file: File;
   layout?: ScorePhotoLayout;
   onLayoutChange?: (layout: ScorePhotoLayout) => void;
+  showMeasureBoxes?: boolean;
 }
 
 /** Local-only photo preview and manual page/measure boundary adjustment. */
@@ -17,6 +18,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
   file,
   layout,
   onLayoutChange,
+  showMeasureBoxes = true,
 }) => {
   const [objectUrl, setObjectUrl] = useState<string>();
   const [activeLayout, setActiveLayout] = useState<ScorePhotoLayout | undefined>(layout);
@@ -86,7 +88,7 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
             className="block max-h-72 w-full object-contain"
           />
         )}
-        {activeLayout && activeLayout.measures.map((m, idx) => {
+        {showMeasureBoxes && activeLayout && activeLayout.measures.map((m, idx) => {
           const isSelected = idx === selectedMeasureIndex;
           return (
             <div
@@ -111,13 +113,15 @@ export const GuidedPhotoPreview: React.FC<GuidedPhotoPreviewProps> = ({
             ? "Preparing local photo…"
             : status === "error"
             ? "Local decode unavailable"
+            : !showMeasureBoxes
+            ? "Photo reference"
             : activeLayout && activeLayout.measures.length > 1
             ? `Guided photo · ${activeLayout.measures.length} measures detected`
             : "Guided photo · one page strip"}
         </span>
         {activeLayout && <span>{activeLayout.page.width} × {activeLayout.page.height}px</span>}
       </div>
-      {measure && activeLayout && (
+      {showMeasureBoxes && measure && activeLayout && (
         <details>
           <summary className="cursor-pointer text-[11px] font-semibold text-zinc-300 min-h-[44px] flex items-center">
             Adjust measure boundary {activeLayout.measures.length > 1 &&

@@ -261,3 +261,16 @@ Deno.test("OMR-11: parseHumdrumScore propagates confidence to measures, melody, 
   assertEquals(doc.measures[0].melody[0].confidence, 0.84);
   assertEquals(doc.measures[0].harmonies[0].confidence, 0.84);
 });
+
+Deno.test("OMR-PARSE: independently terminated staff crops never merge their final measures", () => {
+  for (const boundary of ["*-\t*-\n!!linebreak\n", "!!linebreak\n", ""]) {
+    const doc = parseHumdrumScore(
+      "**kern\t**mxhm\n1c\tC:maj\n" + boundary +
+        "**kern\t**mxhm\n1d\tD:min\n*-\t*-",
+    );
+    assertEquals(doc.measures.length, 2);
+    assertEquals(doc.measures.map((m) => m.melody.length), [1, 1]);
+    assertEquals(doc.measures.map((m) => m.harmonies[0].raw), ["C", "Dm"]);
+    assertEquals(doc.issues.filter((issue) => issue.blocksGuidance).length, 0);
+  }
+});
