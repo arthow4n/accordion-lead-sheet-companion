@@ -69,15 +69,10 @@ async function ensureSessions(): Promise<{
 
   // Force single-thread WASM execution for maximum mobile stability & compatibility
   ort.env.wasm.numThreads = 1;
-  // Configure local WASM binary path for 100% offline hermetic execution (no external CDN network requests)
-  const isCdn = typeof ort.env.wasm.wasmPaths === "string" &&
-    ort.env.wasm.wasmPaths.includes("cdn.jsdelivr.net");
-  if (!ort.env.wasm.wasmPaths || isCdn) {
-    const localWasmPath = typeof self !== "undefined" && self.location && self.location.origin
-      ? `${self.location.origin}/models/omr/`
-      : "/models/omr/";
-    ort.env.wasm.wasmPaths = localWasmPath;
-  }
+  // Keep the bundled runtime's default asset resolution. Vite emits its WASM next
+  // to this worker and rewrites the URL relative to import.meta.url, including
+  // when hosted under the GitHub Pages repository path. A wasmPaths prefix
+  // would bypass the embedded runtime module and request an unpublished .mjs.
 
   encSession = await ort.InferenceSession.create(encBuf, {
     executionProviders: ["wasm"],
