@@ -145,6 +145,9 @@ vite.config.ts.timestamp-*
 # Autonomous Agent Scratch & Logs
 .agents/
 
+# Private reference photos attached to coding sessions
+/.codex-attachments/
+
 # UI Audit Visual Artifacts & Temporary Reports (Copyright Safety Guardrail)
 tests/ui-audit/screenshots/
 tests/ui-audit/screenshots/*

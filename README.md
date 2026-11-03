@@ -55,6 +55,29 @@ hands-free stage controls.
 
 ---
 
+## Using a printed sheet to find accordion buttons
+
+1. Open **Import → Lookup**, then **Choose gallery** or **Take photo**.
+2. Choose **Scan chords** to extract the chord symbols printed on the sheet. This sends the image to
+   the configured API and Google recognition provider; it requires internet access and a server with
+   `GOOGLE_GENAI_API_KEY` configured. It does not transcribe the melody.
+3. Tap a found chord to open its left-hand Stradella or right-hand C-System button guide. Check
+   recognized symbols against the sheet, especially accidentals and slash basses.
+
+For an offline alternative, enter unfamiliar symbols in **Lookup → Chord list**, separated by commas
+or newlines, then choose **Look up**. Lookup results are temporary and are cleared when the import
+dialog closes. To keep chords in the songbook, use **Manual Text**, enter bracketed symbols such as
+`[C] [Dm/B] [F7]`, and choose **Save to Songbook**.
+
+**Score file** imports MusicXML/MXL files. **Recognize Notes & Chords (Local AI)** is a separate
+photo recognition workflow with a first-use model download; it is not required for chord lookup. The
+guided photo fallback lets you supply chord labels manually and optionally retain the photo on your
+device.
+
+Photos attached to coding sessions under `.codex-attachments/` are ignored by Git.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Runtime & Tooling:** [Deno 2.x](https://deno.com) (single unified binary: native npm resolution,
