@@ -721,7 +721,7 @@ Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click
   assertEquals(propagationStopped, true);
 });
 
-Deno.test("UX-08e: MiniGripDrawer uses natural height without vertical scrolling", () => {
+Deno.test("UX-08e: MiniGripDrawer bounds screen occlusion and keeps its contents scrollable", () => {
   const chordDetail = enrichChord("Cmaj7", 0);
   const html = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
@@ -735,9 +735,10 @@ Deno.test("UX-08e: MiniGripDrawer uses natural height without vertical scrolling
   );
 
   assertExists(html);
-  // The shared sheet must size itself to the rendered Stradella/CBA content.
-  assertEquals(html.includes("max-h-[35vh]"), false);
-  assertEquals(html.includes("overflow-y-auto"), false);
+  // Repository mobile ergonomics require at most 35% drawer occlusion. Large
+  // button grids must stay reachable through scrolling inside that boundary.
+  assertEquals(html.includes("max-h-[35dvh]"), true);
+  assertEquals(html.includes("overflow-y-auto"), true);
 });
 
 Deno.test("UX-CHORD-COVERAGE: bass-only voicings show no phantom Stradella chord or groove", () => {

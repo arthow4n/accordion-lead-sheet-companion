@@ -98,7 +98,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
 
       {/* Slide-Up Sheet */}
       <div
-        className="relative w-full max-w-2xl mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-2xl shadow-2xl p-3 sm:p-4"
+        className="relative w-full max-w-2xl max-h-[35dvh] overflow-y-auto overscroll-contain mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-2xl shadow-2xl p-3 sm:p-4"
         onClick={handleContentClick}
       >
         {/* Drag Handle Bar */}
@@ -123,7 +123,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            className="p-1 sm:p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all active:scale-95 cursor-pointer"
             aria-label="Close Grip Drawer"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
