@@ -8,6 +8,7 @@ import type {
   StradellaVoicing,
 } from "../types/index.ts";
 import {
+  ACCORDION_SIZE_BOUNDS,
   getBassNoteForColumn,
   getCounterBassNoteForColumn,
   isColumnOutOfRange,
@@ -62,9 +63,10 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
 
   const centerCol = Math.round(activeCols.reduce((a, b) => a + b, 0) / activeCols.length);
 
-  // Display a generous 13-15 column span along the Circle of Fifths
-  const startCol = centerCol - 7;
-  const endCol = centerCol + 7;
+  // Keep the visible fifths window inside the instrument's physical keyboard.
+  const { minCol, maxCol } = ACCORDION_SIZE_BOUNDS[accordionSize];
+  const startCol = Math.max(minCol, Math.min(centerCol - 7, maxCol - 14));
+  const endCol = Math.min(maxCol, startCol + 14);
   const columns: number[] = [];
   for (let c = startCol; c <= endCol; c++) {
     columns.push(c);
@@ -74,14 +76,15 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
   const activeChordLabel = stradella?.chordButton?.label?.toLowerCase() || "";
   const isCounterBassActive = Boolean(stradella?.isCounterBass || activeBassLabel.endsWith("_"));
 
-  // 6 Stradella rows in authentic physical diagonal stagger (top-left to bottom-right)
+  // Standard two-bass-row layout: each successive row steps right toward the
+  // chord side. A 16px offset at 40px button pitch preserves the physical slant.
   const rows = [
     { key: "counter", rowIndex: 0, xOffset: 0 },
-    { key: "bass", rowIndex: 1, xOffset: 6 },
-    { key: "major", rowIndex: 2, xOffset: 12 },
-    { key: "minor", rowIndex: 3, xOffset: 18 },
-    { key: "seventh", rowIndex: 4, xOffset: 24 },
-    { key: "dim", rowIndex: 5, xOffset: 30 },
+    { key: "bass", rowIndex: 1, xOffset: 16 },
+    { key: "major", rowIndex: 2, xOffset: 32 },
+    { key: "minor", rowIndex: 3, xOffset: 48 },
+    { key: "seventh", rowIndex: 4, xOffset: 64 },
+    { key: "dim", rowIndex: 5, xOffset: 80 },
   ];
 
   // Instant layout jump to centered position before browser paint (no animated glide)
@@ -90,15 +93,16 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
       const container = scrollContainerRef.current;
       const activeEl = activeAnchorRef.current;
       const containerWidth = container.clientWidth;
-      const activeLeft = activeEl.offsetLeft;
-      const activeWidth = activeEl.clientWidth;
-      container.scrollLeft = activeLeft - containerWidth / 2 + activeWidth / 2;
+      const activeRect = activeEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      container.scrollLeft += activeRect.left - containerRect.left -
+        (containerWidth - activeRect.width) / 2;
     }
-  }, [stradella, targetCol]);
+  }, [stradella, targetCol, accordionSize]);
 
   return (
     <div
-      className={`flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}
+      className={`flex flex-col min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 ${className}`}
     >
       {/* Clean Single-Line Recipe Header without Clutter */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800/80 font-mono">
@@ -159,6 +163,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
           {rows.map((rowInfo) => (
             <div
               key={`strad-row-${rowInfo.key}`}
+              data-stradella-row={rowInfo.key}
               className="flex items-center gap-2"
               style={{ marginLeft: `${rowInfo.xOffset}px` }}
             >
@@ -294,6 +299,7 @@ export const StradellaGrid: React.FC<StradellaGridProps> = ({
                 return (
                   <div
                     key={`strad-btn-${rowInfo.key}-${col}`}
+                    data-stradella-column={col}
                     ref={isAnchor && activeAnchorRef ? activeAnchorRef : undefined}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-mono select-none shrink-0 transition-all ${btnClass}`}
                     title={isAltBass

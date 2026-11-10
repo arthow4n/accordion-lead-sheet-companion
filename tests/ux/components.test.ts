@@ -523,7 +523,7 @@ Deno.test("Layout: LineRenderer renders atomic inline-flex column containers", (
   }
 });
 
-Deno.test("StradellaGrid: Renders 3x3 Circle of Fifths subgrid with active counter-bass button", () => {
+Deno.test("StradellaGrid: Renders Circle of Fifths keyboard with active counter-bass button", () => {
   const chordDetail = enrichChord("D/F#", 3); // Sounding F/A -> Counter-bass A_
   const html = renderToStaticMarkup(
     React.createElement(StradellaGrid, {
@@ -536,6 +536,26 @@ Deno.test("StradellaGrid: Renders 3x3 Circle of Fifths subgrid with active count
   assertExists(html);
   assertEquals(html.includes("Counter-bass"), true);
   assertEquals(html.includes("A_"), true);
+});
+
+Deno.test("StradellaGrid: 72-bass keyboard contains exactly 12 physical columns in each of six rows", () => {
+  for (const chord of ["Db", "C", "F#"]) {
+    const chordDetail = enrichChord(chord, 0);
+    const html = renderToStaticMarkup(
+      React.createElement(StradellaGrid, {
+        stradella: chordDetail.stradella,
+        soundingChord: chordDetail.soundingChord,
+        accordionSize: "72-bass",
+      }),
+    );
+
+    assertEquals([...html.matchAll(/data-stradella-row=/g)].length, 6);
+    const columns = [...html.matchAll(/data-stradella-column="(-?\d+)"/g)].map((m) => Number(m[1]));
+    assertEquals(
+      columns,
+      Array.from({ length: 6 }, () => [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]).flat(),
+    );
+  }
 });
 
 Deno.test("CbaGrid: Renders CBA C-System Treble buttons with active chord fingering", () => {

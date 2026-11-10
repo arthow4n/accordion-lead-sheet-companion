@@ -83,7 +83,7 @@ export const ACCORDION_SIZE_BOUNDS: Record<
   { minCol: number; maxCol: number }
 > = {
   "48-bass": { minCol: -2, maxCol: 5 }, // Bb to B (8 cols)
-  "72-bass": { minCol: -3, maxCol: 6 }, // Eb to F# (10 cols)
+  "72-bass": { minCol: -5, maxCol: 6 }, // Db to F# (12 cols, standard two-bass-row layout)
   "96-bass": { minCol: -4, maxCol: 7 }, // Ab to C# (12 cols)
   "120-bass": { minCol: -6, maxCol: 13 }, // Full 20 cols
 };

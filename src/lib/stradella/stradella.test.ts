@@ -182,7 +182,7 @@ Deno.test("Stradella Accordion Size clamping & out-of-range flag", () => {
   const outOfRange = solveStradellaChord("F#", "48-bass");
   assertEquals(outOfRange.isOutOfRange, true);
 
-  // But in range for 72-bass (-3 to +6)
+  // But in range for 72-bass (-5 to +6)
   const in72 = solveStradellaChord("F#", "72-bass");
   assertEquals(in72.isOutOfRange, false);
 

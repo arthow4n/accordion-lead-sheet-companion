@@ -361,7 +361,7 @@ Deno.test("M2-CHALLENGE-10: Accordion physical size boundary clamping", () => {
   assertEquals(fsharp72.isOutOfRange, false);
 
   const db72 = solveStradellaChord("Db", "72-bass");
-  assertEquals(db72.isOutOfRange, true); // Db (-5) out of 72-bass (-3 to 6)
+  assertEquals(db72.isOutOfRange, false); // Db (-5) is the lowest 72-bass column
 });
 
 Deno.test("M2-CHALLENGE-11: Exotic parenthesized alterations and jazz syntax variations", () => {
