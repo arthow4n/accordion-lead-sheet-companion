@@ -721,7 +721,7 @@ Deno.test("UX-08d: ChordBadge expands touch target >= 44x44px and isolates click
   assertEquals(propagationStopped, true);
 });
 
-Deno.test("UX-08e: MiniGripDrawer bounds screen occlusion and keeps its contents scrollable", () => {
+Deno.test("UX-08e: MiniGripDrawer uses natural height without vertical scrolling", () => {
   const chordDetail = enrichChord("Cmaj7", 0);
   const html = renderToStaticMarkup(
     React.createElement(MiniGripDrawer, {
@@ -735,10 +735,9 @@ Deno.test("UX-08e: MiniGripDrawer bounds screen occlusion and keeps its contents
   );
 
   assertExists(html);
-  // Repository mobile ergonomics require at most 35% drawer occlusion. Large
-  // button grids must stay reachable through scrolling inside that boundary.
-  assertEquals(html.includes("max-h-[35dvh]"), true);
-  assertEquals(html.includes("overflow-y-auto"), true);
+  // The keyboard drawer must size itself to its content without a height cap.
+  assertEquals(html.includes("max-h-"), false);
+  assertEquals(html.includes("overflow-y-auto"), false);
 });
 
 Deno.test("UX-CHORD-COVERAGE: bass-only voicings show no phantom Stradella chord or groove", () => {

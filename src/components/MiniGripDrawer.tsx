@@ -98,7 +98,7 @@ export const MiniGripDrawer: React.FC<MiniGripDrawerProps> = ({
 
       {/* Slide-Up Sheet */}
       <div
-        className="relative w-full max-w-2xl max-h-[35dvh] overflow-y-auto overscroll-contain mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-2xl shadow-2xl p-3 sm:p-4"
+        className="relative w-full max-w-2xl mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-2xl shadow-2xl p-3 sm:p-4"
         onClick={handleContentClick}
       >
         {/* Drag Handle Bar */}
