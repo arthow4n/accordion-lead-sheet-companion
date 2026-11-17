@@ -25,12 +25,9 @@ and is opt-in because the models are distributed as release assets.
 
 ### GitHub Token Workflow Permissions:
 
-- Modifying `.github/workflows/deploy.yml` requires the personal access token (PAT) to have the
-  explicit **`workflow`** OAuth scope.
-- If the token lacks `workflow` scope, GitHub will reject pushing commits touching
-  `.github/workflows/`.
-- **Convention:** Do not modify `.github/workflows/` unless explicitly requested by the user, and
-  verify token scope before committing workflow changes.
+- Updating files under `.github/workflows/` requires GitHub workflow write access.
+  A classic personal access token needs the `workflow` scope.
+- Modify workflow files only when the task calls for it.
 
 ### Automatic Commit & Push Policy:
 
