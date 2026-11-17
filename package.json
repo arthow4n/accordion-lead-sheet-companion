@@ -21,7 +21,7 @@
     "lint": "oxlint --deny-warnings api src tests vite.config.ts vitest.config.ts",
     "typecheck": "npm run worker:types && tsc --noEmit && tsc --project api/tsconfig.json",
     "test": "vitest run",
-    "test:live": "node --use-env-proxy node_modules/vitest/vitest.mjs run --mode live",
+    "test:live": "vitest run --mode live",
     "test:omr": "vitest run --mode omr",
     "verify": "npm run fmt:check && npm run lint && npm run typecheck && npm test",
     "audit:ui": "node tests/ui-audit/audit_runner.ts",

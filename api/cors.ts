@@ -15,9 +15,10 @@ export function getCorsHeaders(
   const origin = req.headers.get("origin");
 
   // Non-browser / direct CLI requests (curl, server-to-server) without Origin header
-  if (!origin) {
+  if (origin === null) {
     return {
       "Access-Control-Allow-Origin": "*",
+      "Vary": "Origin",
       "Access-Control-Allow-Methods": allowedMethods,
       "Access-Control-Allow-Headers": allowedHeaders,
     };

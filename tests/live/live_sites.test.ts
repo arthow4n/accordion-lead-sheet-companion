@@ -14,25 +14,28 @@ import { handleRequest } from "../../api/import.ts";
 import { parseLeadSheetText } from "../../src/lib/parser/tokenizer.ts";
 import type { ChordDetail, LeadSheetLine, TabImportResponse } from "../../src/types/index.ts";
 
+// Use the same assertions against a deployed Worker when a base URL is supplied.
+const apiBase = process.env.LIVE_API_BASE_URL;
+async function importTab(url: string): Promise<TabImportResponse> {
+  const endpoint = new URL("/api/import", apiBase ?? "https://api.example.test");
+  endpoint.searchParams.set("url", url);
+  const req = new Request(endpoint);
+  const response = apiBase ? await fetch(req) : await handleRequest(req);
+  assertEquals(
+    response.status,
+    200,
+    `${url}: ${response.ok ? "Unexpected success status" : await response.clone().text()}`,
+  );
+  return await response.json();
+}
+
 // ============================================================================
 // LIVE-01: Ultimate Guitar Live Integration
 // Target: https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-27596
 // ============================================================================
 test("LIVE-01: Ultimate Guitar live extraction (Wonderwall by Oasis)", async () => {
   const url = "https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-27596";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Ultimate Guitar live request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "ultimate-guitar");
   assertStringIncludes(data.title?.toLowerCase() || "", "wonderwall");
@@ -94,15 +97,7 @@ test("LIVE-01: Ultimate Guitar live extraction (Wonderwall by Oasis)", async () 
 test("LIVE-02: Chordie live extraction (All My Loving by The Beatles)", async () => {
   const url =
     "https://www.chordie.com/chord.pere/www.guitartabs.cc/tabs/b/beatles/all_my_loving_crd_ver_2.html";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(res.status, 200, "Chordie live request must return HTTP 200");
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "chordie");
   assertExists(data.rawContent);
@@ -133,19 +128,7 @@ test("LIVE-02: Chordie live extraction (All My Loving by The Beatles)", async ()
 // ============================================================================
 test("LIVE-03: E-Chords / Cifras live extraction (Hotel California by Eagles)", async () => {
   const url = "https://www.cifras.com.br/cifra/eagles/hotel-california";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Cifras / E-Chords live request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "e-chords");
   assertStringIncludes(data.title?.toLowerCase() || "", "hotel california");
@@ -177,19 +160,7 @@ test("LIVE-03: E-Chords / Cifras live extraction (Hotel California by Eagles)", 
 // ============================================================================
 test("LIVE-04: Cifra Club live extraction (Let It Be by The Beatles)", async () => {
   const url = "https://www.cifraclub.com.br/the-beatles/let-it-be/";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Cifra Club live request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "cifraclub");
   assertStringIncludes(data.title?.toLowerCase() || "", "let it be");
@@ -226,19 +197,7 @@ test("LIVE-04: Cifra Club live extraction (Let It Be by The Beatles)", async () 
 // ============================================================================
 test("LIVE-05: Ultimate Guitar live tab staves extraction (Dust in the Wind by Kansas)", async () => {
   const url = "https://tabs.ultimate-guitar.com/tab/kansas/dust-in-the-wind-chords-14197";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Ultimate Guitar live tab request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "ultimate-guitar");
   assertStringIncludes(data.title?.toLowerCase() || "", "dust in the wind");
@@ -270,19 +229,7 @@ test("LIVE-05: Ultimate Guitar live tab staves extraction (Dust in the Wind by K
 test("LIVE-06: Ultimate Guitar live jazz alterations extraction (The Girl from Ipanema)", async () => {
   const url =
     "https://tabs.ultimate-guitar.com/tab/antonio-carlos-jobim/the-girl-from-ipanema-chords-14660";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Ultimate Guitar jazz request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "ultimate-guitar");
   assertExists(data.rawContent);
@@ -311,19 +258,7 @@ test("LIVE-06: Ultimate Guitar live jazz alterations extraction (The Girl from I
 test("LIVE-07: Ultimate Guitar live chromatic bass line extraction (A Whiter Shade of Pale)", async () => {
   const url =
     "https://tabs.ultimate-guitar.com/tab/procol-harum/a-whiter-shade-of-pale-chords-17398";
-  const req = new Request(
-    `https://api.example.test/api/import?url=${encodeURIComponent(url)}`,
-    { method: "GET" },
-  );
-
-  const res = await handleRequest(req);
-  assertEquals(
-    res.status,
-    200,
-    "Ultimate Guitar live request must return HTTP 200",
-  );
-
-  const data: TabImportResponse = await res.json();
+  const data = await importTab(url);
   assertEquals(data.success, true);
   assertEquals(data.source, "ultimate-guitar");
   assertExists(data.rawContent);
@@ -343,4 +278,13 @@ test("LIVE-07: Ultimate Guitar live chromatic bass line extraction (A Whiter Sha
       ""
     );
   assertEquals(chords.length > 0, true);
+});
+
+test("LIVE-08: E-Chords live extraction (Wonderwall by Oasis)", async () => {
+  const data = await importTab("https://www.e-chords.com/chords/oasis/wonderwall");
+  assertEquals(data.success, true);
+  assertEquals(data.source, "e-chords");
+  assertEquals(data.title, "Wonderwall");
+  assertExists(data.rawContent);
+  assertEquals(parseLeadSheetText(data.rawContent).lines.length > 5, true);
 });

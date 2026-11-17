@@ -124,7 +124,7 @@ through the browser UI is stored on that device and used for direct requests to 
 | `npm run fmt` | Apply formatting |
 | `npm run pages:build` / `npm run pages:preview` | Build and serve the static PWA |
 | `npm run build` | Run the quality gate and package the Worker locally |
-| `npm run test:live` | Opt-in tests against the supported chord sites |
+| `npm run test:live` | Opt-in tests against the supported chord sites. Set `LIVE_API_BASE_URL` to exercise a running Worker |
 | `npm run test:omr` | Execute the pinned ONNX models locally. Set `OMR_MODEL_DIR` if the models are outside `models/score-reader/artifacts/` |
 | `npm run audit:ui` | Run the Chromium UI audit with `agent-browser` installed |
 

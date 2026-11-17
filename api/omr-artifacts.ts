@@ -22,7 +22,7 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
   if (!corsHeaders && req.headers.has("origin")) {
     return new Response(JSON.stringify({ error: "Origin not allowed by CORS policy" }), {
       status: 403,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Vary": "Origin" },
     });
   }
 

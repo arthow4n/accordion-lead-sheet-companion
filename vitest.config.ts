@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
       ),
     ],
     server: { deps: { inline: ["@techstark/opencv-js"] } },
+    execArgv: mode === "live" ? ["--use-env-proxy"] : [],
     setupFiles: mode === "live" ? [] : ["./tests/block-network.ts"],
     testTimeout: mode === "live" || mode === "omr" ? 120_000 : 15_000,
   },

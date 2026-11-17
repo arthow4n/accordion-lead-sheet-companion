@@ -602,10 +602,10 @@ $$\text{Candidate} = \arg\min_{k \in \{\text{fund}, \text{counter}\}} |C_k - C_{
 | :---------------------- | :--------------------------- | :------------------------------------------------------------------------- |
 | **Language**            | **TypeScript 7.x**           | Static type safety for chord interval math, CBA grids, and state schemas.  |
 | **Framework**           | **React 19.x**               | Reactive mobile UI components, bottom-sheet drawers, and reader views.     |
-| **Bundler**             | **Vite 6.x**                 | Ultra-fast HMR and static production asset generation.                     |
+| **Bundler**             | **Vite 8.x**                 | Ultra-fast HMR and static production asset generation.                     |
 | **Linter**              | **Oxlint**                   | High-performance Rust-based linter for zero-overhead static code analysis. |
-| **Formatter**           | **Prettier 3.x**             | Consistent code formatting and style enforcement.                          |
-| **Test Runner**         | **Vitest 3.x**               | Unit and integration test suite executing validation matrices.             |
+| **Formatter**           | **dprint**             | Consistent code formatting and style enforcement.                          |
+| **Test Runner**         | **Vitest 5.x**               | Unit and integration test suite executing validation matrices.             |
 | **PWA Engine**          | **`vite-plugin-pwa`**        | Offline Service Worker, Web App Manifest, Install to Home Screen.          |
 | **Styling**             | **Tailwind CSS 4.x**         | Mobile-responsive utility styling, OLED pure dark mode.                    |
 | **Icons**               | **Lucide React**             | Lightweight icons for transport and music controls.                        |

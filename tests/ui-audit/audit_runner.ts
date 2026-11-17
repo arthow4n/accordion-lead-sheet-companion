@@ -130,6 +130,17 @@ async function evalJs<T = unknown>(code: string): Promise<T> {
   }
 }
 
+async function resetCapo(): Promise<void> {
+  const decrement = "button[aria-label='Decrease Capo']";
+  for (let i = 0; i < 11; i++) {
+    const disabled = await evalJs<boolean>(
+      `document.querySelector(${JSON.stringify(decrement)})?.disabled === true`,
+    );
+    if (disabled) break;
+    await clickElement(decrement);
+  }
+}
+
 async function clickElement(selector: string): Promise<void> {
   const res = await runBrowserCmd(["click", selector]);
   if (res.code !== 0) {
@@ -802,9 +813,7 @@ Tu mi [E7]devi seppel[Am]lir`;
 
       try {
         // Reset capo to 0 by clicking decrement step-by-step
-        for (let i = 0; i < 5; i++) {
-          await clickElement("button[aria-label='Decrease Capo']");
-        }
+        await resetCapo();
 
         const capo0Check = await evalJs<{ capoText: string; isDecDisabled: boolean }>(`(() => {
           const decBtn = document.querySelector('button[aria-label="Decrease Capo"]');
@@ -892,9 +901,7 @@ Tu mi [E7]devi seppel[Am]lir`;
 
       try {
         // Reset capo to 0
-        for (let i = 0; i < 11; i++) {
-          await clickElement("button[aria-label='Decrease Capo']");
-        }
+        await resetCapo();
 
         // 1. Test Stradella LH mode
         await clickElement("button[title='Left Hand Stradella Bass Mode']");
