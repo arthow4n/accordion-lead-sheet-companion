@@ -1,7 +1,7 @@
 # 🪗 Accordion Lead Sheet Companion
 
 [![Deploy to GitHub Pages](https://github.com/arthow4n/accordion-lead-sheet-companion/actions/workflows/deploy.yml/badge.svg)](https://github.com/arthow4n/accordion-lead-sheet-companion/actions/workflows/deploy.yml)
-[![Deno 2.x](https://img.shields.io/badge/Deno-2.x-black?logo=deno)](https://deno.com)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-green?logo=pwa)](https://github.com/arthow4n/accordion-lead-sheet-companion)
 
@@ -62,7 +62,7 @@ hands-free stage controls.
    then select a model from your key's available models. Leave **Thinking effort** at **Model
    default**, or choose a supported effort explicitly.
 3. Choose **Recognize with Gemini**. The browser prepares the image locally to remove metadata and
-   sends its pixels directly to Google using the official SDK and CORS. No Deno backend is needed.
+   sends its pixels directly to Google using the official SDK and CORS.
    It reads printed chord symbols, not melody notes. Model discovery is not a guarantee of image or
    JSON-schema support; incompatible models report an error without silently switching models.
 4. Review **Gemini chord sheet**, then choose **Open chord sheet → Save to Songbook**. Repeated
@@ -100,156 +100,64 @@ Photos attached to coding sessions under `.codex-attachments/` are ignored by Gi
 
 ## 🛠️ Tech Stack
 
-- **Runtime & Tooling:** [Deno 2.x](https://deno.com) (single unified binary: native npm resolution,
-  `deno lint`, `deno fmt`, `deno test`)
-- **Frontend:** [React 19](https://react.dev), [Vite 6](https://vite.dev),
-  [Tailwind CSS 4](https://tailwindcss.com), [Lucide React](https://lucide.dev)
-- **Offline & Storage:** [Vite PWA](https://vite-pwa-org.netlify.app/),
-  [idb-keyval](https://github.com/jakearchibald/idb-keyval)
-- **Edge Scraper & Scan API:** Deno Deploy serverless edge function (`api/import.ts` dispatching to
-  `api/scan-chords.ts`) with strict CORS origin allowlisting and `@google/genai` integration.
+- **Development:** Node.js 24, npm, TypeScript, Vitest, dprint, and Oxlint.
+- **Frontend:** React 19, Vite 8, Tailwind CSS 4, and Workbox. IndexedDB stores the songbook and Cache Storage keeps verified OMR models for offline use.
+- **API:** Cloudflare Workers serves chord-site imports, server-side Gemini recognition, and streamed OMR model artifacts.
 
----
+## Local development
 
-## 🚀 Local Development
-
-Ensure you have [Deno 2](https://docs.deno.com/runtime/getting_started/installation/) installed:
+Use the Node.js version in `.node-version` and install the locked dependencies with `npm ci`.
 
 ```bash
-# Verify Deno 2 installation
-deno --version
+npm run dev         # Frontend at http://127.0.0.1:5173
+npm run worker:dev  # API at http://127.0.0.1:8787, in a second terminal
 ```
 
-### Local End-to-End Workflow
+Vite proxies `/api` to the local Worker. Set `VITE_API_BASE_URL` before starting Vite
+if you need to use a different API origin. For server-side Gemini recognition, copy
+`.dev.vars.example` to `.dev.vars` and set `GOOGLE_GENAI_API_KEY` there. A key entered
+through the browser UI is stored on that device and used for direct requests to Google.
 
-Direct-browser Gemini recognition only needs `deno task dev`; enter your key in the app. For
-optional testing of **Advanced: server scan** with the local edge server:
+| Command | Purpose |
+| --- | --- |
+| `npm run verify` | Format, lint, typecheck, and run the hermetic suite |
+| `npm run fmt` | Apply formatting |
+| `npm run pages:build` / `npm run pages:preview` | Build and serve the static PWA |
+| `npm run build` | Run the quality gate and package the Worker locally |
+| `npm run test:live` | Opt-in tests against the supported chord sites |
+| `npm run test:omr` | Execute the pinned ONNX models locally. Set `OMR_MODEL_DIR` if the models are outside `models/score-reader/artifacts/` |
+| `npm run audit:ui` | Run the Chromium UI audit with `agent-browser` installed |
 
-```bash
-# Terminal 1: Run Deno API server (reads GOOGLE_GENAI_API_KEY)
-GOOGLE_GENAI_API_KEY=your_gemini_api_key deno task serve:api
+## Production deployment
 
-# Terminal 2: Run Vite development server pointed at local API
-VITE_API_BASE_URL=http://localhost:8000 deno task dev
-```
+GitHub Actions builds and publishes the PWA to the existing GitHub Pages project site.
+Cloudflare Workers Builds independently deploys the API from the same repository.
+The GitHub Pages workflow publishes only `dist/`.
 
-### Useful Commands
+- [GitHub Pages](https://arthow4n.github.io/accordion-lead-sheet-companion/)
+- [Production Worker](https://accordion-lead-sheet-companion.arthow4n.workers.dev/api/import)
 
-```bash
-# Start Vite development server (http://localhost:5173)
-deno task dev
+| Cloudflare Workers Builds setting | Value |
+| --- | --- |
+| Worker | `accordion-lead-sheet-companion` |
+| Repository | `arthow4n/accordion-lead-sheet-companion` |
+| Production branch | `master` |
+| Root directory | `/` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Preview command | `npx wrangler preview` |
 
-# Run all 250+ automated unit, component, and UX test suites (offline / hermetic)
-deno task test
+Set `GOOGLE_GENAI_API_KEY` as a **runtime secret** for the production Worker, through
+the Cloudflare dashboard or by running `npx wrangler secret put GOOGLE_GENAI_API_KEY`
+and entering the value at the prompt. Keep production credentials out of build
+variables and the frontend. Preview builds run without that key unless a separate
+preview credential is configured. Without a runtime key, `/api/scan-chords`
+returns `SCAN_API_KEY_MISSING` for valid images.
 
-# Run UI & ergonomic mobile browser audit with agent-browser
-deno task audit:ui
-
-# Run live external website scraper integration tests (on-demand opt-in)
-deno task test:live
-
-# Check linting and formatting
-deno task lint
-deno task fmt --check
-
-# Auto-format all codebase files
-deno task fmt
-
-# Build static production assets into dist/
-deno task build
-
-# Run the Deno Deploy edge scraper server locally
-deno task serve:api
-```
-
----
-
-## 🌐 Production Deployment Guide
-
-The application uses a **zero-cost, highly scalable dual-deployment architecture**:
-
-1. **Frontend PWA:** Hosted for free on **GitHub Pages**.
-2. **Edge Scraper API:** Hosted on **Deno Deploy** (using modern `console.deno.com`).
-
----
-
-### 1. Deploying the Frontend to GitHub Pages
-
-The repository includes an automated GitHub Actions workflow at
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
-
-#### Setup Steps:
-
-1. Push your repository to GitHub: `https://github.com/arthow4n/accordion-lead-sheet-companion`.
-2. In your GitHub repository, navigate to **Settings** $\rightarrow$ **Pages**.
-3. Under **Build and deployment $\rightarrow$ Source**, select **`GitHub Actions`**.
-4. Every push to the `master` branch will automatically run:
-   - Code formatting validation (`deno fmt --check`)
-   - Static linter (`deno lint`)
-   - Automated unit & integration tests (`deno task test`)
-   - Production Vite bundle compilation (`deno task build`)
-   - Deployment to `https://arthow4n.github.io/accordion-lead-sheet-companion/`
-
----
-
-### 2. Deploying the Edge Scraper API to Deno Deploy
-
-> **Note:** According to the [official Deno Deploy documentation](https://docs.deno.com/deploy/),
-> modern deployments are managed via **[console.deno.com](https://console.deno.com)** (Deploy
-> Classic at `dash.deno.com` is deprecated and sunsetting).
-
-#### Option A: Continuous Git Integration via `console.deno.com` (Recommended)
-
-1. Sign in to **[console.deno.com](https://console.deno.com)** with your GitHub account.
-2. Select or create your **Organization**.
-3. Click the **`+ New App`** button.
-4. Under **Select a repo**, choose `arthow4n/accordion-lead-sheet-companion`.
-5. Under **App Config**, click **`Edit build config`** and set:
-   - **Framework preset:** `No Preset`
-   - **Install command:** _(leave empty)_
-   - **Build command:** _(leave empty)_
-   - **Runtime configuration:** `Dynamic`
-   - **Dynamic Entrypoint:** `api/import.ts`
-6. Under **Environment variables**, configure:
-   - `GOOGLE_GENAI_API_KEY`: `<your_gemini_api_key>` (for photo score chord extraction)
-   - `ALLOWED_ORIGINS`: `https://arthow4n.github.io,http://localhost:5173` (optional)
-7. Click **`Create App`**.
-8. Deno Deploy will start the live deployment and provide your production edge URL (e.g.,
-   `https://<your-app>.deno.net`).
-
-#### Option B: CLI Deployment with `deployctl` (Deno 2 Native)
-
-You can also deploy directly from your terminal using Deno 2's native JSR support:
-
-```bash
-# Login to Deno Deploy (first time only)
-deno run -A jsr:@deno/deployctl login
-
-# Deploy the edge scraper entrypoint
-deno run -A jsr:@deno/deployctl deploy --entrypoint=api/import.ts
-```
-
----
-
-## 🧪 Testing Matrices
-
-The codebase is strictly validated against exhaustive test matrices specified in
-[`SPEC.md`](SPEC.md):
-
-| Matrix         | Scope                                                                   | Count | Runner Command        |
-| :------------- | :---------------------------------------------------------------------- | :---- | :-------------------- |
-| **`CAPO-*`**   | Capo transpositions & flat/sharp enharmonics                            | 11    | `deno task test`      |
-| **`STRAD-*`**  | Stradella bass solver, counter-bass, compound voicings                  | 23    | `deno task test`      |
-| **`CBA-*`**    | CBA C-System treble coordinates, grips & voice leading                  | 8     | `deno task test`      |
-| **`PARSE-*`**  | Segmented tokenizer, 2-line sheets & ChordPro directives                | 6     | `deno task test`      |
-| **`LOOKUP-*`** | Pure candidate normalizer & manual comma/newline chord list parser      | 9     | `deno task test`      |
-| **`SCAN-*`**   | Serverless score photo scan endpoint, error stage precedence & mock SDK | 16    | `deno task test`      |
-| **`API-*`**    | Deno Deploy CORS allowlist & mock site parsers                          | 25    | `deno task test`      |
-| **`UX-*`**     | Screen Wake Lock, rAF auto-scroll, Bluetooth pedal, IDB, Lookup UI      | 46    | `deno task test`      |
-| **`E2E-*`**    | Mobile viewport browser automation suite                                | 6     | `deno task test`      |
-| **`LIVE-*`**   | Real live external website scrapers (UG, Chordie, E-Chords, Cifra Club) | 4     | `deno task test:live` |
-
----
+The API accepts browser origins `https://arthow4n.github.io`, `http://localhost`,
+and `http://127.0.0.1` with optional local ports. The scraper allows only the
+supported chord-site domains, including on redirects. The artifact proxy accepts
+only filenames from the pinned `omr-v1` release and supports GET, HEAD, and byte ranges.
 
 ## Generative AI Usage Disclosure
 

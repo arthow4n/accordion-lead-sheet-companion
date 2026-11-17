@@ -1,4 +1,8 @@
-import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from "@std/assert";
+// @vitest-environment happy-dom
+
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertRejects, assertStringIncludes, assertThrows } from "../assertions.ts";
 import type { GenerateContentParameters } from "@google/genai";
 import {
   geminiChordText,
@@ -33,7 +37,7 @@ function memoryStorage() {
     },
   };
 }
-Deno.test("Gemini credentials stay separate from settings and dispatch reactive write events", () => {
+test("Gemini credentials stay separate from settings and dispatch reactive write events", () => {
   const storage = memoryStorage();
   const events: boolean[] = [];
   const listener = (event: Event) => events.push((event as CustomEvent).detail.keyChanged);
@@ -59,7 +63,7 @@ Deno.test("Gemini credentials stay separate from settings and dispatch reactive 
     globalThis.removeEventListener(GEMINI_SETTINGS_EVENT, listener);
   }
 });
-Deno.test("Gemini storage failures never expose credentials through error messages", () => {
+test("Gemini storage failures never expose credentials through error messages", () => {
   const fail = () => {
     throw new Error("sensitive-key-from-browser-storage");
   };
@@ -70,7 +74,7 @@ Deno.test("Gemini storage failures never expose credentials through error messag
   assertEquals(error.message.includes("sensitive-key"), false);
   assertThrows(() => removeGeminiKey(storage), Error, "Could not remove");
 });
-Deno.test("Gemini structured chord results preserve occurrences and order; unsupported tokens become review issues", () => {
+test("Gemini structured chord results preserve occurrences and order; unsupported tokens become review issues", () => {
   const parsed = parseGeminiChords(JSON.stringify({
     title: "Synthetic sheet",
     rows: [["C7/C", "C7/C", "Dm/B"], ["B♭", "nonsense", "F7"]],
@@ -84,15 +88,15 @@ Deno.test("Gemini structured chord results preserve occurrences and order; unsup
       undefined,
       "not-json",
       "{}",
-      '{"title":"x","rows":[42],"warnings":[]}',
-      '{"title":"x","rows":[["C"]],"warnings":[42]}',
-      '{"title":"x","rows":[],"warnings":[]}',
+      "{\"title\":\"x\",\"rows\":[42],\"warnings\":[]}",
+      "{\"title\":\"x\",\"rows\":[[\"C\"]],\"warnings\":[42]}",
+      "{\"title\":\"x\",\"rows\":[],\"warnings\":[]}",
     ]
   ) {
     assertThrows(() => parseGeminiChords(invalid), GeminiError);
   }
 });
-Deno.test("Gemini model discovery consumes pages, filters non-generative candidates, and deduplicates without hardcoded defaults", async () => {
+test("Gemini model discovery consumes pages, filters non-generative candidates, and deduplicates without hardcoded defaults", async () => {
   const client: GeminiClient = {
     models: {
       list: () =>
@@ -119,7 +123,7 @@ Deno.test("Gemini model discovery consumes pages, filters non-generative candida
   const models = await listGeminiModels("fake-test-key", undefined, () => client);
   assertEquals(models.map((m) => m.id), ["gemini-example", "gemini-other"]);
 });
-Deno.test("Gemini recognition sends only the prepared image and fixed instructions, with schema and explicit thinking", async () => {
+test("Gemini recognition sends only the prepared image and fixed instructions, with schema and explicit thinking", async () => {
   const calls: GenerateContentParameters[] = [];
   const client: GeminiClient = {
     models: {
@@ -149,7 +153,7 @@ Deno.test("Gemini recognition sends only the prepared image and fixed instructio
   await recognizeGeminiChords({ ...request, thinking: "high" }, () => client);
   assertEquals(calls[1].config?.thinkingConfig?.thinkingLevel, "HIGH");
 });
-Deno.test("Gemini cancellation rejects even a late provider response and never switches models", async () => {
+test("Gemini cancellation rejects even a late provider response and never switches models", async () => {
   const abort = new AbortController();
   let calls = 0;
   const client: GeminiClient = {
@@ -176,7 +180,7 @@ Deno.test("Gemini cancellation rejects even a late provider response and never s
   await assertRejects(() => recognizeGeminiChords(request, () => client), DOMException);
   assertEquals(calls, 1);
 });
-Deno.test("Gemini provider errors are actionable and redacted", () => {
+test("Gemini provider errors are actionable and redacted", () => {
   for (const status of [400, 401, 403, 404, 429, 500]) {
     const message = geminiErrorMessage({ status, message: "secret-key image-base64 private-data" });
     assertEquals(message.includes("secret-key"), false);
@@ -185,7 +189,7 @@ Deno.test("Gemini provider errors are actionable and redacted", () => {
   assertStringIncludes(geminiErrorMessage({ status: 429 }), "quota");
 });
 
-Deno.test("Gemini cancellation during SDK loading prevents the request from being sent", async () => {
+test("Gemini cancellation during SDK loading prevents the request from being sent", async () => {
   const abort = new AbortController();
   let calls = 0;
   const client: GeminiClient = {

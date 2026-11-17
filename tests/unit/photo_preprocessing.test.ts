@@ -1,4 +1,6 @@
-import { assertEquals, assertExists, assertRejects, assertThrows } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists, assertRejects, assertThrows } from "../assertions.ts";
 import {
   detectBarlinesAndSliceMeasures,
   downscaleRawImageData,
@@ -112,11 +114,11 @@ function drawVerticalLine(
   }
 }
 
-Deno.test("PREPROCESS-01: Internal capability gate is exported and enabled in M7", () => {
+test("PREPROCESS-01: Internal capability gate is exported and enabled in M7", () => {
   assertEquals(PHOTO_OMR_CAPABILITY_ENABLED, true);
 });
 
-Deno.test("PREPROCESS-02: groupLinesIntoStaves groups 5-line staves and rejects isolated noise lines", () => {
+test("PREPROCESS-02: groupLinesIntoStaves groups 5-line staves and rejects isolated noise lines", () => {
   // Staff 1 at y = 50, 62, 74, 86, 98 (spacing = 12)
   // Noise line at y = 140
   // Staff 2 at y = 180, 192, 204, 216, 228 (spacing = 12)
@@ -134,12 +136,12 @@ Deno.test("PREPROCESS-02: groupLinesIntoStaves groups 5-line staves and rejects 
   assertEquals(staves[1].systemIndex, 1);
 });
 
-Deno.test("PREPROCESS-03: groupLinesIntoStaves returns empty array when lines < 5", () => {
+test("PREPROCESS-03: groupLinesIntoStaves returns empty array when lines < 5", () => {
   const staves = groupLinesIntoStaves([50, 60, 70], 600, 400);
   assertEquals(staves, []);
 });
 
-Deno.test("PREPROCESS-04: MatTracker tracks and releases OpenCV Mats without leaks", async () => {
+test("PREPROCESS-04: MatTracker tracks and releases OpenCV Mats without leaks", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
 
@@ -153,7 +155,7 @@ Deno.test("PREPROCESS-04: MatTracker tracks and releases OpenCV Mats without lea
   tracker.releaseAll();
 });
 
-Deno.test("PREPROCESS-05: processScoreImageWithCv detects synthetic staff and measures", async () => {
+test("PREPROCESS-05: processScoreImageWithCv detects synthetic staff and measures", async () => {
   const cv = await loadOpenCv();
   const width = 400;
   const height = 200;
@@ -190,7 +192,7 @@ Deno.test("PREPROCESS-05: processScoreImageWithCv detects synthetic staff and me
   }
 });
 
-Deno.test("PREPROCESS-06: processScoreImageWithCv handles shadows with adaptive thresholding", async () => {
+test("PREPROCESS-06: processScoreImageWithCv handles shadows with adaptive thresholding", async () => {
   const cv = await loadOpenCv();
   const width = 400;
   const height = 200;
@@ -230,7 +232,7 @@ Deno.test("PREPROCESS-06: processScoreImageWithCv handles shadows with adaptive 
   assertEquals(result.staves[0].lineSpacing, 12);
 });
 
-Deno.test("PREPROCESS-07: estimateSkewAngle returns 0 for straight lines", async () => {
+test("PREPROCESS-07: estimateSkewAngle returns 0 for straight lines", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -254,7 +256,7 @@ Deno.test("PREPROCESS-07: estimateSkewAngle returns 0 for straight lines", async
   }
 });
 
-Deno.test("PREPROCESS-08: Cancellation via AbortSignal throws AbortError and cleans up memory", async () => {
+test("PREPROCESS-08: Cancellation via AbortSignal throws AbortError and cleans up memory", async () => {
   const cv = await loadOpenCv();
   const img = createBlankImage(100, 100);
   const controller = new AbortController();
@@ -269,7 +271,7 @@ Deno.test("PREPROCESS-08: Cancellation via AbortSignal throws AbortError and cle
   );
 });
 
-Deno.test("PREPROCESS-09: Degenerate blank image safely falls back to single measure strip", async () => {
+test("PREPROCESS-09: Degenerate blank image safely falls back to single measure strip", async () => {
   const cv = await loadOpenCv();
   const img = createBlankImage(300, 200);
 
@@ -282,7 +284,7 @@ Deno.test("PREPROCESS-09: Degenerate blank image safely falls back to single mea
   assertEquals(result.layout.page.height, 200);
 });
 
-Deno.test("PREPROCESS-10: detectBarlinesAndSliceMeasures directly produces valid measure geometry", async () => {
+test("PREPROCESS-10: detectBarlinesAndSliceMeasures directly produces valid measure geometry", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -324,7 +326,7 @@ Deno.test("PREPROCESS-10: detectBarlinesAndSliceMeasures directly produces valid
   }
 });
 
-Deno.test("PREP-07: Degenerate image dimensions (< 32x32) gracefully return fallback layout without throwing", async () => {
+test("PREP-07: Degenerate image dimensions (< 32x32) gracefully return fallback layout without throwing", async () => {
   const cv = await loadOpenCv();
   const degenerateImg = createBlankImage(10, 10);
   const result = processScoreImageWithCv(cv, degenerateImg);
@@ -336,7 +338,7 @@ Deno.test("PREP-07: Degenerate image dimensions (< 32x32) gracefully return fall
   assertEquals(result.layout.measures.length, 1);
 });
 
-Deno.test("PREP-08: processScoreImageWithCv isolates sheet margins and bounds measures to music staves", async () => {
+test("PREP-08: processScoreImageWithCv isolates sheet margins and bounds measures to music staves", async () => {
   const cv = await loadOpenCv();
   const width = 500;
   const height = 200;
@@ -378,7 +380,7 @@ Deno.test("PREP-08: processScoreImageWithCv isolates sheet margins and bounds me
   }
 });
 
-Deno.test("PREPROCESS-11: Note stems and noteheads are immune from barline detection", async () => {
+test("PREPROCESS-11: Note stems and noteheads are immune from barline detection", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -408,7 +410,7 @@ Deno.test("PREPROCESS-11: Note stems and noteheads are immune from barline detec
   }
 });
 
-Deno.test("PREPROCESS-12: Genuine barlines are detected while note stems and accidentals are filtered out", async () => {
+test("PREPROCESS-12: Genuine barlines are detected while note stems and accidentals are filtered out", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -458,7 +460,7 @@ Deno.test("PREPROCESS-12: Genuine barlines are detected while note stems and acc
   }
 });
 
-Deno.test("PREPROCESS-13: downscaleRawImageData clamps long edge to 1600px preserving aspect ratio", () => {
+test("PREPROCESS-13: downscaleRawImageData clamps long edge to 1600px preserving aspect ratio", () => {
   assertEquals(MAX_PHOTO_PREPROCESS_LONG_EDGE, 1600);
 
   // Large landscape image (3200 x 2400)
@@ -481,7 +483,7 @@ Deno.test("PREPROCESS-13: downscaleRawImageData clamps long edge to 1600px prese
   assertEquals(scaledNormal.data.length, normalImg.data.length);
 });
 
-Deno.test("PREPROCESS-14: Musical barline deduplication merges barlines within staff.lineSpacing * 3", async () => {
+test("PREPROCESS-14: Musical barline deduplication merges barlines within staff.lineSpacing * 3", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -524,7 +526,7 @@ Deno.test("PREPROCESS-14: Musical barline deduplication merges barlines within s
   }
 });
 
-Deno.test("PREPROCESS-15: System measure capping limits measures per staff to <= 6", async () => {
+test("PREPROCESS-15: System measure capping limits measures per staff to <= 6", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -573,7 +575,7 @@ Deno.test("PREPROCESS-15: System measure capping limits measures per staff to <=
   }
 });
 
-Deno.test("PREPROCESS-16: ScoreImageWorkerClient aborts on pre-aborted signal and handles termination cleanly", async () => {
+test("PREPROCESS-16: ScoreImageWorkerClient aborts on pre-aborted signal and handles termination cleanly", async () => {
   const client = new ScoreImageWorkerClient();
   const img = createBlankImage(100, 100);
 
@@ -593,7 +595,7 @@ Deno.test("PREPROCESS-16: ScoreImageWorkerClient aborts on pre-aborted signal an
   client.terminate();
 });
 
-Deno.test("PREPROCESS: deskew applies the selected correction for either slope direction", async () => {
+test("PREPROCESS: deskew applies the selected correction for either slope direction", async () => {
   const cv = await loadOpenCv();
   for (const slopeDegrees of [-3, 3]) {
     const img = createBlankImage(600, 300);

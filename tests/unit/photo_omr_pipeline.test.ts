@@ -1,4 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals, ok as assert } from "node:assert/strict";
 import { extractStaffCropTensor } from "../../src/lib/score/omrPreprocessing.ts";
 import { parseHumdrumScore } from "../../src/lib/score/humdrumParser.ts";
 import { enrichHarmonySequence } from "../../src/lib/score/harmony.ts";
@@ -25,7 +26,7 @@ function createSyntheticScoreImage(): RawImageData {
   return { data, width, height };
 }
 
-Deno.test("OMR-PIPE-01: End-to-end pipeline from staff crops to CBA/Stradella guidance", () => {
+test("OMR-PIPE-01: End-to-end pipeline from staff crops to CBA/Stradella guidance", () => {
   const image = createSyntheticScoreImage();
   const staff1Box = { x: 40, y: 55, width: 520, height: 50 };
   const staff2Box = { x: 40, y: 195, width: 520, height: 50 };

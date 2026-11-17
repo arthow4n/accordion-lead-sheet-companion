@@ -7,45 +7,17 @@ that all autonomous agents and contributors must follow when working in this cod
 
 ## 1. 🛡️ Mandatory Pre-Push Quality Gate
 
-To prevent broken builds on CI/CD (GitHub Actions), **never commit or push without running and
-passing all four local checks in sequence**:
+Use the Node.js version in `.node-version` and install dependencies with `npm ci`.
+Before committing or pushing, pass `npm run build` and `npm run pages:build`.
+The Worker build runs formatting, lint, TypeScript checks, and the hermetic test
+suite before testing the Wrangler bundle.
 
-```bash
-# 1. Format verification (Zero formatting discrepancies)
-deno fmt --check
+## 2. Test Suite Architecture & Network Isolation
 
-# 2. Static analysis & linter (Zero errors or warnings)
-deno lint
-
-# 3. Hermetic unit & component test suite (100% passing tests)
-deno task test
-
-# 4. Production build check (Zero TypeScript compiler errors)
-deno task build
-```
-
-> ⚠️ **Rule:** If any of the above commands fail, fix the issue immediately before creating a Git
-> commit or pushing to remote.
-
----
-
-## 2. 🧪 Test Suite Architecture & Network Isolation
-
-The repository separates tests into two strictly isolated categories:
-
-| Test Command              | Scope & Environment                                                                                               | Network Access          | Included in Default CI?           |
-| :------------------------ | :---------------------------------------------------------------------------------------------------------------- | :---------------------- | :-------------------------------- |
-| **`deno task test`**      | Hermetic unit, component, music theory, and UX tests (`tests/unit/`, `tests/ux/`, `tests/e2e/`)                   | ❌ Disallowed (offline) | **✅ Yes (Required for CI)**      |
-| **`deno task test:live`** | Real live external site extraction tests (`tests/live/`) targeting Ultimate Guitar, Chordie, E-Chords, Cifra Club | 🌐 Allowed (live HTTP)  | **❌ No (On-demand opt-in only)** |
-
-### Strict Rules for Live Tests:
-
-1. **Never import or run `tests/live/` from default `deno test`**: Live tests must remain in
-   `tests/live/` and be excluded in `deno.json` (`test.exclude: ["tests/live/"]`).
-2. **Do not trigger live tests in standard CI/CD**: Running automated live tests against third-party
-   domains in CI risks IP rate-limiting, scraping blocks, and flaky builds.
-3. **Run on-demand only**: Run `deno task test:live` specifically when testing or updating edge
-   scraper parsers in `api/parsers/`.
+`npm test` runs the hermetic Vitest suites in CI. Stub upstream requests in
+tests and keep fixtures local. `npm run test:live` contacts the supported external
+chord sites and is opt-in only. `npm run test:omr` runs the ONNX models from disk
+and is opt-in because the models are distributed as release assets.
 
 ---
 
@@ -62,8 +34,7 @@ The repository separates tests into two strictly isolated categories:
 
 ### Automatic Commit & Push Policy:
 
-- After completing a task, feature, or bug fix (and successfully passing all 4 pre-push quality gate
-  checks), **always automatically commit and push to `origin/master`**.
+- After completing a task, feature, or bug fix (and successfully passing the pre-push quality gate), **always automatically commit and push to `origin/master`**.
 - This ensures clean git history and enables subsequent coding agent sessions or contributors to
   seamlessly resume work from the latest verified state.
 
@@ -130,52 +101,15 @@ When modifying music theory engines (`src/lib/`):
 
 ## 5. 🛠️ Tech Stack & Tooling Standards
 
-- **Runtime:** 100% Pure Deno 2 (`deno.json`). Do NOT introduce `package.json`, Node scripts, or
-  unnecessary npm dependencies.
-- **Frontend Framework:** React 19 + Vite 6 + Tailwind CSS 4.
-- **Linter & Formatter:** Use built-in `deno lint` and `deno fmt` exclusively.
-- **Deployment:**
-  - Frontend: GitHub Pages via `.github/workflows/deploy.yml` with `denoland/setup-deno@v2`.
-  - Backend Scraper: Deno Deploy via `console.deno.com` targeting `api/import.ts` with strict CORS
-    allowlist (`https://arthow4n.github.io` and `http://localhost:*`).
-
-### 5.1 🔐 Explicit Local Permission Matrix
-
-Deno is deny-by-default. Grant only the permissions required by the command; do not replace these
-with `-A` / `--allow-all`. The task definitions in `deno.json` are the source of truth for normal
-use:
-
-| Command                               | Permissions                                                                                                                                     | Why they are needed                                                                                                                                                                                      |
-| :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deno fmt --check` / `deno lint`      | None                                                                                                                                            | Built-in Deno tooling reads the project through its CLI.                                                                                                                                                 |
-| `deno task test`                      | `--allow-read --allow-env=NODE_ENV`                                                                                                             | Tests read source and the generated `dist/` PWA files; React's Node compatibility layer reads `NODE_ENV`. Network access is intentionally not granted.                                                   |
-| `deno task test:live`                 | `--allow-read --allow-net --allow-env=RUN_LIVE_TESTS`                                                                                           | Opt-in scraper tests contact third-party tab sites and read `RUN_LIVE_TESTS`.                                                                                                                            |
-| `deno task serve:api`                 | `--allow-net`                                                                                                                                   | `Deno.serve` listens for requests and `api/import.ts` fetches approved upstream tab sites.                                                                                                               |
-| `deno task audit:ui`                  | `--allow-run --allow-read --allow-write --allow-env --allow-net`                                                                                | The audit runner starts Vite/`agent-browser`, reads the app, fetches the local server, and writes reports/screenshots.                                                                                   |
-| `deno task dev` / `deno task preview` | Vite task runtime access                                                                                                                        | Vite serves a network listener and reads the project; it may write its local dependency cache.                                                                                                           |
-| `deno task build`                     | Vite task runtime access; direct Deno fallback may additionally need `--allow-run`, `--allow-ffi`, and `--allow-sys=osRelease,homedir,uid,cpus` | Vite writes `dist/`, `vite.config.ts` runs `git rev-parse`, Rollup may load its native Node-API binding, and Vite/workbox inspect trusted host details for WSL, paths, identity, and worker parallelism. |
-
-The default test suite is hermetic: its upstream-failure case stubs `fetch` locally, so it does not
-need network permission. Its only environment access is the narrowly scoped `NODE_ENV` read needed
-by React. Only `test:live`, the API server, and browser/UI audit workflows are expected to make
-network requests.
-
-If a Deno command requests a permission unexpectedly, inspect it instead of approving everything:
-
-```bash
-DENO_TRACE_PERMISSIONS=1 <command>
-DENO_AUDIT_PERMISSIONS=.tmp/deno-permissions.json <command>
-```
-
-`--allow-ffi` is especially sensitive because it loads native code outside Deno's JavaScript
-sandbox; use it only for the trusted local Rollup build dependency. `--allow-run` is also sensitive:
-the UI audit needs it for the explicitly named local tools, while the app runtime does not.
-
-The `vite` development, preview, and build tasks are npm-backed subprocesses rather than Deno source
-files with flags in their command string. If a locked-down environment runs Vite directly through
-Deno, use the build permissions listed above; do not add those permissions to the test or browser
-runtime. A host tool may separately ask for approval to launch a subprocess; that is an
-execution-policy decision, not evidence that the application needs broader runtime permissions.
+- **Runtime and tooling:** Node.js 24, npm, React 19, Vite 8, Tailwind CSS 4,
+  TypeScript, Oxlint, and dprint. Commit `package-lock.json` with dependency changes.
+- **Frontend:** GitHub Pages via `.github/workflows/deploy.yml`. Build with
+  `npm run pages:build`.
+- **API:** Cloudflare Workers Builds uses `wrangler.jsonc` and `api/worker.ts`.
+  Use `npm run worker:dev` locally. Keep the production and localhost CORS allowlist,
+  the scraper host allowlist, and the artifact filename allowlist in force.
+- **Secrets:** Use the `GOOGLE_GENAI_API_KEY` runtime binding in production and an
+  ignored `.dev.vars` file locally.
 
 - **Multi-Component Reactive Storage & Events (`src/lib/storage/urlState.ts`):**
   - Every LocalStorage preference helper must dispatch a matching
@@ -211,11 +145,11 @@ comparisons, or capturing screenshots:
 3. **Genuine Visual Rendering:**
    - Ensure the default Chromium browser is used for visual audits and screenshot capture to
      guarantee full 2D graphical rasterization and accurate pixel layout verification.
-4. **Trigger Policy for UI Audits (`deno task audit:ui`):**
+4. **Trigger Policy for UI Audits (`npm run audit:ui`):**
    - Whenever introducing major UI or layout modifications (e.g., changes to `LeadSheetReader.tsx`,
      `LineRenderer.tsx`, `ChordBadge.tsx`, `MiniGripDrawer.tsx`, font scaling, or responsive flexbox
      wrapping):
-     - Always consider and run the UI audit suite (`deno task audit:ui`) or conduct exploratory
+     - Always consider and run the UI audit suite (`npm run audit:ui`) or conduct exploratory
        visual checks with `agent-browser`.
      - Verify that mobile viewports (360px–430px) exhibit zero horizontal document overflow, chord
        badges maintain `>= 44x44px` touch targets, drawer screen occlusion stays `<= 35%`, and

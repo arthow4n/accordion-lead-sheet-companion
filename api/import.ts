@@ -1,5 +1,5 @@
 /**
- * Deno Deploy Serverless Edge Scraper API
+ * Cloudflare Workers Serverless Edge Scraper API
  * Path: api/import.ts
  */
 
@@ -37,21 +37,33 @@ export {
   parseUltimateGuitar,
 };
 
+// Strict allowlist of authorized tab website domains to prevent SSRF and open proxy abuse
+const ALLOWED_TAB_DOMAINS = [
+  "ultimate-guitar.com",
+  "chordie.com",
+  "e-chords.com",
+  "cifras.com.br",
+  "cifraclub.com.br",
+  "cifraclub.com",
+];
+
+function isAllowedTabHost(host: string): boolean {
+  return ALLOWED_TAB_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
 /**
- * Main HTTP request handler for the Deno Deploy edge scraper & scan function.
+ * Main HTTP request handler for the Cloudflare Workers edge scraper & scan function.
  */
-export async function handleRequest(req: Request): Promise<Response> {
-  // Dispatch /api/scan-chords and /api/omr-artifacts routes
-  try {
-    const url = new URL(req.url);
-    if (url.pathname === "/api/scan-chords" || url.pathname.endsWith("/api/scan-chords")) {
-      return await handleScanChordsRequest(req);
-    }
-    if (url.pathname.startsWith("/api/omr-artifacts") || url.pathname.includes("/omr-artifacts")) {
-      return await handleOmrArtifactRequest(req);
-    }
-  } catch {
-    // If URL parsing fails, continue to standard import validation
+export async function handleRequest(
+  req: Request,
+  googleGenAiApiKey?: string,
+): Promise<Response> {
+  const url = new URL(req.url);
+  if (url.pathname.endsWith("/api/scan-chords")) {
+    return handleScanChordsRequest(req, { apiKey: googleGenAiApiKey });
+  }
+  if (url.pathname.startsWith("/api/omr-artifacts") || url.pathname.includes("/omr-artifacts")) {
+    return handleOmrArtifactRequest(req);
   }
 
   const corsHeaders = getCorsHeaders(req);
@@ -71,7 +83,7 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 
   const baseHeaders: Record<string, string> = {
-    ...(corsHeaders as Record<string, string> || {}),
+    ...corsHeaders,
     "Content-Type": "application/json",
   };
 
@@ -100,24 +112,8 @@ export async function handleRequest(req: Request): Promise<Response> {
     );
   }
 
-  // 4. Validate ?url= query parameter
-  let targetUrl: string | null = null;
-  try {
-    const url = new URL(req.url);
-    targetUrl = url.searchParams.get("url");
-  } catch {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Invalid request URL",
-      }),
-      {
-        status: 400,
-        headers: baseHeaders,
-      },
-    );
-  }
-
+  // 4. Validate the requested source.
+  const targetUrl = url.searchParams.get("url");
   if (!targetUrl || !targetUrl.trim()) {
     return new Response(
       JSON.stringify({
@@ -131,19 +127,10 @@ export async function handleRequest(req: Request): Promise<Response> {
     );
   }
 
-  // Strict allowlist of authorized tab website domains to prevent SSRF and open proxy abuse
-  const ALLOWED_TAB_DOMAINS = [
-    "ultimate-guitar.com",
-    "chordie.com",
-    "e-chords.com",
-    "cifras.com.br",
-    "cifraclub.com.br",
-    "cifraclub.com",
-  ];
-
+  let parsedTarget: URL;
   // Validate that the target is a valid HTTP/HTTPS URL and matches an allowed tab domain
   try {
-    const parsedTarget = new URL(targetUrl);
+    parsedTarget = new URL(targetUrl);
     if (parsedTarget.protocol !== "http:" && parsedTarget.protocol !== "https:") {
       return new Response(
         JSON.stringify({
@@ -158,11 +145,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const host = parsedTarget.hostname.toLowerCase().trim();
-    const isAllowedDomain = ALLOWED_TAB_DOMAINS.some(
-      (domain) => host === domain || host.endsWith(`.${domain}`),
-    );
-
-    if (!isAllowedDomain) {
+    if (!isAllowedTabHost(host)) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -182,7 +165,6 @@ export async function handleRequest(req: Request): Promise<Response> {
       parsedTarget.pathname.startsWith("/tab/")
     ) {
       parsedTarget.hostname = "tabs.ultimate-guitar.com";
-      targetUrl = parsedTarget.toString();
     }
   } catch {
     return new Response(
@@ -199,16 +181,17 @@ export async function handleRequest(req: Request): Promise<Response> {
 
   // 5. Fetch target website HTML with custom headers and timeout
   try {
-    const upstreamRes = await fetch(targetUrl, {
+    const upstreamRes = await fetchTabPage(parsedTarget, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept":
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
-        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "Sec-Ch-Ua":
+          "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
         "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Ch-Ua-Platform": "\"Windows\"",
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "none",
@@ -219,6 +202,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     });
 
     if (!upstreamRes.ok) {
+      await upstreamRes.body?.cancel();
       const status = upstreamRes.status;
       let errorDetail = `Upstream request failed with status ${status} ${upstreamRes.statusText}`;
       if (status === 403) {
@@ -240,7 +224,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const html = await upstreamRes.text();
-    const result = parseTabHtml(targetUrl, html);
+    const result = parseTabHtml(parsedTarget.href, html);
 
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 422,
@@ -261,9 +245,19 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-// Start standalone Deno server if executed directly
-if (import.meta.main) {
-  Deno.serve(handleRequest);
-}
+// Keep the host allowlist in effect across upstream redirects.
+async function fetchTabPage(initialUrl: URL, init: RequestInit): Promise<Response> {
+  let target = initialUrl;
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    const response = await fetch(target.href, { ...init, redirect: "manual" });
+    const location = response.headers.get("Location");
+    if (!location || ![301, 302, 303, 307, 308].includes(response.status)) return response;
 
-export default handleRequest;
+    await response.body?.cancel();
+    target = new URL(location, target);
+    if (!["http:", "https:"].includes(target.protocol) || !isAllowedTabHost(target.hostname)) {
+      return new Response(null, { status: 502, statusText: "Disallowed upstream redirect" });
+    }
+  }
+  return new Response(null, { status: 502, statusText: "Too many upstream redirects" });
+}

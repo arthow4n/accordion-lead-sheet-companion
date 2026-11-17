@@ -8,6 +8,8 @@
  * - Granular cache management (status check, deletion).
  */
 
+import { getApiBaseUrl, PRODUCTION_API_BASE_URL } from "../api/config.ts";
+
 export interface OmrArtifactSpec {
   id: "encoder" | "decoder";
   filename: string;
@@ -61,8 +63,7 @@ export interface OmrDownloadProgress {
   currentArtifact: string;
 }
 
-export const DEFAULT_OMR_RELEASE_BASE_URL =
-  "https://accordion-lead-sheet-companion.arthow4n.deno.net/api/omr-artifacts";
+export const DEFAULT_OMR_RELEASE_BASE_URL = `${PRODUCTION_API_BASE_URL}/api/omr-artifacts`;
 
 /** Canonical URI prefix used to store and look up artifacts in Cache Storage. */
 export const OMR_CACHE_KEY_PREFIX = "https://accordion-app.local/omr-artifacts-v1/";
@@ -81,8 +82,9 @@ export function makeArtifactCacheRequest(filename: string): Request {
 
 /** Create a remote fetch request for downloading an artifact. */
 export function makeArtifactFetchRequest(filename: string, baseUrl?: string): Request {
-  const base = baseUrl !== undefined && baseUrl !== "" ? baseUrl : DEFAULT_OMR_RELEASE_BASE_URL;
-  const sep = base.endsWith("/") || !base ? "" : "/";
+  const apiBase = getApiBaseUrl() || globalThis.location?.origin || PRODUCTION_API_BASE_URL;
+  const base = baseUrl || `${apiBase}/api/omr-artifacts`;
+  const sep = base.endsWith("/") ? "" : "/";
   return new Request(`${base}${sep}${filename}`);
 }
 

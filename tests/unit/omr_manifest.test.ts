@@ -1,4 +1,6 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertRejects } from "../assertions.ts";
 import {
   computeSha256,
   DEFAULT_OMR_RELEASE_BASE_URL,
@@ -13,7 +15,7 @@ import {
   verifyArtifactBuffer,
 } from "../../src/lib/score/omrManifest.ts";
 
-Deno.test("OMR-MAN-01: Artifact manifest definitions and total byte counts", () => {
+test("OMR-MAN-01: Artifact manifest definitions and total byte counts", () => {
   assertEquals(OMR_ARTIFACTS.encoder.id, "encoder");
   assertEquals(OMR_ARTIFACTS.encoder.byteLength, 22241555);
   assertEquals(
@@ -38,7 +40,7 @@ Deno.test("OMR-MAN-01: Artifact manifest definitions and total byte counts", () 
   assertEquals(OMR_FIRST_USE_DISCLOSURE.totalBytes, OMR_TOTAL_DOWNLOAD_BYTES);
 });
 
-Deno.test("OMR-MAN-02: computeSha256 and integrity verification", async () => {
+test("OMR-MAN-02: computeSha256 and integrity verification", async () => {
   const encoderSpec = OMR_ARTIFACTS.encoder;
 
   // 1. Buffer with wrong length
@@ -64,12 +66,12 @@ Deno.test("OMR-MAN-02: computeSha256 and integrity verification", async () => {
   assertEquals(hash, "f741a4ae411820546a91e3699cbb8065687a84afec1bf37e3bc48dd1ae80441c");
 });
 
-Deno.test("OMR-MAN-03: isOmrCached returns boolean gracefully without throwing", async () => {
+test("OMR-MAN-03: isOmrCached returns boolean gracefully without throwing", async () => {
   const cached = await isOmrCached();
   assertEquals(typeof cached, "boolean");
 });
 
-Deno.test("OMR-MAN-04: Canonical Cache Storage request keys are decoupled from remote fetch baseUrl", () => {
+test("OMR-MAN-04: Canonical Cache Storage request keys are decoupled from remote fetch baseUrl", () => {
   const filename = "encoder.onnx";
   const cacheReq = makeArtifactCacheRequest(filename);
   assertEquals(cacheReq.url, `${OMR_CACHE_KEY_PREFIX}${filename}`);

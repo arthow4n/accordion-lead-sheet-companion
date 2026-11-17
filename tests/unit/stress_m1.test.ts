@@ -1,4 +1,9 @@
-import { assertEquals, assertExists, assertNotEquals, assertStringIncludes } from "@std/assert";
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
+import { assertExists, assertStringIncludes } from "../assertions.ts";
 import type { ChordDetail, LeadSheetLine } from "../../src/types/index.ts";
 import {
   extractCapoFret as extractCapoTokenizer,
@@ -18,7 +23,7 @@ import { parseChord } from "../../src/lib/capo/transposition.ts";
 // CHALLENGE SUITE 1: Multi-Lingual Capo Headers & Noisy Metadata Filtering
 // ============================================================================
 
-Deno.test("STRESS-01: Multi-lingual capo headers across tokenizer & generic extractors", () => {
+test("STRESS-01: Multi-lingual capo headers across tokenizer & generic extractors", () => {
   const capoCases: Array<{ raw: string; expected: number }> = [
     // English variations
     { raw: "Capo: 3rd fret", expected: 3 },
@@ -87,7 +92,7 @@ Deno.test("STRESS-01: Multi-lingual capo headers across tokenizer & generic extr
   }
 });
 
-Deno.test("STRESS-02: Noisy metadata and chord dictionary filtering", () => {
+test("STRESS-02: Noisy metadata and chord dictionary filtering", () => {
   const noisyLines = [
     "Tuning: E A D G B E",
     "tuning: D A D G B E",
@@ -178,7 +183,7 @@ Deno.test("STRESS-02: Noisy metadata and chord dictionary filtering", () => {
 // CHALLENGE SUITE 2: Stepwise Chromatic Slash Chords & Syllable Alignment
 // ============================================================================
 
-Deno.test("STRESS-03: Chromatic descending bass sequence (A Whiter Shade of Pale)", () => {
+test("STRESS-03: Chromatic descending bass sequence (A Whiter Shade of Pale)", () => {
   const input = [
     "C       C/B     Am      Am/G    F       F/E     Dm      Dm/C",
     "We      skipped the     light   fan-    dan-    go",
@@ -226,7 +231,7 @@ Deno.test("STRESS-03: Chromatic descending bass sequence (A Whiter Shade of Pale
   assertEquals(dmc.stradella.columnOffset, 0); // C fundamental bass
 });
 
-Deno.test("STRESS-04: Dense chromatic bass lines in other keys & tight spacing", () => {
+test("STRESS-04: Dense chromatic bass lines in other keys & tight spacing", () => {
   // Key of G descending bass
   const docG = [
     "G       G/F#    Em      Em/D    C       C/B     Am      D7",
@@ -267,7 +272,7 @@ Deno.test("STRESS-04: Dense chromatic bass lines in other keys & tight spacing",
 // CHALLENGE SUITE 3: Scraper Section Headers in cleanUgContent
 // ============================================================================
 
-Deno.test("STRESS-05: Ultimate Guitar cleanUgContent normalizes all section header variants", () => {
+test("STRESS-05: Ultimate Guitar cleanUgContent normalizes all section header variants", () => {
   const rawUg = [
     "[interlude] [ch]Am[/ch] [ch]F[/ch] [/interlude]",
     "[INTERLUDE 1] [ch]C[/ch] [/INTERLUDE 1]",
@@ -376,7 +381,7 @@ Deno.test("STRESS-05: Ultimate Guitar cleanUgContent normalizes all section head
 // CHALLENGE SUITE 4: Parenthesized Jazz Alterations & Rootless Chords
 // ============================================================================
 
-Deno.test("STRESS-06: Extended jazz chord qualities and parenthesized alterations", () => {
+test("STRESS-06: Extended jazz chord qualities and parenthesized alterations", () => {
   const jazzChords: Array<{ token: string; expectedQuality: string }> = [
     { token: "Gb7(#11)", expectedQuality: "sevenSharpEleven" },
     { token: "G7(#11)", expectedQuality: "sevenSharpEleven" },
@@ -427,7 +432,7 @@ Deno.test("STRESS-06: Extended jazz chord qualities and parenthesized alteration
 // CHALLENGE SUITE 5: Measure Bar Delimiters & ASCII Tab Staves
 // ============================================================================
 
-Deno.test("STRESS-07: Measure bar delimiters (| Bb6 C7 | F7 Bb7 |) in instrumental lines", () => {
+test("STRESS-07: Measure bar delimiters (| Bb6 C7 | F7 Bb7 |) in instrumental lines", () => {
   const doc = [
     "[Intro]",
     "| Bb6 C7 | F7 Bb7 |",
@@ -459,7 +464,7 @@ Deno.test("STRESS-07: Measure bar delimiters (| Bb6 C7 | F7 Bb7 |) in instrument
   }
 });
 
-Deno.test("STRESS-08: Complex ASCII guitar tab staves with playing techniques", () => {
+test("STRESS-08: Complex ASCII guitar tab staves with playing techniques", () => {
   const tabLines = [
     "e|---5h7p5--s8--\\3--b10--r8--(12)---|",
     "B|---5-h-7---x---X---t12---v5-------|",

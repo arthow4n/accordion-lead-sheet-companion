@@ -111,8 +111,8 @@ recognition failure an unsupported page.
 
 | Concern                        | Decision                                                                                                                                                                                                                                                          |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Application shell              | Keep React 19, Vite 6, Tailwind 4, and Deno 2.                                                                                                                                                                                                                    |
-| Dependency declarations        | Add npm dependencies only through `deno.json`; never add `package.json`.                                                                                                                                                                                          |
+| Application shell              | Keep React 19, Vite, Tailwind 4, and Node.js.                                                                                                                                                                                                                    |
+| Dependency declarations        | Declare dependencies in `package.json` and commit the npm lockfile.                                                                                                                                                                                          |
 | Canonical application data     | Add a compact TypeScript `ScoreDocument`; retain sanitized MusicXML as the render source for MusicXML imports.                                                                                                                                                    |
 | Input experience               | One Score Reader accepts a photograph or digital score file; neither creates a user-visible mode.                                                                                                                                                                 |
 | Score display                  | OpenSheetMusicDisplay (OSMD), SVG backend, using bounded one- or two-measure excerpts only. Never fall back to a full-score render.                                                                                                                               |
@@ -325,10 +325,10 @@ construct marked reject-guidance.
       fixtures, commits, logs, screenshots, or agent work directories.
 - [ ] Use authored synthetic scores or clearly licensed/public-domain fixtures in committed tests.
 - [ ] Keep default tests hermetic and network-free. Model downloads and real-photo evaluations must
-      be explicit opt-in tasks outside `deno task test`.
+      be explicit opt-in tasks outside `npm test`.
 - [ ] Do not modify `.github/workflows/` unless the user explicitly requests it.
-- [ ] Before every commit/push, pass, in order: `deno fmt --check`, `deno lint`, `deno task test`,
-      and `deno task build`.
+- [ ] Before every commit/push, pass, in order: `npm run fmt:check`, `npm run lint`, `npm test`,
+      and `npm run build`.
 - [ ] Make atomic Conventional Commits and push verified work to `origin/master` as required by
       `AGENTS.md`.
 - [ ] Split each milestone into the smallest numbered slice that produces a testable coherent
@@ -488,7 +488,7 @@ scores to a third party.
 ### Milestone 2 — MusicXML/MXL import before photograph recognition
 
 - [x] Add MusicXML and MXL file choices to the existing import experience.
-- [x] Add dependencies through `deno.json` only and pin versions.
+- [x] Add dependencies through `package.json` and pin versions.
 - [x] Parse exactly the MusicXML v1 support matrix above into `ScoreDocument`, independently of
       undocumented OSMD internals. Persist a sanitized MusicXML render source separately from the
       domain model.
@@ -753,7 +753,7 @@ outside the application runtime; generated weights must remain outside Git.
 - [x] Produce a model manifest containing artifact URL, byte length, SHA-256, schema version,
       vocabulary/tokenizer version, preprocessing version and exact input-unit contract, expected
       dimensions, supported operators, license, attribution, and fixture/evaluation revision.
-- [x] Keep Python conversion/evaluation tooling outside this Deno repository. Commit only the
+- [x] Keep Python conversion/evaluation tooling outside this repository. Commit only the
       browser integration, reproducible manifests/provenance, and non-private parity evidence.
 - [x] Stage release metadata for a project-owned GitHub Release using immutable versioned filenames,
       SHA-256 verification, an expected GitHub Pages fetch URL, and retention of every artifact
@@ -779,7 +779,7 @@ outside the application runtime; generated weights must remain outside Git.
 
 ### Milestone 7 — Browser OMR vertical slice
 
-- [x] Add `onnxruntime-web` through `deno.json` only.
+- [x] Add `onnxruntime-web` through `package.json`.
 - [x] Implement a lazily created OMR Web Worker with typed request, progress, result, cancellation,
       timeout, and error contracts.
 - [x] In production, download artifacts only after the user starts local recognition and confirms a
@@ -905,7 +905,7 @@ outside the application runtime; generated weights must remain outside Git.
 - [x] Document supported notation, known limitations, local-photo privacy, first-use model download,
       offline behavior, and accepted digital score file types without presenting separate playing
       modes.
-- [x] Run `deno task audit:ui` and perform exploratory Chromium checks on representative mobile and
+- [x] Run `npm run audit:ui` and perform exploratory Chromium checks on representative mobile and
       desktop sizes.
 - [x] Extend the UI audit with authored MusicXML and generated image scenarios. Add a separate
       opt-in real-browser score task for OSMD SVG, `ImageBitmap`, workers, WASM/base-path loading,
@@ -1035,7 +1035,6 @@ Stop the sequential implementation and request user direction if any of the foll
 
 - Browser WASM parity cannot be achieved without server execution.
 - Representative pages require transcription-like correction effort.
-- The implementation would require adding a Node `package.json` or weakening Deno permissions.
 - The default test suite would require network access.
 - The design requires duplicating or materially changing established Stradella/CBA behavior without
   a reviewed migration.

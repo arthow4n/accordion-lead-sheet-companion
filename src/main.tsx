@@ -24,7 +24,7 @@ if (!rootElement) {
 // Resolve the complete song list before React mounts. This makes URL and PWA/local-storage
 // selection available to the very first App render, instead of painting a preset and replacing
 // it once IndexedDB finishes loading.
-async function bootstrap() {
+async function bootstrap(rootElement: HTMLElement) {
   let initialSongs = PRESET_SONGS;
   try {
     const loaded = await initPresets();
@@ -43,4 +43,4 @@ async function bootstrap() {
   );
 }
 
-void bootstrap();
+void bootstrap(rootElement);

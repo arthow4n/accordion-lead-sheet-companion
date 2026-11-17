@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import { generateCbaGrip, getChordNotes, getChordPitchClasses } from "../../src/lib/cba/grips.ts";
 import { classifyChordQuality, parseChord } from "../../src/lib/capo/transposition.ts";
 import { isChordToken } from "../../src/lib/parser/twoline.ts";
@@ -43,7 +44,7 @@ const PARSER_CASES: Array<{
   { token: "Cadd11", quality: "add4", extension: "add11" },
 ];
 
-Deno.test("CHORD-COVERAGE-PARSER-01: locked spellings are accepted and classified semantically", () => {
+test("CHORD-COVERAGE-PARSER-01: locked spellings are accepted and classified semantically", () => {
   for (const expected of PARSER_CASES) {
     assertEquals(isChordToken(expected.token), true, `Tokenizer rejected ${expected.token}`);
     const parsed = parseChord(expected.token);
@@ -55,7 +56,7 @@ Deno.test("CHORD-COVERAGE-PARSER-01: locked spellings are accepted and classifie
   }
 });
 
-Deno.test("CHORD-COVERAGE-PARSER-02: new precedence does not absorb distinct existing qualities", () => {
+test("CHORD-COVERAGE-PARSER-02: new precedence does not absorb distinct existing qualities", () => {
   assertEquals(parseChord("Caug").quality, "augmented");
   assertEquals(parseChord("C+").quality, "augmented");
   assertEquals(parseChord("C7sus2").quality, "sus2");
@@ -75,7 +76,7 @@ const RH_CASES: Array<{ quality: ChordQuality; suffix: string; intervals: number
   { quality: "add4", suffix: "add4", intervals: [0, 4, 5, 7] },
 ];
 
-Deno.test("CHORD-COVERAGE-RH-01: locked RH pitch sets are exact at C and transpose across 12 roots", () => {
+test("CHORD-COVERAGE-RH-01: locked RH pitch sets are exact at C and transpose across 12 roots", () => {
   const roots = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 
   for (const { quality, suffix, intervals } of RH_CASES) {
@@ -96,7 +97,7 @@ Deno.test("CHORD-COVERAGE-RH-01: locked RH pitch sets are exact at C and transpo
   }
 });
 
-Deno.test("CHORD-COVERAGE-RH-02: altered auto spelling and truthful power grip fingering", () => {
+test("CHORD-COVERAGE-RH-02: altered auto spelling and truthful power grip fingering", () => {
   assertEquals(getChordNotes(parseChord("C7#9")).includes("D#"), true);
   assertEquals(getChordNotes(parseChord("C7#5")).includes("G#"), true);
 
@@ -110,7 +111,7 @@ Deno.test("CHORD-COVERAGE-RH-02: altered auto spelling and truthful power grip f
   assertEquals((generateCbaGrip("Cm11").buttonCoords?.length ?? 0) <= 4, true);
 });
 
-Deno.test("CHORD-COVERAGE-LH-01: exact compound recipes and bass-only strategies", () => {
+test("CHORD-COVERAGE-LH-01: exact compound recipes and bass-only strategies", () => {
   const expectations: Array<{
     token: string;
     bass: string;
@@ -146,7 +147,7 @@ Deno.test("CHORD-COVERAGE-LH-01: exact compound recipes and bass-only strategies
   );
 });
 
-Deno.test("CHORD-COVERAGE-LH-02: slash semantics preserve new family rows and minimum-distance bass", () => {
+test("CHORD-COVERAGE-LH-02: slash semantics preserve new family rows and minimum-distance bass", () => {
   const minorMajorSlash = solveStradellaChord("Em(maj7)/D#");
   assertEquals(minorMajorSlash.primaryBass, "D#_");
   assertEquals(minorMajorSlash.isCounterBass, true);

@@ -1,4 +1,6 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "../assertions.ts";
 import type { LeadSheetLine } from "../../src/types/index.ts";
 import { enrichLeadSheetLines } from "../../src/lib/parser/tokenizer.ts";
 import {
@@ -7,7 +9,7 @@ import {
   formatStradellaTransition,
 } from "../../src/lib/stradella/transitions.ts";
 
-Deno.test("Stradella transition markers describe signed column movement", () => {
+test("Stradella transition markers describe signed column movement", () => {
   const left = computeStradellaTransition(0, -1);
   const right = computeStradellaTransition(0, 1);
   const same = computeStradellaTransition(4, 4);
@@ -28,7 +30,7 @@ Deno.test("Stradella transition markers describe signed column movement", () => 
   assertEquals(computeStradellaTransition(undefined, 1), undefined);
 });
 
-Deno.test("Stradella transitions carry across lead-sheet line boundaries", () => {
+test("Stradella transitions carry across lead-sheet line boundaries", () => {
   const lines: LeadSheetLine[] = [
     {
       type: "chord_lyric",

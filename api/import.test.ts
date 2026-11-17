@@ -1,3 +1,4 @@
+import { test } from "vitest";
 /**
  * Edge API & Scraper Test Suite
  * Path: api/import.test.ts
@@ -6,13 +7,15 @@
  * CORS policy enforcement, HTML entity decoding, and error recovery.
  */
 
-import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
-import handleRequest, {
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists, assertStringIncludes } from "../tests/assertions.ts";
+import {
   cleanUgContent,
   decodeHtmlEntities,
   extractCapoFret,
   extractMetadataFromHtml,
   getCorsHeaders,
+  handleRequest,
   parseChordie,
   parseCifraClub,
   parseEChords,
@@ -25,8 +28,8 @@ import handleRequest, {
 // 1. CORS & Preflight Verification (API-01, API-02, API-03, API-12)
 // ============================================================================
 
-Deno.test("API-01: OPTIONS preflight from production origin returns 204 with CORS headers", async () => {
-  const req = new Request("https://edge.deno.dev/api/import", {
+test("API-01: OPTIONS preflight from production origin returns 204 with CORS headers", async () => {
+  const req = new Request("https://api.example.test/api/import", {
     method: "OPTIONS",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -41,7 +44,7 @@ Deno.test("API-01: OPTIONS preflight from production origin returns 204 with COR
   assertEquals(body, "");
 });
 
-Deno.test("API-02: OPTIONS preflight from localhost development returns 204 with matching origin", async () => {
+test("API-02: OPTIONS preflight from localhost development returns 204 with matching origin", async () => {
   const devOrigins = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -52,7 +55,7 @@ Deno.test("API-02: OPTIONS preflight from localhost development returns 204 with
   ];
 
   for (const origin of devOrigins) {
-    const req = new Request("https://edge.deno.dev/api/import", {
+    const req = new Request("https://api.example.test/api/import", {
       method: "OPTIONS",
       headers: { Origin: origin },
     });
@@ -64,7 +67,7 @@ Deno.test("API-02: OPTIONS preflight from localhost development returns 204 with
   }
 });
 
-Deno.test("API-03: Request from unauthorized origin is rejected with 403 Forbidden", async () => {
+test("API-03: Request from unauthorized origin is rejected with 403 Forbidden", async () => {
   const unauthorizedOrigins = [
     "https://unauthorized-domain.com",
     "https://evil-site.org",
@@ -73,7 +76,7 @@ Deno.test("API-03: Request from unauthorized origin is rejected with 403 Forbidd
   ];
 
   for (const origin of unauthorizedOrigins) {
-    const req = new Request("https://edge.deno.dev/api/import?url=https://example.com", {
+    const req = new Request("https://api.example.test/api/import?url=https://example.com", {
       method: "GET",
       headers: { Origin: origin },
     });
@@ -86,8 +89,8 @@ Deno.test("API-03: Request from unauthorized origin is rejected with 403 Forbidd
   }
 });
 
-Deno.test("API-12: Non-browser request without Origin header is allowed with wildcard CORS", () => {
-  const req = new Request("https://edge.deno.dev/api/import", {
+test("API-12: Non-browser request without Origin header is allowed with wildcard CORS", () => {
+  const req = new Request("https://api.example.test/api/import", {
     method: "OPTIONS",
   });
 
@@ -100,8 +103,8 @@ Deno.test("API-12: Non-browser request without Origin header is allowed with wil
 // 2. Request Routing & Parameter Validation (API-04, API-10, API-11)
 // ============================================================================
 
-Deno.test("API-04: Missing url parameter returns 400 Bad Request", async () => {
-  const req = new Request("https://edge.deno.dev/api/import", {
+test("API-04: Missing url parameter returns 400 Bad Request", async () => {
+  const req = new Request("https://api.example.test/api/import", {
     method: "GET",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -114,12 +117,12 @@ Deno.test("API-04: Missing url parameter returns 400 Bad Request", async () => {
   assertEquals(json.error, "Missing url parameter");
 });
 
-Deno.test("API-10: Empty or invalid URL parameter returns 400 Bad Request", async () => {
+test("API-10: Empty or invalid URL parameter returns 400 Bad Request", async () => {
   const invalidUrls = [
-    "https://edge.deno.dev/api/import?url=",
-    "https://edge.deno.dev/api/import?url=   ",
-    "https://edge.deno.dev/api/import?url=not-a-valid-url",
-    "https://edge.deno.dev/api/import?url=ftp://unsupported.protocol/tab",
+    "https://api.example.test/api/import?url=",
+    "https://api.example.test/api/import?url=   ",
+    "https://api.example.test/api/import?url=not-a-valid-url",
+    "https://api.example.test/api/import?url=ftp://unsupported.protocol/tab",
   ];
 
   for (const urlStr of invalidUrls) {
@@ -135,11 +138,11 @@ Deno.test("API-10: Empty or invalid URL parameter returns 400 Bad Request", asyn
   }
 });
 
-Deno.test("API-11: Disallowed HTTP methods return 405 Method Not Allowed with Allow header", async () => {
+test("API-11: Disallowed HTTP methods return 405 Method Not Allowed with Allow header", async () => {
   const methods = ["POST", "PUT", "DELETE", "PATCH"];
 
   for (const method of methods) {
-    const req = new Request("https://edge.deno.dev/api/import?url=https://example.com", {
+    const req = new Request("https://api.example.test/api/import?url=https://example.com", {
       method,
       headers: { Origin: "https://arthow4n.github.io" },
     });
@@ -158,7 +161,7 @@ Deno.test("API-11: Disallowed HTTP methods return 405 Method Not Allowed with Al
 // 3. Site Parser Verification (API-05, API-06, API-07, API-08, API-09)
 // ============================================================================
 
-Deno.test("API-05: Ultimate Guitar parser extracts title, artist, capo, and content from JSON store", () => {
+test("API-05: Ultimate Guitar parser extracts title, artist, capo, and content from JSON store", () => {
   const mockUG = `
     <!DOCTYPE html>
     <html>
@@ -199,7 +202,7 @@ Deno.test("API-05: Ultimate Guitar parser extracts title, artist, capo, and cont
   );
 });
 
-Deno.test("API-05b: Ultimate Guitar parser handles HTML-escaped data-content store", () => {
+test("API-05b: Ultimate Guitar parser handles HTML-escaped data-content store", () => {
   const storeData = JSON.stringify({
     data: {
       tab_view: {
@@ -228,7 +231,7 @@ Deno.test("API-05b: Ultimate Guitar parser handles HTML-escaped data-content sto
   assertEquals(parsed.rawContent, "Am   F\nLet it be");
 });
 
-Deno.test("API-06: Chordie parser extracts ChordPro metadata and raw text", () => {
+test("API-06: Chordie parser extracts ChordPro metadata and raw text", () => {
   const mockChordie = `
     <html>
       <head><title>Hallelujah - Leonard Cohen</title></head>
@@ -257,7 +260,7 @@ But [C]you don't really [F]care for [G]music, [Am]do you?
   assertStringIncludes(parsed.rawContent, "[C]Now I've [Am]heard");
 });
 
-Deno.test("API-07: E-Chords parser strips <u> chord tags and extracts capo and metadata", () => {
+test("API-07: E-Chords parser strips <u> chord tags and extracts capo and metadata", () => {
   const mockEChords = `
     <html>
       <h1 class="song-title">Perfect</h1>
@@ -285,7 +288,7 @@ Darling just dive right in and follow my lead
   );
 });
 
-Deno.test("API-08: Cifra Club parser strips <b> chord tags and detects Portuguese capo notation", () => {
+test("API-08: Cifra Club parser strips <b> chord tags and detects Portuguese capo notation", () => {
   const mockCifra = `
     <html>
       <h1 class="t1">Garota de Ipanema</h1>
@@ -313,7 +316,7 @@ Mais cheia de graça
   );
 });
 
-Deno.test("API-09: Generic parser decodes HTML entities and falls back cleanly", () => {
+test("API-09: Generic parser decodes HTML entities and falls back cleanly", () => {
   const mockGeneric = `
     <html>
       <head><title>Hotel California - Eagles Chords</title></head>
@@ -343,7 +346,7 @@ Warm smell of colitas, rising up through the air
 // 4. URL Router & Dispatcher Tests
 // ============================================================================
 
-Deno.test("Router: parseTabHtml dispatches to appropriate parser based on domain", () => {
+test("Router: parseTabHtml dispatches to appropriate parser based on domain", () => {
   const ugHtml =
     `<html><script>window.UGAPP.store.page={"data":{"tab_view":{"wiki_tab":{"content":"[ch]C[/ch] [ch]G[/ch]"},"tab":{"song_name":"Test UG","artist_name":"Artist"}}}};</script></html>`;
   const ugResult = parseTabHtml("https://tabs.ultimate-guitar.com/tab/artist/test_crd", ugHtml);
@@ -371,7 +374,7 @@ Deno.test("Router: parseTabHtml dispatches to appropriate parser based on domain
 // 5. Utility Helper Unit Tests (Capo, HTML Entities, Metadata)
 // ============================================================================
 
-Deno.test("extractCapoFret: parses various international formats and directives", () => {
+test("extractCapoFret: parses various international formats and directives", () => {
   assertEquals(extractCapoFret("Capo: 3"), 3);
   assertEquals(extractCapoFret("Capo 2"), 2);
   assertEquals(extractCapoFret("Capo at 4th fret"), 4);
@@ -386,7 +389,7 @@ Deno.test("extractCapoFret: parses various international formats and directives"
   assertEquals(extractCapoFret(""), 0);
 });
 
-Deno.test("decodeHtmlEntities: handles standard, hexadecimal, and decimal numeric entities", () => {
+test("decodeHtmlEntities: handles standard, hexadecimal, and decimal numeric entities", () => {
   assertEquals(
     decodeHtmlEntities(
       "&quot;Hello &amp; World&quot; &lt;tag&gt; &#39;test&#39; &apos;apostrophe&apos; &nbsp;",
@@ -399,7 +402,7 @@ Deno.test("decodeHtmlEntities: handles standard, hexadecimal, and decimal numeri
   assertEquals(decodeHtmlEntities("Plain text"), "Plain text");
 });
 
-Deno.test("extractMetadataFromHtml: extracts title and artist from OpenGraph and title tags", () => {
+test("extractMetadataFromHtml: extracts title and artist from OpenGraph and title tags", () => {
   const ogHtml =
     `<html><head><meta property="og:title" content="Wonderwall by Oasis chords"></head></html>`;
   const ogMeta = extractMetadataFromHtml(ogHtml);
@@ -416,9 +419,9 @@ Deno.test("extractMetadataFromHtml: extracts title and artist from OpenGraph and
 // 6. Upstream Fetch & Error Recovery Tests (API-09 upstream, Fallbacks)
 // ============================================================================
 
-Deno.test("API-09b: Upstream network failure returns 500 with JSON error message", async () => {
+test("API-09b: Upstream network failure returns 500 with JSON error message", async () => {
   const req = new Request(
-    "https://edge.deno.dev/api/import?url=https://tabs.ultimate-guitar.com:9999/tab",
+    "https://api.example.test/api/import?url=https://tabs.ultimate-guitar.com:9999/tab",
     {
       method: "GET",
       headers: { Origin: "https://arthow4n.github.io" },
@@ -443,7 +446,7 @@ Deno.test("API-09b: Upstream network failure returns 500 with JSON error message
   }
 });
 
-Deno.test("API-14: Ultimate Guitar parser DOM fallback when JSON store is missing", () => {
+test("API-14: Ultimate Guitar parser DOM fallback when JSON store is missing", () => {
   const mockUGDom = `
     <html>
       <head><title>Wonderwall Chords by Oasis</title></head>
@@ -472,7 +475,7 @@ That they're gonna throw it back to you
   );
 });
 
-Deno.test("API-15: Chordie short directives {t:}, {a:}, {c:}, {k:}, {st:}", () => {
+test("API-15: Chordie short directives {t:}, {a:}, {c:}, {k:}, {st:}", () => {
   const mockChordie = `
     <html>
       <pre class="chordpro">
@@ -495,7 +498,7 @@ Deno.test("API-15: Chordie short directives {t:}, {a:}, {c:}, {k:}, {st:}", () =
   assertStringIncludes(parsed.rawContent, "[C]Ground Control to Major [Em]Tom");
 });
 
-Deno.test("API-16: E-Chords with span class='c' chord markup", () => {
+test("API-16: E-Chords with span class='c' chord markup", () => {
   const mockEChords = `
     <html>
       <h1 class="song-title">Thinking Out Loud</h1>
@@ -518,7 +521,7 @@ When your legs don't work like they used to before
   );
 });
 
-Deno.test("API-17: Generic parser with <code> container and no explicit title", () => {
+test("API-17: Generic parser with <code> container and no explicit title", () => {
   const mockGeneric = `
     <html>
       <body>
@@ -540,7 +543,7 @@ Here comes the sun
   assertStringIncludes(parsed.rawContent, "Here comes the sun");
 });
 
-Deno.test("API-18: Generic parser unprocessable when no pre/code found", () => {
+test("API-18: Generic parser unprocessable when no pre/code found", () => {
   const mockEmpty = `<html><body><p>No tabs here</p></body></html>`;
   const parsed = parseGeneric(mockEmpty);
   assertEquals(parsed.success, false);
@@ -548,7 +551,7 @@ Deno.test("API-18: Generic parser unprocessable when no pre/code found", () => {
   assertExists(parsed.error);
 });
 
-Deno.test("API-19: Ultimate Guitar cleanUgContent normalizes extended section headers", () => {
+test("API-19: Ultimate Guitar cleanUgContent normalizes extended section headers", () => {
   const ugRaw = [
     "[interlude] [ch]Am[/ch] [ch]F[/ch] [/interlude]",
     "[instrumental 1] [ch]C[/ch] [ch]G[/ch] [/instrumental]",
@@ -573,7 +576,7 @@ Deno.test("API-19: Ultimate Guitar cleanUgContent normalizes extended section he
   assertStringIncludes(cleaned, "[Post-Chorus]");
 });
 
-Deno.test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains and private/internal IP addresses", async () => {
+test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains and private/internal IP addresses", async () => {
   const disallowedUrls = [
     // 1. Unauthorized external domains
     "https://example.com/tab",
@@ -598,10 +601,13 @@ Deno.test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains a
   ];
 
   for (const urlStr of disallowedUrls) {
-    const req = new Request(`https://edge.deno.dev/api/import?url=${encodeURIComponent(urlStr)}`, {
-      method: "GET",
-      headers: { Origin: "http://localhost:5173" },
-    });
+    const req = new Request(
+      `https://api.example.test/api/import?url=${encodeURIComponent(urlStr)}`,
+      {
+        method: "GET",
+        headers: { Origin: "http://localhost:5173" },
+      },
+    );
 
     const res = await handleRequest(req);
     assertEquals(res.status, 400, `Expected 400 Bad Request for disallowed URL: ${urlStr}`);
@@ -615,8 +621,8 @@ Deno.test("API-20: SSRF & Open Proxy Prevention - Rejects unauthorized domains a
 // 6. OMR Artifact Proxy Verification (API-OMR-01 through API-OMR-04)
 // ============================================================================
 
-Deno.test("API-OMR-01: OPTIONS preflight for OMR artifacts returns 204 with CORS headers", async () => {
-  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+test("API-OMR-01: OPTIONS preflight for OMR artifacts returns 204 with CORS headers", async () => {
+  const req = new Request("https://api.example.test/api/omr-artifacts/encoder.onnx", {
     method: "OPTIONS",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -627,8 +633,8 @@ Deno.test("API-OMR-01: OPTIONS preflight for OMR artifacts returns 204 with CORS
   assertEquals(res.headers.get("Access-Control-Allow-Methods"), "GET, HEAD, OPTIONS");
 });
 
-Deno.test("API-OMR-02: Disallowed origin is rejected with 403", async () => {
-  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+test("API-OMR-02: Disallowed origin is rejected with 403", async () => {
+  const req = new Request("https://api.example.test/api/omr-artifacts/encoder.onnx", {
     method: "GET",
     headers: { Origin: "https://evil.com" },
   });
@@ -637,8 +643,8 @@ Deno.test("API-OMR-02: Disallowed origin is rejected with 403", async () => {
   assertEquals(res.status, 403);
 });
 
-Deno.test("API-OMR-03: Unsupported HTTP method returns 405 Method Not Allowed", async () => {
-  const req = new Request("https://edge.deno.dev/api/omr-artifacts/encoder.onnx", {
+test("API-OMR-03: Unsupported HTTP method returns 405 Method Not Allowed", async () => {
+  const req = new Request("https://api.example.test/api/omr-artifacts/encoder.onnx", {
     method: "POST",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -647,8 +653,8 @@ Deno.test("API-OMR-03: Unsupported HTTP method returns 405 Method Not Allowed", 
   assertEquals(res.status, 405);
 });
 
-Deno.test("API-OMR-04: Non-whitelisted artifact returns 404", async () => {
-  const req = new Request("https://edge.deno.dev/api/omr-artifacts/malicious.exe", {
+test("API-OMR-04: Non-whitelisted artifact returns 404", async () => {
+  const req = new Request("https://api.example.test/api/omr-artifacts/malicious.exe", {
     method: "GET",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -657,4 +663,30 @@ Deno.test("API-OMR-04: Non-whitelisted artifact returns 404", async () => {
   assertEquals(res.status, 404);
   const json = await res.json();
   assertEquals(json.error, "Invalid artifact requested");
+});
+
+test("The scraper keeps its host allowlist after upstream redirects", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (input, init) => {
+    requests.push(String(input));
+    assertEquals(init?.redirect, "manual");
+    return Promise.resolve(
+      requests.length === 1
+        ? Response.redirect("https://www.cifraclub.com/artist/song")
+        : Response.redirect("https://example.test/song"),
+    );
+  };
+  try {
+    const target = "https://www.cifraclub.com.br/artist/song";
+    const result = await handleRequest(
+      new Request(
+        `https://api.example.test/api/import?url=${encodeURIComponent(target)}`,
+      ),
+    );
+    assertEquals(result.status, 502);
+    assertEquals(requests, [target, "https://www.cifraclub.com/artist/song"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

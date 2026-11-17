@@ -1,4 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals, ok as assert } from "node:assert/strict";
 import {
   extractStaffCropTensor,
   OMR_FIXED_HEIGHT,
@@ -24,7 +25,7 @@ function createSyntheticImage(width: number, height: number): RawImageData {
   return { data, width, height };
 }
 
-Deno.test("OMR-PRE-01: extractStaffCropTensor produces fixed 128px height tensor", () => {
+test("OMR-PRE-01: extractStaffCropTensor produces fixed 128px height tensor", () => {
   const img = createSyntheticImage(800, 600);
   const cropBox = { x: 50, y: 100, width: 700, height: 100 };
 
@@ -41,7 +42,7 @@ Deno.test("OMR-PRE-01: extractStaffCropTensor produces fixed 128px height tensor
   }
 });
 
-Deno.test("OMR-PRE-02: extractStaffCropTensor clamps out-of-bounds crop box safely", () => {
+test("OMR-PRE-02: extractStaffCropTensor clamps out-of-bounds crop box safely", () => {
   const img = createSyntheticImage(200, 200);
   // Crop box extending outside image
   const outOfBoundsBox = { x: -50, y: -30, width: 300, height: 260 };
@@ -52,7 +53,7 @@ Deno.test("OMR-PRE-02: extractStaffCropTensor clamps out-of-bounds crop box safe
   assertEquals(tensor.data.length, tensor.width * tensor.height);
 });
 
-Deno.test("OMR-PRE-03: crop coordinates scale back to the original high-resolution photo", () => {
+test("OMR-PRE-03: crop coordinates scale back to the original high-resolution photo", () => {
   const img = createSyntheticImage(400, 400);
   img.data.fill(255);
   for (let y = 200; y < 280; y++) {
@@ -77,7 +78,7 @@ Deno.test("OMR-PRE-03: crop coordinates scale back to the original high-resoluti
   assert(tensor.data.every((value) => value < 0.01));
 });
 
-Deno.test("OMR-PRE-04: deskewed layout crops sample the inverse rotation of original pixels", () => {
+test("OMR-PRE-04: deskewed layout crops sample the inverse rotation of original pixels", () => {
   const size = 256;
   const img = createSyntheticImage(size, size);
   img.data.fill(255);

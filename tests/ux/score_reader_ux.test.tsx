@@ -1,3 +1,4 @@
+import { test } from "vitest";
 /**
  * 4-Tier UX & Accessibility Test Suite for Offline Score Reader.
  * Path: tests/ux/score_reader_ux.test.tsx
@@ -10,7 +11,8 @@
  * Tier 4: Real-World Scenarios (End-to-end photo upload -> review -> playback transition)
  */
 
-import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists, assertStringIncludes } from "../assertions.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ScoreReviewQueue } from "../../src/components/ScoreReviewQueue.tsx";
 import { ImportModal } from "../../src/components/ImportModal.tsx";
@@ -118,7 +120,7 @@ function createSamplePhotoLayout(): ScorePhotoLayout {
 // Feature 6: Touch Targets (>= 44x44px standard per AGENTS.md)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-TOUCH-01: ScoreReviewQueue 'Review Issues' trigger button maintains >= 44x44px touch target", () => {
+test("T1-TOUCH-01: ScoreReviewQueue 'Review Issues' trigger button maintains >= 44x44px touch target", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -129,7 +131,7 @@ Deno.test("T1-TOUCH-01: ScoreReviewQueue 'Review Issues' trigger button maintain
   assertStringIncludes(html, "Review Issues");
 });
 
-Deno.test("T1-TOUCH-02: ScoreReviewQueue renders primary trigger with >= 44px touch target", () => {
+test("T1-TOUCH-02: ScoreReviewQueue renders primary trigger with >= 44px touch target", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -140,7 +142,7 @@ Deno.test("T1-TOUCH-02: ScoreReviewQueue renders primary trigger with >= 44px to
   assertStringIncludes(html, "Actionable Review Queue (1 issue)");
 });
 
-Deno.test("T1-TOUCH-03: ScoreReviewQueue interactive controls specify min-h-[44px] accessibility standard", () => {
+test("T1-TOUCH-03: ScoreReviewQueue interactive controls specify min-h-[44px] accessibility standard", () => {
   const doc = createDocWithActionableIssues(2);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -151,7 +153,7 @@ Deno.test("T1-TOUCH-03: ScoreReviewQueue interactive controls specify min-h-[44p
   assertStringIncludes(html, "Actionable Review Queue (2 issues)");
 });
 
-Deno.test("T1-TOUCH-04: ImportModal modal actions and close button maintain accessible touch targets", () => {
+test("T1-TOUCH-04: ImportModal modal actions and close button maintain accessible touch targets", () => {
   const html = renderToStaticMarkup(
     <ImportModal
       isOpen
@@ -167,7 +169,7 @@ Deno.test("T1-TOUCH-04: ImportModal modal actions and close button maintain acce
   assertStringIncludes(html, "Fetch");
 });
 
-Deno.test("T1-TOUCH-05: ImportModal tab switcher provides dedicated accessible touch tabs", () => {
+test("T1-TOUCH-05: ImportModal tab switcher provides dedicated accessible touch tabs", () => {
   const html = renderToStaticMarkup(
     <ImportModal
       isOpen
@@ -184,7 +186,7 @@ Deno.test("T1-TOUCH-05: ImportModal tab switcher provides dedicated accessible t
   assertStringIncludes(html, "Score file");
 });
 
-Deno.test("T1-TOUCH-06: GuidedPhotoPreview details summary and measure adjustment meet accessibility standard", () => {
+test("T1-TOUCH-06: GuidedPhotoPreview details summary and measure adjustment meet accessibility standard", () => {
   const layout = createSamplePhotoLayout();
   const dummyFile = new File([new Uint8Array(10)], "score.jpg", { type: "image/jpeg" });
   const html = renderToStaticMarkup(
@@ -202,7 +204,7 @@ Deno.test("T1-TOUCH-06: GuidedPhotoPreview details summary and measure adjustmen
   assertStringIncludes(html, "Measure 2");
 });
 
-Deno.test("T1-TOUCH-07: LeadSheetReader score reader controls enforce min-h-[44px] standard", () => {
+test("T1-TOUCH-07: LeadSheetReader score reader controls enforce min-h-[44px] standard", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <LeadSheetReader
@@ -233,7 +235,7 @@ Deno.test("T1-TOUCH-07: LeadSheetReader score reader controls enforce min-h-[44p
 // Feature 7: Drawer Screen Occlusion (<= 35% viewport height standard)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-DRAWER-01: ScoreReviewQueue closed state consumes <= 10% of standard mobile viewport height", () => {
+test("T1-DRAWER-01: ScoreReviewQueue closed state consumes <= 10% of standard mobile viewport height", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -250,7 +252,7 @@ Deno.test("T1-DRAWER-01: ScoreReviewQueue closed state consumes <= 10% of standa
   assertEquals(closedOcclusionRatio <= 0.10, true);
 });
 
-Deno.test("T1-DRAWER-02: ScoreReviewQueue drawer occlusion on compact 667px viewport (iPhone SE) stays <= 35%", () => {
+test("T1-DRAWER-02: ScoreReviewQueue drawer occlusion on compact 667px viewport (iPhone SE) stays <= 35%", () => {
   // Mobile standard: drawer max-height is clamped to 35vh
   const viewportHeight = 667;
   const maxDrawerHeight = 0.35 * viewportHeight; // 233.45px
@@ -260,7 +262,7 @@ Deno.test("T1-DRAWER-02: ScoreReviewQueue drawer occlusion on compact 667px view
   assertEquals(maxDrawerHeight <= 235, true);
 });
 
-Deno.test("T1-DRAWER-03: ScoreReviewQueue drawer occlusion on 844px viewport (iPhone 12/13/14) stays <= 35%", () => {
+test("T1-DRAWER-03: ScoreReviewQueue drawer occlusion on 844px viewport (iPhone 12/13/14) stays <= 35%", () => {
   const viewportHeight = 844;
   const maxDrawerHeight = 0.35 * viewportHeight; // 295.4px
   const occlusionRatio = maxDrawerHeight / viewportHeight;
@@ -268,7 +270,7 @@ Deno.test("T1-DRAWER-03: ScoreReviewQueue drawer occlusion on 844px viewport (iP
   assertEquals(occlusionRatio <= 0.35, true);
 });
 
-Deno.test("T1-DRAWER-04: ScoreReviewQueue drawer occlusion on 932px viewport (iPhone 14 Pro Max) stays <= 35%", () => {
+test("T1-DRAWER-04: ScoreReviewQueue drawer occlusion on 932px viewport (iPhone 14 Pro Max) stays <= 35%", () => {
   const viewportHeight = 932;
   const maxDrawerHeight = 0.35 * viewportHeight; // 326.2px
   const occlusionRatio = maxDrawerHeight / viewportHeight;
@@ -276,7 +278,7 @@ Deno.test("T1-DRAWER-04: ScoreReviewQueue drawer occlusion on 932px viewport (iP
   assertEquals(occlusionRatio <= 0.35, true);
 });
 
-Deno.test("T1-DRAWER-05: Review queue renders non-blocking alongside score notation without pushing notation offscreen", () => {
+test("T1-DRAWER-05: Review queue renders non-blocking alongside score notation without pushing notation offscreen", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <LeadSheetReader
@@ -304,7 +306,7 @@ Deno.test("T1-DRAWER-05: Review queue renders non-blocking alongside score notat
   assertStringIncludes(html, "Perform");
 });
 
-Deno.test("T1-DRAWER-06: ScoreReviewQueue renders null (0% occlusion) when zero actionable issues exist", () => {
+test("T1-DRAWER-06: ScoreReviewQueue renders null (0% occlusion) when zero actionable issues exist", () => {
   const doc = createDocWithActionableIssues(0);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -318,7 +320,7 @@ Deno.test("T1-DRAWER-06: ScoreReviewQueue renders null (0% occlusion) when zero 
 // TIER 2: BOUNDARY & CORNER CASES (UX)
 // ============================================================================
 
-Deno.test("T2-UX-EDGE-01: 360px mobile viewport renders ImportModal tab switcher without container blowout", () => {
+test("T2-UX-EDGE-01: 360px mobile viewport renders ImportModal tab switcher without container blowout", () => {
   const html = renderToStaticMarkup(
     <ImportModal
       isOpen
@@ -336,7 +338,7 @@ Deno.test("T2-UX-EDGE-01: 360px mobile viewport renders ImportModal tab switcher
   assertStringIncludes(html, "Score file");
 });
 
-Deno.test("T2-UX-EDGE-02: 390px mobile viewport renders LeadSheetReader with segmented measure guidance", () => {
+test("T2-UX-EDGE-02: 390px mobile viewport renders LeadSheetReader with segmented measure guidance", () => {
   const doc = createDocWithActionableIssues(2);
   const html = renderToStaticMarkup(
     <LeadSheetReader
@@ -360,7 +362,7 @@ Deno.test("T2-UX-EDGE-02: 390px mobile viewport renders LeadSheetReader with seg
   assertStringIncludes(html, "Score reader");
 });
 
-Deno.test("T2-UX-EDGE-03: 430px mobile viewport renders review queue with readable typography and compact styling", () => {
+test("T2-UX-EDGE-03: 430px mobile viewport renders review queue with readable typography and compact styling", () => {
   const doc = createDocWithActionableIssues(3);
   const html = renderToStaticMarkup(
     <ScoreReviewQueue document={doc} onUpdateDocument={() => {}} />,
@@ -370,7 +372,7 @@ Deno.test("T2-UX-EDGE-03: 430px mobile viewport renders review queue with readab
   assertStringIncludes(html, "text-xs sm:text-sm font-bold text-amber-200");
 });
 
-Deno.test("T2-UX-EDGE-04: High issue count (8+ issues) displays correct total count in queue header", () => {
+test("T2-UX-EDGE-04: High issue count (8+ issues) displays correct total count in queue header", () => {
   const doc = createDocWithActionableIssues(8);
   const actionable = getActionableScoreIssues(doc);
   assertEquals(actionable.length, 8);
@@ -382,7 +384,7 @@ Deno.test("T2-UX-EDGE-04: High issue count (8+ issues) displays correct total co
   assertStringIncludes(html, "Actionable Review Queue (8 issues)");
 });
 
-Deno.test("T2-UX-EDGE-05: Non-actionable informational issues are filtered out from the actionable review queue", () => {
+test("T2-UX-EDGE-05: Non-actionable informational issues are filtered out from the actionable review queue", () => {
   const doc: ScoreDocument = {
     schemaVersion: 1,
     title: "Only Non-Actionable Issues Score",
@@ -429,7 +431,7 @@ Deno.test("T2-UX-EDGE-05: Non-actionable informational issues are filtered out f
 // TIER 3: CROSS-FEATURE INTERACTIONS (UX)
 // ============================================================================
 
-Deno.test("T3-UX-XFEAT-01: ScoreReviewQueue quick chord update synchronizes with session document", () => {
+test("T3-UX-XFEAT-01: ScoreReviewQueue quick chord update synchronizes with session document", () => {
   const doc = createDocWithActionableIssues(1);
   const session = new ScoreCorrectionSession(doc);
 
@@ -448,7 +450,7 @@ Deno.test("T3-UX-XFEAT-01: ScoreReviewQueue quick chord update synchronizes with
   assertExists(html);
 });
 
-Deno.test("T3-UX-XFEAT-02: GuidedPhotoPreview with detected layout displays measure count and dimensions", () => {
+test("T3-UX-XFEAT-02: GuidedPhotoPreview with detected layout displays measure count and dimensions", () => {
   const layout = createSamplePhotoLayout();
   const dummyFile = new File([new Uint8Array(10)], "score.jpg", { type: "image/jpeg" });
 
@@ -464,7 +466,7 @@ Deno.test("T3-UX-XFEAT-02: GuidedPhotoPreview with detected layout displays meas
   assertStringIncludes(html, "Adjust measure boundary");
 });
 
-Deno.test("T3-UX-XFEAT-03: Playback controls remain active and interactive in LeadSheetReader during score review", () => {
+test("T3-UX-XFEAT-03: Playback controls remain active and interactive in LeadSheetReader during score review", () => {
   const doc = createDocWithActionableIssues(1);
   const html = renderToStaticMarkup(
     <LeadSheetReader
@@ -492,7 +494,7 @@ Deno.test("T3-UX-XFEAT-03: Playback controls remain active and interactive in Le
   assertStringIncludes(html, "Next measure");
 });
 
-Deno.test("T3-UX-XFEAT-04: Non-blocking workflow allows immediate transition from review queue to playback", () => {
+test("T3-UX-XFEAT-04: Non-blocking workflow allows immediate transition from review queue to playback", () => {
   const doc = createDocWithActionableIssues(1);
   assertEquals(doc.issues[0].blocksGuidance, false);
 
@@ -526,7 +528,7 @@ Deno.test("T3-UX-XFEAT-04: Non-blocking workflow allows immediate transition fro
 // TIER 4: REAL-WORLD SCENARIOS (UX)
 // ============================================================================
 
-Deno.test("T4-UX-SCENARIO-01: End-to-end UX flow: ImportModal open -> Score review queue expanded -> Playback ready", () => {
+test("T4-UX-SCENARIO-01: End-to-end UX flow: ImportModal open -> Score review queue expanded -> Playback ready", () => {
   // Step 1: User opens ImportModal to import sheet music
   const modalHtml = renderToStaticMarkup(
     <ImportModal
@@ -592,7 +594,7 @@ Deno.test("T4-UX-SCENARIO-01: End-to-end UX flow: ImportModal open -> Score revi
   assertStringIncludes(clearedReaderHtml, "Measure 2");
 });
 
-Deno.test("T4-UX-SCENARIO-02: Guided photo missing original image displays recoverable relink action", () => {
+test("T4-UX-SCENARIO-02: Guided photo missing original image displays recoverable relink action", () => {
   // Photo score with missing bitmap source displays session relink button
   const doc = createDocWithActionableIssues(1);
   doc.photoLayout = createSamplePhotoLayout();

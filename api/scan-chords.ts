@@ -1,8 +1,9 @@
 /**
- * Deno Deploy Serverless Score Photo Chord Extraction Handler
+ * Cloudflare Workers Serverless Score Photo Chord Extraction Handler
  * Path: api/scan-chords.ts
  */
 
+import { Buffer } from "node:buffer";
 import {
   ALLOWED_SCAN_IMAGE_MIME_TYPES,
   type AllowedScanImageMimeType,
@@ -21,6 +22,7 @@ export const SCORE_SCAN_PROMPT = "Inspect this image of a printed music score or
   "extensions as accurately as possible.";
 
 export interface ScanChordsDependencies {
+  apiKey?: string;
   extractChords?: (file: File) => Promise<unknown>;
 }
 
@@ -78,7 +80,7 @@ export async function handleScanChordsRequest(
   }
 
   const baseHeaders: Record<string, string> = {
-    ...(corsHeaders as Record<string, string> || {}),
+    ...corsHeaders,
     "Content-Type": "application/json",
   };
 
@@ -112,10 +114,43 @@ export async function handleScanChordsRequest(
     });
   }
 
-  // 5. Parse multipart form data
+  // Allow room for multipart headers and boundaries around a maximum-sized image.
+  const maxBodyBytes = MAX_SCAN_IMAGE_SIZE_BYTES + 64 * 1024;
+  const tooLarge = () =>
+    Response.json(
+      {
+        success: false,
+        code: "SCAN_IMAGE_TOO_LARGE",
+        error: "Image file exceeds the 10 MiB limit",
+      } satisfies ScanChordsResponse,
+      { status: 413, headers: baseHeaders },
+    );
+
+  if (Number(req.headers.get("content-length")) > maxBodyBytes) return tooLarge();
+
   let formData: FormData;
   try {
-    formData = await req.formData();
+    const reader = req.body?.getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let bytes = 0;
+    if (reader) {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          if (bytes > maxBodyBytes) {
+            await reader.cancel();
+            return tooLarge();
+          }
+          chunks.push(value.slice());
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    formData = await new Response(new Blob(chunks), { headers: { "Content-Type": contentType } })
+      .formData();
   } catch {
     const resPayload: ScanChordsResponse = {
       success: false,
@@ -159,15 +194,7 @@ export async function handleScanChordsRequest(
 
   // 8. Validate file size limit (10 MiB)
   if (file.size > MAX_SCAN_IMAGE_SIZE_BYTES) {
-    const resPayload: ScanChordsResponse = {
-      success: false,
-      code: "SCAN_IMAGE_TOO_LARGE",
-      error: "Image file exceeds the 10 MiB limit",
-    };
-    return new Response(JSON.stringify(resPayload), {
-      status: 413,
-      headers: baseHeaders,
-    });
+    return tooLarge();
   }
 
   // 9. Validate MIME type
@@ -184,7 +211,7 @@ export async function handleScanChordsRequest(
     });
   }
 
-  // 10. Provider execution (injected or default Google GenAI)
+  // 10. Run the recognition provider.
   let rawOutput: unknown;
 
   if (deps?.extractChords) {
@@ -194,15 +221,9 @@ export async function handleScanChordsRequest(
       return mapProviderError(err, baseHeaders);
     }
   } else {
-    // Lazy environment and SDK initialization
-    let apiKey: string | undefined;
-    try {
-      apiKey = Deno.env.get("GOOGLE_GENAI_API_KEY");
-    } catch {
-      apiKey = undefined;
-    }
+    const apiKey = deps?.apiKey?.trim();
 
-    if (!apiKey || !apiKey.trim()) {
+    if (!apiKey) {
       const resPayload: ScanChordsResponse = {
         success: false,
         code: "SCAN_API_KEY_MISSING",
@@ -215,53 +236,45 @@ export async function handleScanChordsRequest(
     }
 
     try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
-
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64Data = btoa(binary);
-
-      const response = await ai.models.generateContent({
-        model: SCORE_SCAN_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType: file.type,
-                  data: base64Data,
-                },
-              },
-              {
-                text: SCORE_SCAN_PROMPT,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              chords: {
-                type: "ARRAY",
-                items: {
-                  type: "STRING",
-                },
+      const base64Data = Buffer.from(await file.arrayBuffer()).toString("base64");
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${SCORE_SCAN_MODEL}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: AbortSignal.timeout(30_000),
+          body: JSON.stringify({
+            contents: [{
+              role: "user",
+              parts: [
+                { inlineData: { mimeType: file.type, data: base64Data } },
+                { text: SCORE_SCAN_PROMPT },
+              ],
+            }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: { chords: { type: "ARRAY", items: { type: "STRING" } } },
+                required: ["chords"],
               },
             },
-            required: ["chords"],
-          },
+          }),
         },
-      });
+      );
 
-      const responseText = response.text;
+      if (!response.ok) {
+        await response.body?.cancel();
+        return mapProviderError({ status: response.status }, baseHeaders);
+      }
+
+      const payload = await response.json() as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
+      };
+      const responseText = payload.candidates?.[0]?.content?.parts
+        ?.filter((part) => !part.thought)
+        .map((part) => part.text ?? "")
+        .join("");
       if (!responseText) {
         const resPayload: ScanChordsResponse = {
           success: false,

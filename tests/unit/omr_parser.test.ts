@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import {
   decodeTokenIds,
   getTokenId,
@@ -16,7 +17,7 @@ import {
   parseKernPitch,
 } from "../../src/lib/score/humdrumParser.ts";
 
-Deno.test("OMR-01: Tokenizer vocabulary and token lookup", () => {
+test("OMR-01: Tokenizer vocabulary and token lookup", () => {
   assertEquals(getVocabularySize(), 153);
   assertEquals(getTokenId("<bos>"), OMR_TOKEN_IDS.BOS);
   assertEquals(getTokenId("<eos>"), OMR_TOKEN_IDS.EOS);
@@ -30,7 +31,7 @@ Deno.test("OMR-01: Tokenizer vocabulary and token lookup", () => {
   assertEquals(getTokenString(OMR_TOKEN_IDS.EOS), "<eos>");
 });
 
-Deno.test("OMR-02: Untokenize replaces delimiters and strips prefixes", () => {
+test("OMR-02: Untokenize replaces delimiters and strips prefixes", () => {
   const tokens = [
     "**kern",
     "<t>",
@@ -63,7 +64,7 @@ Deno.test("OMR-02: Untokenize replaces delimiters and strips prefixes", () => {
   );
 });
 
-Deno.test("OMR-03: decodeTokenIds stops at EOS and omits BOS/PAD", () => {
+test("OMR-03: decodeTokenIds stops at EOS and omits BOS/PAD", () => {
   const ids = [
     OMR_TOKEN_IDS.BOS,
     OMR_TOKEN_IDS.KERN,
@@ -76,7 +77,7 @@ Deno.test("OMR-03: decodeTokenIds stops at EOS and omits BOS/PAD", () => {
   assertEquals(decoded, "**kern\t**mxhm");
 });
 
-Deno.test("OMR-04: mxhmToChordSymbol maps Humdrum chords to standard symbols", () => {
+test("OMR-04: mxhmToChordSymbol maps Humdrum chords to standard symbols", () => {
   assertEquals(mxhmToChordSymbol("C:maj"), "C");
   assertEquals(mxhmToChordSymbol("A:min"), "Am");
   assertEquals(mxhmToChordSymbol("G:7"), "G7");
@@ -92,7 +93,7 @@ Deno.test("OMR-04: mxhmToChordSymbol maps Humdrum chords to standard symbols", (
   assertEquals(mxhmToChordSymbol("*"), null);
 });
 
-Deno.test("OMR-05: parseKernDuration converts reciprocal durations to quarter-note beats", () => {
+test("OMR-05: parseKernDuration converts reciprocal durations to quarter-note beats", () => {
   const whole = parseKernDuration("1");
   assertEquals(whole, { numerator: 4, denominator: 1 });
 
@@ -118,7 +119,7 @@ Deno.test("OMR-05: parseKernDuration converts reciprocal durations to quarter-no
   assertEquals(tripletQuarter, { numerator: 1, denominator: 3 });
 });
 
-Deno.test("OMR-06: parseKernPitch parses step, octave, accidentals, and rests", () => {
+test("OMR-06: parseKernPitch parses step, octave, accidentals, and rests", () => {
   // Octaves
   assertEquals(parseKernPitch("c"), { step: "C", alter: 0, octave: 4 });
   assertEquals(parseKernPitch("cc"), { step: "C", alter: 0, octave: 5 });
@@ -136,7 +137,7 @@ Deno.test("OMR-06: parseKernPitch parses step, octave, accidentals, and rests", 
   assertEquals(parseKernPitch("4r"), undefined);
 });
 
-Deno.test("OMR-07: parseKernMeter and parseKernKey", () => {
+test("OMR-07: parseKernMeter and parseKernKey", () => {
   assertEquals(parseKernMeter("*M4/4"), { beats: 4, beatType: 4 });
   assertEquals(parseKernMeter("*M3/4"), { beats: 3, beatType: 4 });
   assertEquals(parseKernMeter("*met(c)"), { beats: 4, beatType: 4 });
@@ -149,7 +150,7 @@ Deno.test("OMR-07: parseKernMeter and parseKernKey", () => {
   assertEquals(parseKernKey("*k[b-e-a-]"), { fifths: -3, mode: "major" });
 });
 
-Deno.test("OMR-08: parseHumdrumScore produces structured ScoreDocument with measures and chords", () => {
+test("OMR-08: parseHumdrumScore produces structured ScoreDocument with measures and chords", () => {
   const humdrum = `
 **kern\t**mxhm
 *clefG2\t*
@@ -203,7 +204,7 @@ Deno.test("OMR-08: parseHumdrumScore produces structured ScoreDocument with meas
   assertEquals(blockingIssues.length, 0);
 });
 
-Deno.test("OMR-09: Back-to-back combined repeat barline (=:|!|:) splits across measures correctly", () => {
+test("OMR-09: Back-to-back combined repeat barline (=:|!|:) splits across measures correctly", () => {
   const humdrum = `
 **kern\t**mxhm
 *M4/4\t*
@@ -236,7 +237,7 @@ Deno.test("OMR-09: Back-to-back combined repeat barline (=:|!|:) splits across m
   assertEquals(m2.navigation[0], { kind: "repeat-start" });
 });
 
-Deno.test("OMR-10: parseKernDuration correctly handles breve (0) as 8 beats", () => {
+test("OMR-10: parseKernDuration correctly handles breve (0) as 8 beats", () => {
   const breve = parseKernDuration("0");
   assertEquals(breve, { numerator: 8, denominator: 1 });
 
@@ -244,7 +245,7 @@ Deno.test("OMR-10: parseKernDuration correctly handles breve (0) as 8 beats", ()
   assertEquals(dottedBreve, { numerator: 12, denominator: 1 });
 });
 
-Deno.test("OMR-11: parseHumdrumScore propagates confidence to measures, melody, and harmony", () => {
+test("OMR-11: parseHumdrumScore propagates confidence to measures, melody, and harmony", () => {
   const humdrum = `
 **kern\t**mxhm
 *M4/4\t*
@@ -262,7 +263,7 @@ Deno.test("OMR-11: parseHumdrumScore propagates confidence to measures, melody, 
   assertEquals(doc.measures[0].harmonies[0].confidence, 0.84);
 });
 
-Deno.test("OMR-PARSE: independently terminated staff crops never merge their final measures", () => {
+test("OMR-PARSE: independently terminated staff crops never merge their final measures", () => {
   for (const boundary of ["*-\t*-\n!!linebreak\n", "!!linebreak\n", ""]) {
     const doc = parseHumdrumScore(
       "**kern\t**mxhm\n1c\tC:maj\n" + boundary +

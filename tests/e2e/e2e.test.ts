@@ -1,4 +1,6 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "../assertions.ts";
 import { PRESET_SONGS } from "../../src/lib/storage/presets.ts";
 import { enrichLeadSheetLines, parseLeadSheetText } from "../../src/lib/parser/tokenizer.ts";
 import { solveStradellaChord } from "../../src/lib/stradella/solver.ts";
@@ -21,7 +23,7 @@ import type { ChordDetail, LeadSheetLine, LeadSheetSong } from "../../src/types/
 // Features: F5 (Capo), F6 (Stradella Core), F7 (Slash Solver), F10 (Tokenizer), F20 (LeadSheetReader)
 // ============================================================================
 
-Deno.test("Tier 4 Scenario 1: Standard Folk Lead Sheet ('Bella Ciao' in Am with Capo 2)", () => {
+test("Tier 4 Scenario 1: Standard Folk Lead Sheet ('Bella Ciao' in Am with Capo 2)", () => {
   const bellaCiao = PRESET_SONGS.find((s) => s.id === "preset_bella_ciao");
   assertExists(bellaCiao, "Bella Ciao preset must exist");
   assertEquals(bellaCiao.capoFret, 2);
@@ -68,7 +70,7 @@ Deno.test("Tier 4 Scenario 1: Standard Folk Lead Sheet ('Bella Ciao' in Am with 
 // Features: F7 (Slash Solver), F8 (Compound Voicings), F9 (CBA Engine), F20 (LeadSheetReader), F22 (MiniGripDrawer)
 // ============================================================================
 
-Deno.test("Tier 4 Scenario 2: Jazz Standard ('Autumn Leaves' with Slash Chords & m7b5 compound voicings)", () => {
+test("Tier 4 Scenario 2: Jazz Standard ('Autumn Leaves' with Slash Chords & m7b5 compound voicings)", () => {
   const autumnLeaves = PRESET_SONGS.find((s) => s.id === "preset_autumn_leaves");
   assertExists(autumnLeaves, "Autumn Leaves preset must exist");
 
@@ -131,7 +133,7 @@ Deno.test("Tier 4 Scenario 2: Jazz Standard ('Autumn Leaves' with Slash Chords &
 // Features: F17 (WakeLock), F18 (rAF Auto-Scroller), F19 (Pedal Navigation), F20 (LeadSheetReader)
 // ============================================================================
 
-Deno.test("Tier 4 Scenario 3: Live Stage Performance with Auto-Scroll, Touch-Pause & Bluetooth Pedal Navigation", () => {
+test("Tier 4 Scenario 3: Live Stage Performance with Auto-Scroll, Touch-Pause & Bluetooth Pedal Navigation", () => {
   // 1. Test Pedal scrolling step calculation: 80% viewport height
   const viewportHeight = 800;
   const pedalScrollFraction = 0.8;
@@ -158,7 +160,7 @@ Deno.test("Tier 4 Scenario 3: Live Stage Performance with Auto-Scroll, Touch-Pau
 // Features: F10 (Tokenizer), F12 (ChordPro), F13 (2-Line Tab), F14 (Capo Parser)
 // ============================================================================
 
-Deno.test("Tier 4 Scenario 4: Web Ingestion from Tab Formats & ChordPro with automatic capo extraction", () => {
+test("Tier 4 Scenario 4: Web Ingestion from Tab Formats & ChordPro with automatic capo extraction", () => {
   const webScrapedTab = `Capo: 4
 Title: House of the Rising Sun (Web Import)
 Artist: Folk Legends
@@ -197,7 +199,7 @@ They call the Rising Sun`;
 // Features: F16 (idb-keyval), F20 (App), F24 (PWA Offline)
 // ============================================================================
 
-Deno.test("Tier 4 Scenario 5: Airplane Mode Full Session & Offline IndexedDB Songbook Storage", async () => {
+test("Tier 4 Scenario 5: Airplane Mode Full Session & Offline IndexedDB Songbook Storage", async () => {
   await clearSongbook();
 
   // 1. Initial preload from presets

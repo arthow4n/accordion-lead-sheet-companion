@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -5,17 +6,18 @@ import { VitePWA } from "vite-plugin-pwa";
 
 let commitHash = "dev";
 try {
-  const cmd = new Deno.Command("git", {
-    args: ["rev-parse", "--short", "HEAD"],
-  });
-  const output = cmd.outputSync();
-  commitHash = new TextDecoder().decode(output.stdout).trim() || "dev";
+  commitHash = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim() || "dev";
 } catch {
   // fallback in non-git environments
 }
 
 export default defineConfig({
   base: "./",
+  server: { proxy: { "/api": "http://127.0.0.1:8787" } },
+  preview: { proxy: { "/api": "http://127.0.0.1:8787" } },
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },

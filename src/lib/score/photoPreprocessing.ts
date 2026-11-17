@@ -192,7 +192,6 @@ export async function loadOpenCv(): Promise<OpenCvInstance> {
   }
   if (!openCvPromise) {
     openCvPromise = (async (): Promise<OpenCvInstance> => {
-      // deno-lint-ignore no-explicit-any
       const cvObj: any = (cvModule as any)?.default || cvModule;
       if (cvObj && typeof cvObj === "object" && "ready" in cvObj && cvObj.ready) {
         return (await cvObj.ready) as OpenCvInstance;

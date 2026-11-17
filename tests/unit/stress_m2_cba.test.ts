@@ -1,4 +1,8 @@
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
 import { generateCbaGrip } from "../../src/lib/cba/grips.ts";
 import { optimizeVoiceLeading } from "../../src/lib/cba/voiceLeading.ts";
 import { parseChord } from "../../src/lib/capo/transposition.ts";
@@ -24,7 +28,7 @@ const EXTENDED_QUALITIES: Array<{ quality: ChordQuality; suffix: string; expecte
     { quality: "diminished7", suffix: "dim7", expectedNotes: 4 },
   ];
 
-Deno.test("STRESS-CBA-01: All 12 roots for extended chords generate valid, collision-free CBA grips", () => {
+test("STRESS-CBA-01: All 12 roots for extended chords generate valid, collision-free CBA grips", () => {
   for (const root of ROOTS) {
     for (const { suffix, expectedNotes } of EXTENDED_QUALITIES) {
       const chordName = `${root}${suffix}`;
@@ -90,7 +94,7 @@ Deno.test("STRESS-CBA-01: All 12 roots for extended chords generate valid, colli
   }
 });
 
-Deno.test("STRESS-CBA-02: CBA C-System grips for all inversions (0, 1, 2, 3) of extended chords", () => {
+test("STRESS-CBA-02: CBA C-System grips for all inversions (0, 1, 2, 3) of extended chords", () => {
   const testChords = ["Cmaj7", "Cm7", "C7#11", "C7b9", "C13", "Cm9", "C6/9"];
 
   for (const chord of testChords) {
@@ -117,7 +121,7 @@ Deno.test("STRESS-CBA-02: CBA C-System grips for all inversions (0, 1, 2, 3) of 
   }
 });
 
-Deno.test("STRESS-CBA-03: Triad inversions assign standard fingerings (1-2-4 / 1-2-5 / 1-3-5)", () => {
+test("STRESS-CBA-03: Triad inversions assign standard fingerings (1-2-4 / 1-2-5 / 1-3-5)", () => {
   const triadRoots = ["C", "G", "F", "D", "A", "E", "Bb", "Eb"];
 
   for (const root of triadRoots) {
@@ -138,7 +142,7 @@ Deno.test("STRESS-CBA-03: Triad inversions assign standard fingerings (1-2-4 / 1
   }
 });
 
-Deno.test("STRESS-CBA-04: Voice leading across standard and jazz progressions", () => {
+test("STRESS-CBA-04: Voice leading across standard and jazz progressions", () => {
   const progressions: string[][] = [
     // Folk / Pop I - IV - V7 - I
     ["C", "F", "G7", "C"],
@@ -185,7 +189,7 @@ Deno.test("STRESS-CBA-04: Voice leading across standard and jazz progressions", 
   }
 });
 
-Deno.test("STRESS-ROOTS-01: Rare roots normalization in parser and transposition", () => {
+test("STRESS-ROOTS-01: Rare roots normalization in parser and transposition", () => {
   const rareTestCases = [
     { raw: "Cb", expectedRoot: "B", expectedPc: 11 },
     { raw: "Fb", expectedRoot: "E", expectedPc: 4 },
@@ -224,7 +228,7 @@ Deno.test("STRESS-ROOTS-01: Rare roots normalization in parser and transposition
   }
 });
 
-Deno.test("STRESS-ROOTS-02: Rare roots in Stradella solver", () => {
+test("STRESS-ROOTS-02: Rare roots in Stradella solver", () => {
   // Cb normalized to B (Col 5) -> In range for all accordion sizes
   const cb = solveStradellaChord("Cb", "48-bass");
   assertEquals(cb.primaryBass, "B");
@@ -262,7 +266,7 @@ Deno.test("STRESS-ROOTS-02: Rare roots in Stradella solver", () => {
   assertEquals(fb7sharp11.columnOffset, 4);
 });
 
-Deno.test("STRESS-ROOTS-03: Slash chords with rare roots in Stradella solver", () => {
+test("STRESS-ROOTS-03: Slash chords with rare roots in Stradella solver", () => {
   // C/Cb -> C / B -> counter-bass B_ (Col 1)
   const cSlashCb = solveStradellaChord("C/Cb", "120-bass");
   assertEquals(cSlashCb.isCounterBass, true);
@@ -281,7 +285,7 @@ Deno.test("STRESS-ROOTS-03: Slash chords with rare roots in Stradella solver", (
   assertEquals(fSlashEsharp.columnOffset, -1);
 });
 
-Deno.test("STRESS-UNICODE-01: Unicode accidentals (♯, ♭) normalization across parser, transposition & Stradella", () => {
+test("STRESS-UNICODE-01: Unicode accidentals (♯, ♭) normalization across parser, transposition & Stradella", () => {
   const unicodeCases = [
     { chord: "B♭", expRoot: "Bb", expPc: 10 },
     { chord: "F♯", expRoot: "F#", expPc: 6 },

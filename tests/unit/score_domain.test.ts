@@ -1,4 +1,6 @@
-import { assertEquals, assertExists, assertRejects, assertThrows } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists, assertRejects, assertThrows } from "../assertions.ts";
 import type {
   ImageBox,
   MelodyEvent,
@@ -68,7 +70,7 @@ const score = (overrides: Partial<ScoreDocument> = {}): ScoreDocument => ({
   ...overrides,
 });
 
-Deno.test("rational durations reduce, preserve signs, and compare exactly", () => {
+test("rational durations reduce, preserve signs, and compare exactly", () => {
   assertEquals(rational(2, 4), { numerator: 1, denominator: 2 });
   assertEquals(rational(1, -2), { numerator: -1, denominator: 2 });
   assertEquals(addRational(rational(1, 3), rational(1, 6)), rational(1, 2));
@@ -76,7 +78,7 @@ Deno.test("rational durations reduce, preserve signs, and compare exactly", () =
   assertThrows(() => rational(1, 0), RangeError);
 });
 
-Deno.test("score validation rejects missing pitches and invalid source state", () => {
+test("score validation rejects missing pitches and invalid source state", () => {
   const event: MelodyEvent = {
     id: "n1",
     offset: rational(0),
@@ -91,7 +93,7 @@ Deno.test("score validation rejects missing pitches and invalid source state", (
   assertEquals(result.issues.map((item) => item.code), ["missing_source_asset", "missing_pitch"]);
 });
 
-Deno.test("score validation reports malformed source without throwing while photo geometry is present", () => {
+test("score validation reports malformed source without throwing while photo geometry is present", () => {
   const result = validateScoreDocument(score({
     source: null as unknown as ScoreDocument["source"],
     photoLayout: createInitialPhotoLayout(320, 240),
@@ -101,7 +103,7 @@ Deno.test("score validation reports malformed source without throwing while phot
   assertEquals(result.issues.some((item) => item.code === "invalid_photo_layout"), true);
 });
 
-Deno.test("guided photo geometry is bounded, adjustable, and valid as a source-only score", () => {
+test("guided photo geometry is bounded, adjustable, and valid as a source-only score", () => {
   const initial = createInitialPhotoLayout(1_200, 1_800);
   const adjusted = adjustPhotoMeasureBox(initial, "photo-measure-1", {
     x: -50,
@@ -125,7 +127,7 @@ Deno.test("guided photo geometry is bounded, adjustable, and valid as a source-o
   assertEquals(result.valid, true);
 });
 
-Deno.test("opted-in photo assets round-trip independently from songbook JSON", async () => {
+test("opted-in photo assets round-trip independently from songbook JSON", async () => {
   const assetId = "score-domain-photo-asset";
   const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
   await saveScoreAsset(assetId, blob);
@@ -137,7 +139,7 @@ Deno.test("opted-in photo assets round-trip independently from songbook JSON", a
   assertEquals(await getScoreAsset(assetId), undefined);
 });
 
-Deno.test("ephemeral photo assets are available in-session and deleted with their source", async () => {
+test("ephemeral photo assets are available in-session and deleted with their source", async () => {
   const assetId = "score-domain-ephemeral-photo";
   const blob = new Blob([new Uint8Array([9])], { type: "image/jpeg" });
   registerEphemeralScoreAsset(assetId, blob);
@@ -146,7 +148,7 @@ Deno.test("ephemeral photo assets are available in-session and deleted with thei
   assertEquals(await getScoreAsset(assetId), undefined);
 });
 
-Deno.test("saved photo scores export references without bytes and delete their opted-in asset", async () => {
+test("saved photo scores export references without bytes and delete their opted-in asset", async () => {
   await clearSongbook();
   const assetId = "score-domain-owned-photo";
   const blob = new Blob([new Uint8Array([4, 5])], { type: "image/jpeg" });
@@ -172,7 +174,7 @@ Deno.test("saved photo scores export references without bytes and delete their o
   assertEquals(await getScoreAsset(assetId), undefined);
 });
 
-Deno.test("score validation rejects malformed nested metadata and bounded collections", () => {
+test("score validation rejects malformed nested metadata and bounded collections", () => {
   const malformed = {
     ...score(),
     key: "C" as unknown as ScoreKeySignature,
@@ -219,7 +221,7 @@ Deno.test("score validation rejects malformed nested metadata and bounded collec
   assertEquals(result.issues.some((item) => item.code === "invalid_section_reference"), true);
 });
 
-Deno.test("score validation rejects duplicate and out-of-measure event timing", () => {
+test("score validation rejects duplicate and out-of-measure event timing", () => {
   const result = validateScoreDocument(score({
     measures: [
       measure({
@@ -260,7 +262,7 @@ Deno.test("score validation rejects duplicate and out-of-measure event timing", 
   assertEquals(result.issues.some((item) => item.code === "invalid_measure_duration"), true);
 });
 
-Deno.test("event containment uses exact rational boundaries", () => {
+test("event containment uses exact rational boundaries", () => {
   const event: MelodyEvent = {
     id: "n1",
     offset: rational(3, 4),
@@ -271,7 +273,7 @@ Deno.test("event containment uses exact rational boundaries", () => {
   assertEquals(isEventInsideMeasure({ ...event, offset: rational(4, 5) }, rational(1)), false);
 });
 
-Deno.test("song normalization preserves legacy records and rejects malformed score payloads", () => {
+test("song normalization preserves legacy records and rejects malformed score payloads", () => {
   const legacy = normalizeSongRecord({
     id: "legacy",
     title: "Legacy",
@@ -305,7 +307,7 @@ Deno.test("song normalization preserves legacy records and rejects malformed sco
   );
 });
 
-Deno.test("songbook import rejects malformed records instead of partially importing", async () => {
+test("songbook import rejects malformed records instead of partially importing", async () => {
   await assertRejects(
     () => importSongbook(JSON.stringify({ version: 2, songs: [{ id: "bad" }] }), "replace"),
     Error,
@@ -335,7 +337,7 @@ Deno.test("songbook import rejects malformed records instead of partially import
   );
 });
 
-Deno.test("performance route expands repeats and selects the second ending", () => {
+test("performance route expands repeats and selects the second ending", () => {
   const routed = score({
     measures: [
       measure({ id: "m1", writtenIndex: 0, navigation: [{ kind: "repeat-start" }] }),
@@ -354,7 +356,7 @@ Deno.test("performance route expands repeats and selects the second ending", () 
   assertEquals(route.issues, []);
 });
 
-Deno.test("tempo and transposition helpers preserve exact musical meaning", () => {
+test("tempo and transposition helpers preserve exact musical meaning", () => {
   const document = score({
     tempoMap: [{ offset: rational(0), bpm: 90, source: "default" }, {
       offset: rational(2),
@@ -370,7 +372,7 @@ Deno.test("tempo and transposition helpers preserve exact musical meaning", () =
   assertEquals(pitchClassOfSpelledPitch(c4), 0);
 });
 
-Deno.test("timed harmony adapter reuses existing enrichment and stable offset ordering", () => {
+test("timed harmony adapter reuses existing enrichment and stable offset ordering", () => {
   const events = enrichHarmonySequence([
     { id: "late", offset: rational(1, 2), raw: "C" },
     { id: "early", offset: rational(0), raw: "G/B" },
@@ -382,7 +384,7 @@ Deno.test("timed harmony adapter reuses existing enrichment and stable offset or
   assertEquals(events[2].issue, "invalid-chord");
 });
 
-Deno.test("MusicXML parser maps a monophonic treble score and preserves sanitized source", () => {
+test("MusicXML parser maps a monophonic treble score and preserves sanitized source", () => {
   const xml = `<?xml version="1.0"?><score-partwise version="4.0">
     <work><work-title>Example</work-title></work>
     <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
@@ -409,7 +411,7 @@ Deno.test("MusicXML parser maps a monophonic treble score and preserves sanitize
   );
 });
 
-Deno.test("MusicXML parser rejects external entities, polyphony, and non-treble input", () => {
+test("MusicXML parser rejects external entities, polyphony, and non-treble input", () => {
   const external = parseMusicXml(
     "<!DOCTYPE score [<!ENTITY x SYSTEM 'file:///tmp/x'>]><score-partwise/>",
   );
@@ -424,7 +426,7 @@ Deno.test("MusicXML parser rejects external entities, polyphony, and non-treble 
   assertEquals(polyphonic.issues.some((item) => item.code === "unsupported_score_shape"), true);
 });
 
-Deno.test("MXL parser resolves the container root and enforces entry safety", () => {
+test("MXL parser resolves the container root and enforces entry safety", () => {
   const scoreXml =
     `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
     <attributes><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note>
@@ -443,7 +445,7 @@ Deno.test("MXL parser resolves the container root and enforces entry safety", ()
   assertEquals(unsafe.issues[0].code, "mxl_unsafe_path");
 });
 
-Deno.test("MusicXML parser keeps the timeline global and normalizes forward silence", () => {
+test("MusicXML parser keeps the timeline global and normalizes forward silence", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign></clef></attributes>
       <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>
@@ -456,7 +458,7 @@ Deno.test("MusicXML parser keeps the timeline global and normalizes forward sile
   assertEquals(result.document?.measures[1].melody[0].duration, rational(1));
 });
 
-Deno.test("MusicXML parser rejects unbounded Unicode nesting and unsupported harmony degrees", () => {
+test("MusicXML parser rejects unbounded Unicode nesting and unsupported harmony degrees", () => {
   const nested = `<score-partwise>${"<é>".repeat(130)}${"</é>".repeat(130)}</score-partwise>`;
   assertEquals(parseMusicXml(nested).issues[0].code, "xml_depth_limit");
   const degree = parseMusicXml(
@@ -467,8 +469,11 @@ Deno.test("MusicXML parser rejects unbounded Unicode nesting and unsupported har
   assertEquals(degree.issues.some((item) => item.code === "unsupported_harmony"), true);
 });
 
-Deno.test("MusicXML parser bounds tempo directions and rejects unsupported notation states", () => {
-  const tempos = Array.from({ length: 1_025 }, () => '<direction><sound tempo="120"/></direction>')
+test("MusicXML parser bounds tempo directions and rejects unsupported notation states", () => {
+  const tempos = Array.from(
+    { length: 1_025 },
+    () => "<direction><sound tempo=\"120\"/></direction>",
+  )
     .join("");
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
     <attributes><divisions>1</divisions><clef><sign>G</sign></clef><measure-style><measure-repeat type="start"/></measure-style></attributes>
@@ -486,7 +491,7 @@ Deno.test("MusicXML parser bounds tempo directions and rejects unsupported notat
   assertEquals(result.document?.tempoMap.length, 1_024);
 });
 
-Deno.test("MusicXML parser marks nested tuplets, duplicate navigation targets, and ending stops", () => {
+test("MusicXML parser marks nested tuplets, duplicate navigation targets, and ending stops", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>4</divisions><clef><sign>G</sign></clef></attributes>
       <barline location="left"><repeat direction="forward"/></barline>
@@ -511,7 +516,7 @@ Deno.test("MusicXML parser marks nested tuplets, duplicate navigation targets, a
   );
 });
 
-Deno.test("MusicXML parser rejects malformed notes and preserves explicit volta navigation", () => {
+test("MusicXML parser rejects malformed notes and preserves explicit volta navigation", () => {
   const malformedXml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign></clef></attributes>
       <note><pitch><step>H</step><alter>9</alter><octave>X</octave></pitch><duration>0</duration></note>
@@ -549,7 +554,7 @@ Deno.test("MusicXML parser rejects malformed notes and preserves explicit volta 
   assertEquals(route?.measures.map((ref) => ref.measureId), ["m1", "m2", "m3", "m1", "m4", "m5"]);
 });
 
-Deno.test("MusicXML parser blocks unsafe numeric domains and nested repeats", () => {
+test("MusicXML parser blocks unsafe numeric domains and nested repeats", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>1</divisions><key><fifths>99</fifths><mode>major</mode></key><clef><sign>G</sign></clef></attributes>
       <barline location="left"><repeat direction="forward"/></barline><note><rest/><duration>9007199254740992</duration></note>
@@ -566,7 +571,7 @@ Deno.test("MusicXML parser blocks unsafe numeric domains and nested repeats", ()
   assertEquals(result.issues.some((item) => item.code === "unsupported_nested_repeat"), true);
 });
 
-Deno.test("MusicXML parser blocks malformed harmony, transpose, and repeat domains", () => {
+test("MusicXML parser blocks malformed harmony, transpose, and repeat domains", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>1</divisions><clef><sign>G</sign></clef><transpose><chromatic>0.5</chromatic></transpose></attributes>
       <barline location="right"><repeat direction="backward" times="2.5"/></barline>
@@ -580,7 +585,7 @@ Deno.test("MusicXML parser blocks malformed harmony, transpose, and repeat domai
   assertEquals(result.document?.measures[0].harmonies[0].unsupported, true);
 });
 
-Deno.test("score harmony adapter applies transposition and selected CBA profile", () => {
+test("score harmony adapter applies transposition and selected CBA profile", () => {
   const events = enrichHarmonySequence([{ id: "h1", offset: rational(0), raw: "C" }], {
     transpositionSemitones: 2,
     cbaMode: "root_3row",
@@ -591,7 +596,7 @@ Deno.test("score harmony adapter applies transposition and selected CBA profile"
   assertEquals(events[0]?.detail?.cba?.buttons?.every((button) => button.row <= 3), true);
 });
 
-Deno.test("score playback helpers bound count-in and select contiguous phrase loops", () => {
+test("score playback helpers bound count-in and select contiguous phrase loops", () => {
   assertEquals(getScoreCountInBeats(undefined, { beats: 7, beatType: 8 }), 4);
   assertEquals(getScoreCountInBeats(undefined, { beats: 3, beatType: 4 }), 3);
   const measures = [
@@ -606,7 +611,7 @@ Deno.test("score playback helpers bound count-in and select contiguous phrase lo
   assertEquals(getNextScorePlaybackIndex(1, 3, null), 2);
 });
 
-Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", () => {
+test("MXL parser rejects duplicate paths after dot-segment normalization", () => {
   const scoreXml =
     `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>
     <attributes><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note>
@@ -621,7 +626,7 @@ Deno.test("MXL parser rejects duplicate paths after dot-segment normalization", 
   assertEquals(parseMxl(archive).issues[0].code, "mxl_unsafe_path");
 });
 
-Deno.test("OSMD adapter creates bounded public-API excerpts with carried attributes", () => {
+test("OSMD adapter creates bounded public-API excerpts with carried attributes", () => {
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1">
     <measure number="1"><attributes><divisions>1</divisions><key><fifths>-2</fifths><mode>major</mode></key><clef><sign>G</sign></clef></attributes><note><rest/><duration>1</duration></note></measure>
     <measure number="2"><attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes><note><rest/><duration>1</duration></note></measure>
@@ -638,7 +643,7 @@ Deno.test("OSMD adapter creates bounded public-API excerpts with carried attribu
   assertEquals(createMusicXmlExcerpt(xml, 99, 2), undefined);
 });
 
-Deno.test("MusicXML parser caps timed events before domain conversion", () => {
+test("MusicXML parser caps timed events before domain conversion", () => {
   const notes = Array.from({ length: 10_001 }, () => "<note><rest/><duration>1</duration></note>")
     .join("");
   const xml = `<score-partwise><part-list><score-part id="P1"/></part-list><part id="P1"><measure>

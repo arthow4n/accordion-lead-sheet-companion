@@ -12,7 +12,7 @@ export function decodeHtmlEntities(str: string): string {
   if (!str) return "";
   return str
     // Standard named entities
-    .replace(/&quot;/g, '"')
+    .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&#x27;/gi, "'")

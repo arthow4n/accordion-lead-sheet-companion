@@ -380,7 +380,8 @@ export function getLastPersistedGroove():
   | "offbeat_chop"
   | "waltz"
   | "six_eight"
-  | "none" {
+  | "none"
+{
   if (typeof globalThis.localStorage === "undefined") return "boom_chick";
   try {
     const val = globalThis.localStorage.getItem(LAST_GROOVE_STORAGE_KEY);

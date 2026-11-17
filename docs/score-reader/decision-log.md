@@ -1,5 +1,8 @@
 # Score reader decision and authority log
 
+This log preserves the tooling names and commands used at the time of each decision.
+See [the README](../../README.md) for current npm commands.
+
 This records the product and authority choices an implementation agent must not silently change.
 There are no pending product, license, size-policy, hosting, privacy, keyboard, or model-selection
 choices for the planned v1 path. Unfinished checklist items require implementation evidence, not a

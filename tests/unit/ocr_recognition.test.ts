@@ -1,4 +1,8 @@
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
 import {
   calculateCompoundMeterFromMeasures,
   cropStaffChordBanner,
@@ -14,7 +18,7 @@ import {
 } from "../../src/lib/score/ocrRecognition.ts";
 import type { RawImageData } from "../../src/lib/score/photoPreprocessing.ts";
 
-Deno.test("OCR-01: Meter recognition covers 6/8 and all standard lead sheet meters", () => {
+test("OCR-01: Meter recognition covers 6/8 and all standard lead sheet meters", () => {
   // 6/8 compound meter (absent from JAZZMUS vocab, deterministically supplemented)
   assertEquals(parseMeterToken("6/8"), { beats: 6, beatType: 8 });
   assertEquals(parseMeterToken("6 8"), { beats: 6, beatType: 8 });
@@ -37,7 +41,7 @@ Deno.test("OCR-01: Meter recognition covers 6/8 and all standard lead sheet mete
   assertEquals(parseMeterToken(""), null);
 });
 
-Deno.test("OCR-02: Key signature recognition covers all 0 to 6 sharps profiles", () => {
+test("OCR-02: Key signature recognition covers all 0 to 6 sharps profiles", () => {
   // 0 sharps / naturals
   assertEquals(parseKeySignatureSymbols("*k[]"), { fifths: 0, mode: "major" });
   assertEquals(parseKeySignatureSymbols("C Major"), { fifths: 0, mode: "major" });
@@ -73,7 +77,7 @@ Deno.test("OCR-02: Key signature recognition covers all 0 to 6 sharps profiles",
   assertEquals(parseKeySignatureSymbols("F# Major"), { fifths: 6, mode: "major" });
 });
 
-Deno.test("OCR-03: Key signature recognition covers all 0 to 6 flats profiles", () => {
+test("OCR-03: Key signature recognition covers all 0 to 6 flats profiles", () => {
   // 1 flat (F major)
   assertEquals(parseKeySignatureSymbols("*k[b-]"), { fifths: -1, mode: "major" });
   assertEquals(parseKeySignatureSymbols("♭"), { fifths: -1, mode: "major" });
@@ -105,7 +109,7 @@ Deno.test("OCR-03: Key signature recognition covers all 0 to 6 flats profiles", 
   assertEquals(parseKeySignatureSymbols("Gb Major"), { fifths: -6, mode: "major" });
 });
 
-Deno.test("OCR-04: Chord candidate extraction normalizes valid chords and ignores non-chords", () => {
+test("OCR-04: Chord candidate extraction normalizes valid chords and ignores non-chords", () => {
   const ocrText = "C   Am7   G7/B   Intro   F#m7b5   random_word   Ebmaj7";
   const chords = extractChordsFromOcrText(ocrText);
 
@@ -115,7 +119,7 @@ Deno.test("OCR-04: Chord candidate extraction normalizes valid chords and ignore
   assertEquals(chords[2].normalized, "G7/B");
 });
 
-Deno.test("OCR-05: Navigation and section extraction parses Swedish/English marks", () => {
+test("OCR-05: Navigation and section extraction parses Swedish/English marks", () => {
   const ocrText = `
 Intro
 Verse 1
@@ -155,7 +159,7 @@ To Coda
   assertEquals(endings[1].numbers, [2]);
 });
 
-Deno.test("OCR-06: Bounded crop geometry extracts chord banner and header safely", () => {
+test("OCR-06: Bounded crop geometry extracts chord banner and header safely", () => {
   const width = 800;
   const height = 600;
   const data = new Uint8ClampedArray(width * height * 4);
@@ -178,13 +182,13 @@ Deno.test("OCR-06: Bounded crop geometry extracts chord banner and header safely
   assertEquals(header.data.length, header.width * header.height * 4);
 });
 
-Deno.test("OCR-07: Preserves non-word chord accidentals (F#, C#, Bb, A+, D/F#) without truncation (HIGH-03)", () => {
+test("OCR-07: Preserves non-word chord accidentals (F#, C#, Bb, A+, D/F#) without truncation (HIGH-03)", () => {
   const ocrText = "F#   C#   Bb   A+   Eb7   D/F#";
   const chords = extractChordsFromOcrText(ocrText);
   assertEquals(chords.map((c) => c.normalized), ["F#", "C#", "Bb", "A+", "Eb7", "D/F#"]);
 });
 
-Deno.test("OCR-08: Bare chord tokens are not falsely matched as key signatures (MED-03)", () => {
+test("OCR-08: Bare chord tokens are not falsely matched as key signatures (MED-03)", () => {
   assertEquals(parseKeySignatureSymbols("G"), null);
   assertEquals(parseKeySignatureSymbols("D"), null);
   assertEquals(parseKeySignatureSymbols("F"), null);
@@ -192,7 +196,7 @@ Deno.test("OCR-08: Bare chord tokens are not falsely matched as key signatures (
   assertEquals(parseKeySignatureSymbols("Key: D"), { fifths: 2, mode: "major" });
 });
 
-Deno.test("OCR-09: Deterministic key signature identification from harmonic chord context (0 to 6 sharps/flats)", () => {
+test("OCR-09: Deterministic key signature identification from harmonic chord context (0 to 6 sharps/flats)", () => {
   // G Major (+1 sharp)
   const gKey = detectKeyFromHarmonicContext(["G", "C", "D7", "Em", "G"]);
   assertEquals(gKey?.fifths, 1);
@@ -226,7 +230,7 @@ Deno.test("OCR-09: Deterministic key signature identification from harmonic chor
   assertEquals(cKey?.fifths, 0);
 });
 
-Deno.test("OCR-10: Deterministic compound 6/8 meter calculation from measure note durations", () => {
+test("OCR-10: Deterministic compound 6/8 meter calculation from measure note durations", () => {
   // 6/8 compound duple: two dotted-quarter notes (1.5 + 1.5 = 3.0 beats)
   const compoundMeasure1 = {
     melody: [
@@ -271,7 +275,7 @@ Deno.test("OCR-10: Deterministic compound 6/8 meter calculation from measure not
   assertEquals(calculateCompoundMeterFromMeasures([quadMeasure]), { beats: 4, beatType: 4 });
 });
 
-Deno.test("OCR-11: Header region glyph analysis evaluates key signature without Tesseract", () => {
+test("OCR-11: Header region glyph analysis evaluates key signature without Tesseract", () => {
   // 1. Blank header defaults safely to C major (0 fifths)
   const width = 200;
   const height = 100;
@@ -377,7 +381,7 @@ Deno.test("OCR-11: Header region glyph analysis evaluates key signature without 
   assertEquals(sharpKey?.mode, "major");
 });
 
-Deno.test("OCR-12: recognizeStaffBoundedOcr associates chords and metadata with measures by actual measure index across multi-staff scores", async () => {
+test("OCR-12: recognizeStaffBoundedOcr associates chords and metadata with measures by actual measure index across multi-staff scores", async () => {
   const width = 800;
   const height = 400;
   const data = new Uint8ClampedArray(width * height * 4);
@@ -425,7 +429,7 @@ Deno.test("OCR-12: recognizeStaffBoundedOcr associates chords and metadata with 
   assertEquals(staff1Measures?.map((m) => m.measureIndex), [4, 5, 6, 7]);
 });
 
-Deno.test("OCR-13: recognizeStaffBoundedOcr executes deterministically in < 10ms with zero timeouts and zero Tesseract imports", async () => {
+test("OCR-13: recognizeStaffBoundedOcr executes deterministically in < 10ms with zero timeouts and zero Tesseract imports", async () => {
   const width = 400;
   const height = 200;
   const data = new Uint8ClampedArray(width * height * 4);
@@ -456,7 +460,7 @@ Deno.test("OCR-13: recognizeStaffBoundedOcr executes deterministically in < 10ms
   assertEquals(ocrData.measures?.length, 4);
 });
 
-Deno.test("OCR-14: Key signature symbol parser handles accidental lookahead and minor keys (Key: F#, Key: C#, Key: G#m)", () => {
+test("OCR-14: Key signature symbol parser handles accidental lookahead and minor keys (Key: F#, Key: C#, Key: G#m)", () => {
   // Non-word character accidental lookahead (#, ♯)
   assertEquals(parseKeySignatureSymbols("Key: F#"), { fifths: 6, mode: "major" });
   assertEquals(parseKeySignatureSymbols("Key: C#"), { fifths: 7, mode: "major" });
@@ -478,7 +482,7 @@ Deno.test("OCR-14: Key signature symbol parser handles accidental lookahead and 
   assertEquals(parseKeySignatureSymbols("C Minor"), { fifths: -3, mode: "minor" });
 });
 
-Deno.test("OCR-15: Harmonic context key detection correctly detects minor keys (Am, Dm, Em, Cm) and performs enharmonic tie-breaking (F# vs Gb)", () => {
+test("OCR-15: Harmonic context key detection correctly detects minor keys (Am, Dm, Em, Cm) and performs enharmonic tie-breaking (F# vs Gb)", () => {
   // A minor (0 fifths, minor mode)
   const amKey = detectKeyFromHarmonicContext(["Am", "Dm", "E7", "Am"]);
   assertEquals(amKey, { fifths: 0, mode: "minor" });
@@ -519,7 +523,7 @@ Deno.test("OCR-15: Harmonic context key detection correctly detects minor keys (
   assertEquals(gFlatKey, { fifths: -6, mode: "major" });
 });
 
-Deno.test("OCR-16: Compound meter detection supports 9/8, 12/8, 3/4 waltz with 4 eighth notes, and 4/4 with pickup measure", () => {
+test("OCR-16: Compound meter detection supports 9/8, 12/8, 3/4 waltz with 4 eighth notes, and 4/4 with pickup measure", () => {
   // 9/8 compound meter: 3 dotted quarters (1.5 * 3 = 4.5 beats)
   const compound98Measure = {
     melody: [

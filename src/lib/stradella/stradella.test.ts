@@ -1,8 +1,9 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import { solveStradellaChord } from "./solver.ts";
 import { getStradellaColumn, isColumnOutOfRange, NOTE_TO_COLUMN } from "./layout.ts";
 
-Deno.test("STRAD-01: Bb fundamental major triad", () => {
+test("STRAD-01: Bb fundamental major triad", () => {
   const result = solveStradellaChord("Bb");
   assertEquals(result.primaryBass, "Bb");
   assertEquals(result.isCounterBass, false);
@@ -11,7 +12,7 @@ Deno.test("STRAD-01: Bb fundamental major triad", () => {
   assertEquals(result.columnOffset, -2);
 });
 
-Deno.test("STRAD-02: Gm fundamental minor triad", () => {
+test("STRAD-02: Gm fundamental minor triad", () => {
   const result = solveStradellaChord("Gm");
   assertEquals(result.primaryBass, "G");
   assertEquals(result.isCounterBass, false);
@@ -20,7 +21,7 @@ Deno.test("STRAD-02: Gm fundamental minor triad", () => {
   assertEquals(result.columnOffset, 1);
 });
 
-Deno.test("STRAD-03: F7 dominant 7th", () => {
+test("STRAD-03: F7 dominant 7th", () => {
   const result = solveStradellaChord("F7");
   assertEquals(result.primaryBass, "F");
   assertEquals(result.isCounterBass, false);
@@ -29,7 +30,7 @@ Deno.test("STRAD-03: F7 dominant 7th", () => {
   assertEquals(result.columnOffset, -1);
 });
 
-Deno.test("STRAD-04: Edim diminished button", () => {
+test("STRAD-04: Edim diminished button", () => {
   const result = solveStradellaChord("Edim");
   assertEquals(result.primaryBass, "E");
   assertEquals(result.isCounterBass, false);
@@ -38,7 +39,7 @@ Deno.test("STRAD-04: Edim diminished button", () => {
   assertEquals(result.columnOffset, 4);
 });
 
-Deno.test("STRAD-05: C/E major 3rd in bass (Counter-bass E_ in C col)", () => {
+test("STRAD-05: C/E major 3rd in bass (Counter-bass E_ in C col)", () => {
   const result = solveStradellaChord("C/E");
   assertEquals(result.primaryBass, "E_");
   assertEquals(result.isCounterBass, true);
@@ -47,7 +48,7 @@ Deno.test("STRAD-05: C/E major 3rd in bass (Counter-bass E_ in C col)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("STRAD-06: G/B major 3rd in bass (Counter-bass B_ in G col)", () => {
+test("STRAD-06: G/B major 3rd in bass (Counter-bass B_ in G col)", () => {
   const result = solveStradellaChord("G/B");
   assertEquals(result.primaryBass, "B_");
   assertEquals(result.isCounterBass, true);
@@ -56,7 +57,7 @@ Deno.test("STRAD-06: G/B major 3rd in bass (Counter-bass B_ in G col)", () => {
   assertEquals(result.columnOffset, 1);
 });
 
-Deno.test("STRAD-07: D/F# major 3rd in bass (Counter-bass F#_ in D col)", () => {
+test("STRAD-07: D/F# major 3rd in bass (Counter-bass F#_ in D col)", () => {
   const result = solveStradellaChord("D/F#");
   assertEquals(result.primaryBass, "F#_");
   assertEquals(result.isCounterBass, true);
@@ -65,7 +66,7 @@ Deno.test("STRAD-07: D/F# major 3rd in bass (Counter-bass F#_ in D col)", () => 
   assertEquals(result.columnOffset, 2);
 });
 
-Deno.test("STRAD-08: F/A major 3rd in bass (Counter-bass A_ in F col)", () => {
+test("STRAD-08: F/A major 3rd in bass (Counter-bass A_ in F col)", () => {
   const result = solveStradellaChord("F/A");
   assertEquals(result.primaryBass, "A_");
   assertEquals(result.isCounterBass, true);
@@ -74,7 +75,7 @@ Deno.test("STRAD-08: F/A major 3rd in bass (Counter-bass A_ in F col)", () => {
   assertEquals(result.columnOffset, -1);
 });
 
-Deno.test("STRAD-09: C/B Min-Distance Counter-Bass B_ in G Col (1 col jump, NOT 5)", () => {
+test("STRAD-09: C/B Min-Distance Counter-Bass B_ in G Col (1 col jump, NOT 5)", () => {
   const result = solveStradellaChord("C/B");
   assertEquals(result.primaryBass, "B_");
   assertEquals(result.isCounterBass, true);
@@ -83,7 +84,7 @@ Deno.test("STRAD-09: C/B Min-Distance Counter-Bass B_ in G Col (1 col jump, NOT 
   assertEquals(result.columnOffset, 1);
 });
 
-Deno.test("STRAD-10: Am/F# Min-Distance Counter-Bass F#_ in D Col (1 col jump, NOT 3)", () => {
+test("STRAD-10: Am/F# Min-Distance Counter-Bass F#_ in D Col (1 col jump, NOT 3)", () => {
   const result = solveStradellaChord("Am/F#");
   assertEquals(result.primaryBass, "F#_");
   assertEquals(result.isCounterBass, true);
@@ -92,7 +93,7 @@ Deno.test("STRAD-10: Am/F# Min-Distance Counter-Bass F#_ in D Col (1 col jump, N
   assertEquals(result.columnOffset, 2);
 });
 
-Deno.test("STRAD-11: C/G 5th in bass (Col +1 Fundamental Bass)", () => {
+test("STRAD-11: C/G 5th in bass (Col +1 Fundamental Bass)", () => {
   const result = solveStradellaChord("C/G");
   assertEquals(result.primaryBass, "G");
   assertEquals(result.isCounterBass, false);
@@ -101,7 +102,7 @@ Deno.test("STRAD-11: C/G 5th in bass (Col +1 Fundamental Bass)", () => {
   assertEquals(result.columnOffset, 1);
 });
 
-Deno.test("STRAD-12: Am/G minor chord over flat 7th bass (Col +1 Fundamental Bass)", () => {
+test("STRAD-12: Am/G minor chord over flat 7th bass (Col +1 Fundamental Bass)", () => {
   const result = solveStradellaChord("Am/G");
   assertEquals(result.primaryBass, "G");
   assertEquals(result.isCounterBass, false);
@@ -110,7 +111,7 @@ Deno.test("STRAD-12: Am/G minor chord over flat 7th bass (Col +1 Fundamental Bas
   assertEquals(result.columnOffset, 1);
 });
 
-Deno.test("STRAD-13: Cmaj7 compound (C + em chord)", () => {
+test("STRAD-13: Cmaj7 compound (C + em chord)", () => {
   const result = solveStradellaChord("Cmaj7");
   assertEquals(result.primaryBass, "C");
   assertEquals(result.isCounterBass, false);
@@ -119,7 +120,7 @@ Deno.test("STRAD-13: Cmaj7 compound (C + em chord)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("STRAD-14: Am7 compound (A + c chord)", () => {
+test("STRAD-14: Am7 compound (A + c chord)", () => {
   const result = solveStradellaChord("Am7");
   assertEquals(result.primaryBass, "A");
   assertEquals(result.isCounterBass, false);
@@ -128,7 +129,7 @@ Deno.test("STRAD-14: Am7 compound (A + c chord)", () => {
   assertEquals(result.columnOffset, 3);
 });
 
-Deno.test("STRAD-15: Bm7b5 compound (B + dm chord)", () => {
+test("STRAD-15: Bm7b5 compound (B + dm chord)", () => {
   const result = solveStradellaChord("Bm7b5");
   assertEquals(result.primaryBass, "B");
   assertEquals(result.isCounterBass, false);
@@ -137,7 +138,7 @@ Deno.test("STRAD-15: Bm7b5 compound (B + dm chord)", () => {
   assertEquals(result.columnOffset, 5);
 });
 
-Deno.test("STRAD-16: C6 compound (C + am chord)", () => {
+test("STRAD-16: C6 compound (C + am chord)", () => {
   const result = solveStradellaChord("C6");
   assertEquals(result.primaryBass, "C");
   assertEquals(result.isCounterBass, false);
@@ -146,7 +147,7 @@ Deno.test("STRAD-16: C6 compound (C + am chord)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("STRAD-17: Cm6 compound (C + cdim chord)", () => {
+test("STRAD-17: Cm6 compound (C + cdim chord)", () => {
   const result = solveStradellaChord("Cm6");
   assertEquals(result.primaryBass, "C");
   assertEquals(result.isCounterBass, false);
@@ -155,7 +156,7 @@ Deno.test("STRAD-17: Cm6 compound (C + cdim chord)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("STRAD-18: C9 compound (C + gm chord)", () => {
+test("STRAD-18: C9 compound (C + gm chord)", () => {
   const result = solveStradellaChord("C9");
   assertEquals(result.primaryBass, "C");
   assertEquals(result.isCounterBass, false);
@@ -164,7 +165,7 @@ Deno.test("STRAD-18: C9 compound (C + gm chord)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("STRAD-19: Csus4 compound (C + f chord)", () => {
+test("STRAD-19: Csus4 compound (C + f chord)", () => {
   const result = solveStradellaChord("Csus4");
   assertEquals(result.primaryBass, "C");
   assertEquals(result.isCounterBass, false);
@@ -173,7 +174,7 @@ Deno.test("STRAD-19: Csus4 compound (C + f chord)", () => {
   assertEquals(result.columnOffset, 0);
 });
 
-Deno.test("Stradella Accordion Size clamping & out-of-range flag", () => {
+test("Stradella Accordion Size clamping & out-of-range flag", () => {
   // 48-bass covers -2 to +5. Bm7b5 is in col 5 (in range).
   const inRange = solveStradellaChord("Bm7b5", "48-bass");
   assertEquals(inRange.isOutOfRange, false);
@@ -190,7 +191,7 @@ Deno.test("Stradella Accordion Size clamping & out-of-range flag", () => {
   assertEquals(isColumnOutOfRange(0, "48-bass"), false);
 });
 
-Deno.test("STRAD-20: Flat chord roots retain negative Circle of Fifths columns", () => {
+test("STRAD-20: Flat chord roots retain negative Circle of Fifths columns", () => {
   const flatCases: Array<{
     chord: string;
     expectedBass: string;
@@ -228,7 +229,7 @@ Deno.test("STRAD-20: Flat chord roots retain negative Circle of Fifths columns",
   }
 });
 
-Deno.test("STRAD-21: Compound flat chord voicings preserve Circle of Fifths geometry", () => {
+test("STRAD-21: Compound flat chord voicings preserve Circle of Fifths geometry", () => {
   // Dbmaj7 -> Db bass (col -5) + fm chord (col -1)
   const dbmaj7 = solveStradellaChord("Dbmaj7");
   assertEquals(dbmaj7.primaryBass, "Db");
@@ -254,7 +255,7 @@ Deno.test("STRAD-21: Compound flat chord voicings preserve Circle of Fifths geom
   assertEquals(db9.columnOffset, -5);
 });
 
-Deno.test("STRAD-22: Slash chords with flat chord roots and counter-bass", () => {
+test("STRAD-22: Slash chords with flat chord roots and counter-bass", () => {
   // Db/F -> Counter-bass F_ in Db column (col -5)
   const dbOverF = solveStradellaChord("Db/F");
   assertEquals(dbOverF.primaryBass, "F_");
@@ -270,7 +271,7 @@ Deno.test("STRAD-22: Slash chords with flat chord roots and counter-bass", () =>
   assertEquals(ebOverG.columnOffset, -3);
 });
 
-Deno.test("STRAD-23: sevenSharpEleven compound voicing (7#11 -> Bass + diminished on root)", () => {
+test("STRAD-23: sevenSharpEleven compound voicing (7#11 -> Bass + diminished on root)", () => {
   // C7#11 -> C bass (col 0) + cdim chord (col 0)
   const c7sharp11 = solveStradellaChord("C7#11");
   assertEquals(c7sharp11.primaryBass, "C");
@@ -284,7 +285,7 @@ Deno.test("STRAD-23: sevenSharpEleven compound voicing (7#11 -> Bass + diminishe
   assertEquals(gb7sharp11.columnOffset, -6);
 });
 
-Deno.test("STRAD-24: sevenFlatNine compound voicing (7b9 -> Bass + diminished half-step up)", () => {
+test("STRAD-24: sevenFlatNine compound voicing (7b9 -> Bass + diminished half-step up)", () => {
   // C7b9 -> C bass (col 0) + dbdim chord (col -5)
   const c7b9 = solveStradellaChord("C7b9");
   assertEquals(c7b9.primaryBass, "C");
@@ -298,7 +299,7 @@ Deno.test("STRAD-24: sevenFlatNine compound voicing (7b9 -> Bass + diminished ha
   assertEquals(g7b9.columnOffset, 1);
 });
 
-Deno.test("STRAD-25: dominant13 compound voicing (13 -> Bass + minor 5th up)", () => {
+test("STRAD-25: dominant13 compound voicing (13 -> Bass + minor 5th up)", () => {
   // C13 -> C bass (col 0) + gm chord (col 1)
   const c13 = solveStradellaChord("C13");
   assertEquals(c13.primaryBass, "C");
@@ -312,7 +313,7 @@ Deno.test("STRAD-25: dominant13 compound voicing (13 -> Bass + minor 5th up)", (
   assertEquals(g13.columnOffset, 1);
 });
 
-Deno.test("STRAD-26: minor9 compound voicing (m9 -> Bass + major b3 up)", () => {
+test("STRAD-26: minor9 compound voicing (m9 -> Bass + major b3 up)", () => {
   // Cm9 -> C bass (col 0) + eb chord (col -3)
   const cm9 = solveStradellaChord("Cm9");
   assertEquals(cm9.primaryBass, "C");
@@ -326,7 +327,7 @@ Deno.test("STRAD-26: minor9 compound voicing (m9 -> Bass + major b3 up)", () => 
   assertEquals(am9.columnOffset, 3);
 });
 
-Deno.test("STRAD-27: sixNine compound voicing (6/9 -> Bass + major 5th up)", () => {
+test("STRAD-27: sixNine compound voicing (6/9 -> Bass + major 5th up)", () => {
   // C6/9 -> C bass (col 0) + g chord (col 1)
   const c69 = solveStradellaChord("C6/9");
   assertEquals(c69.primaryBass, "C");
@@ -340,14 +341,14 @@ Deno.test("STRAD-27: sixNine compound voicing (6/9 -> Bass + major 5th up)", () 
   assertEquals(f69.columnOffset, -1);
 });
 
-Deno.test("STRAD-28: altered compound voicing (C7alt -> C + cdim)", () => {
+test("STRAD-28: altered compound voicing (C7alt -> C + cdim)", () => {
   const c7alt = solveStradellaChord("C7alt");
   assertEquals(c7alt.primaryBass, "C");
   assertEquals(c7alt.chordButton?.label, "cdim");
   assertEquals(c7alt.columnOffset, 0);
 });
 
-Deno.test("STRAD-29: Rare root column mapping in layout.ts", () => {
+test("STRAD-29: Rare root column mapping in layout.ts", () => {
   assertEquals(NOTE_TO_COLUMN["Fb"], -8);
   assertEquals(NOTE_TO_COLUMN["Cb"], -7);
   assertEquals(NOTE_TO_COLUMN["E#"], 11);
@@ -359,7 +360,7 @@ Deno.test("STRAD-29: Rare root column mapping in layout.ts", () => {
   assertEquals(getStradellaColumn("B#"), 12);
 });
 
-Deno.test("STRAD-30: Rare root canonical resolution in Stradella solver", () => {
+test("STRAD-30: Rare root canonical resolution in Stradella solver", () => {
   // Cb normalizes to B (Col 5)
   const cb = solveStradellaChord("Cb");
   assertEquals(cb.primaryBass, "B");
@@ -385,7 +386,7 @@ Deno.test("STRAD-30: Rare root canonical resolution in Stradella solver", () => 
   assertEquals(esharp.columnOffset, -1);
 });
 
-Deno.test("STRAD-31: Counter-bass slash distance comparisons across Circle of Fifths", () => {
+test("STRAD-31: Counter-bass slash distance comparisons across Circle of Fifths", () => {
   // C/B: root C (0), bass B (5). Counter-bass B_ in G col (1) is dist 1 vs fund B dist 5
   const cOverB = solveStradellaChord("C/B");
   assertEquals(cOverB.primaryBass, "B_");

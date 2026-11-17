@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import { solveStradellaChord } from "../../src/lib/stradella/solver.ts";
 import { isColumnOutOfRange } from "../../src/lib/stradella/layout.ts";
 import { parseChord } from "../../src/lib/capo/transposition.ts";
@@ -10,7 +11,7 @@ import { optimizeVoiceLeading } from "../../src/lib/cba/voiceLeading.ts";
 // 1. STRADELLA EXTENDED CHORD VOICING STRESS TESTS
 // ============================================================================
 
-Deno.test("M2-CHALLENGE-01: Stradella solver for required extended chord qualities", () => {
+test("M2-CHALLENGE-01: Stradella solver for required extended chord qualities", () => {
   // 1. C7#11 -> C bass (col 0) + cdim chord (col 0)
   const c7sharp11 = solveStradellaChord("C7#11");
   assertEquals(c7sharp11.primaryBass, "C");
@@ -72,7 +73,7 @@ Deno.test("M2-CHALLENGE-01: Stradella solver for required extended chord qualiti
   assertEquals(c7alt.columnOffset, 0);
 });
 
-Deno.test("M2-CHALLENGE-02: Stradella extended voicings across all 12 roots", () => {
+test("M2-CHALLENGE-02: Stradella extended voicings across all 12 roots", () => {
   const roots = [
     { root: "C", col: 0 },
     { root: "G", col: 1 },
@@ -119,7 +120,7 @@ Deno.test("M2-CHALLENGE-02: Stradella extended voicings across all 12 roots", ()
 // 2. SLASH CHORD COUNTER-BASS DISTANCE MINIMIZATION TESTS
 // ============================================================================
 
-Deno.test("M2-CHALLENGE-03: Required slash chord counter-bass vs fundamental selections", () => {
+test("M2-CHALLENGE-03: Required slash chord counter-bass vs fundamental selections", () => {
   // 1. C/B -> B_ in G column (Col 1, dist 1 vs fundamental B col 5 dist 5)
   const cOverB = solveStradellaChord("C/B");
   assertEquals(cOverB.primaryBass, "B_");
@@ -153,7 +154,7 @@ Deno.test("M2-CHALLENGE-03: Required slash chord counter-bass vs fundamental sel
   assertEquals(dOverFsharp.fingering, "2 + 3");
 });
 
-Deno.test("M2-CHALLENGE-04: Chromatic descending slash line verification (A Whiter Shade of Pale)", () => {
+test("M2-CHALLENGE-04: Chromatic descending slash line verification (A Whiter Shade of Pale)", () => {
   const sequence = [
     { chord: "C", expectedBass: "C", isCounter: false, col: 0, chordBtn: "c" },
     { chord: "C/B", expectedBass: "B_", isCounter: true, col: 1, chordBtn: "c" },
@@ -174,7 +175,7 @@ Deno.test("M2-CHALLENGE-04: Chromatic descending slash line verification (A Whit
   }
 });
 
-Deno.test("M2-CHALLENGE-05: Comprehensive Circle of Fifths 7th-in-bass distance minimization", () => {
+test("M2-CHALLENGE-05: Comprehensive Circle of Fifths 7th-in-bass distance minimization", () => {
   // Test Root/Major7th slash chords around the full Circle of Fifths
   // Every Major/Major7th in bass should choose the counter-bass 1 column to the right!
   const rootMajor7Pairs = [
@@ -204,7 +205,7 @@ Deno.test("M2-CHALLENGE-05: Comprehensive Circle of Fifths 7th-in-bass distance 
 // 3. KEY SIGNATURE TRANSPOSITION & ENHARMONIC SPELLING STRESS TESTS
 // ============================================================================
 
-Deno.test("M2-CHALLENGE-06: 12 Keys x 11 Capo Frets Enharmonic Consistency Oracle", () => {
+test("M2-CHALLENGE-06: 12 Keys x 11 Capo Frets Enharmonic Consistency Oracle", () => {
   const majorKeys = [
     "C",
     "G",
@@ -249,7 +250,7 @@ Deno.test("M2-CHALLENGE-06: 12 Keys x 11 Capo Frets Enharmonic Consistency Oracl
   }
 });
 
-Deno.test("M2-CHALLENGE-07: Rare roots and Unicode normalization under transpositions", () => {
+test("M2-CHALLENGE-07: Rare roots and Unicode normalization under transpositions", () => {
   // Rare roots: Cb, Fb, B#, E#
   const rareChords = ["Cb", "Fb", "B#", "E#", "C/Fb", "G/Cb"];
 
@@ -283,7 +284,7 @@ Deno.test("M2-CHALLENGE-07: Rare roots and Unicode normalization under transposi
 // 4. CBA C-SYSTEM GEOMETRY & VOICE LEADING STRESS TESTS
 // ============================================================================
 
-Deno.test("M2-CHALLENGE-08: CBA C-System Treble grips for all extended chord qualities", () => {
+test("M2-CHALLENGE-08: CBA C-System Treble grips for all extended chord qualities", () => {
   const extendedChords = [
     "C7#11",
     "Gb7(#11)",
@@ -314,7 +315,7 @@ Deno.test("M2-CHALLENGE-08: CBA C-System Treble grips for all extended chord qua
   }
 });
 
-Deno.test("M2-CHALLENGE-09: CBA voice leading shift bounds across jazz progressions", () => {
+test("M2-CHALLENGE-09: CBA voice leading shift bounds across jazz progressions", () => {
   const progressions = [
     ["Dm7", "G7", "Cmaj7", "A7"],
     ["Cm7", "F7", "Bbmaj7", "Ebmaj7"],
@@ -341,7 +342,7 @@ Deno.test("M2-CHALLENGE-09: CBA voice leading shift bounds across jazz progressi
 // 5. ADVERSARIAL EDGE CASE & BOUNDARY STRESS TESTS
 // ============================================================================
 
-Deno.test("M2-CHALLENGE-10: Accordion physical size boundary clamping", () => {
+test("M2-CHALLENGE-10: Accordion physical size boundary clamping", () => {
   // 48-bass: bounds -2 (Bb) to 5 (B)
   assertEquals(isColumnOutOfRange(-2, "48-bass"), false);
   assertEquals(isColumnOutOfRange(5, "48-bass"), false);
@@ -364,7 +365,7 @@ Deno.test("M2-CHALLENGE-10: Accordion physical size boundary clamping", () => {
   assertEquals(db72.isOutOfRange, false); // Db (-5) is the lowest 72-bass column
 });
 
-Deno.test("M2-CHALLENGE-11: Exotic parenthesized alterations and jazz syntax variations", () => {
+test("M2-CHALLENGE-11: Exotic parenthesized alterations and jazz syntax variations", () => {
   const variations = [
     { input: "C7(b9)", expectedQual: "sevenFlatNine" },
     { input: "C7(♭9)", expectedQual: "sevenFlatNine" },

@@ -4,7 +4,7 @@
 **Document Path**: `tests/ui-audit/UI_AUDIT_PLAN.md`\
 **Execution Engine**: `agent-browser` (Native Chromium / Chrome for Testing)\
 **Runner Script**: `tests/ui-audit/audit_runner.ts`\
-**Deno Task**: `deno task audit:ui`
+**npm script**: `npm run audit:ui`
 
 ---
 
@@ -59,7 +59,7 @@ and intellectual property exposure.
      storage for debugging and inspection.
    - Screenshots are strictly transient and MUST NEVER be added to Git staging (`git add`).
 3. **CI/CD Isolation**:
-   - Standard CI builds (`deno task test` and GitHub Actions `.github/workflows/deploy.yml`) execute
+   - Standard CI builds (`npm test` and GitHub Actions `.github/workflows/deploy.yml`) execute
      offline unit and component tests and NEVER generate or commit visual screenshot artifacts.
 4. **Git Verification Gate**:
    - The test runner and contributor pre-push checks ensure:
@@ -111,12 +111,12 @@ Each website input is verified against active, live public tab URLs:
 
 ### 5.1 Architecture & Engine
 
-The programmatic audit runner is implemented in pure Deno 2 TypeScript
+The programmatic audit runner is implemented in TypeScript on Node.js
 (`tests/ui-audit/audit_runner.ts`) and orchestrated using `agent-browser` CLI with default
 **Chromium (Chrome for Testing)**.
 
 ```
-      deno task audit:ui
+      npm run audit:ui
               │
               ▼
 ┌───────────────────────────┐
@@ -153,10 +153,10 @@ The programmatic audit runner is implemented in pure Deno 2 TypeScript
 
 ```bash
 # Execute the automated UI audit
-deno task audit:ui
+npm run audit:ui
 
-# Or run directly via Deno
-deno run --allow-run --allow-read --allow-write --allow-env --allow-net tests/ui-audit/audit_runner.ts
+# Or run directly via Node.js
+node tests/ui-audit/audit_runner.ts
 ```
 
 ### 5.3 Output Deliverables

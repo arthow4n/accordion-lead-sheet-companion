@@ -1,10 +1,11 @@
+import { test } from "vitest";
 /**
  * Score Photo Scan Endpoint Backend Test Suite
  * Path: tests/unit/scan.test.ts
  */
 
-import { assertEquals } from "@std/assert";
-import handleRequest from "../../api/import.ts";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { handleRequest } from "../../api/import.ts";
 import { handleScanChordsRequest } from "../../api/scan-chords.ts";
 
 function createSyntheticImageFile(
@@ -16,8 +17,8 @@ function createSyntheticImageFile(
   return new File([bytes], name, { type });
 }
 
-Deno.test("SCAN-01: OPTIONS preflight on /api/scan-chords returns 204 with POST, OPTIONS methods", async () => {
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+test("SCAN-01: OPTIONS preflight on /api/scan-chords returns 204 with POST, OPTIONS methods", async () => {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "OPTIONS",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -28,8 +29,8 @@ Deno.test("SCAN-01: OPTIONS preflight on /api/scan-chords returns 204 with POST,
   assertEquals(res.headers.get("Access-Control-Allow-Methods"), "POST, OPTIONS");
 });
 
-Deno.test("SCAN-02: GET /api/scan-chords returns 405 SCAN_METHOD_NOT_ALLOWED", async () => {
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+test("SCAN-02: GET /api/scan-chords returns 405 SCAN_METHOD_NOT_ALLOWED", async () => {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "GET",
     headers: { Origin: "https://arthow4n.github.io" },
   });
@@ -42,8 +43,8 @@ Deno.test("SCAN-02: GET /api/scan-chords returns 405 SCAN_METHOD_NOT_ALLOWED", a
   assertEquals(json.code, "SCAN_METHOD_NOT_ALLOWED");
 });
 
-Deno.test("SCAN-03: Request from unauthorized origin returns 403 SCAN_ORIGIN_NOT_ALLOWED", async () => {
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+test("SCAN-03: Request from unauthorized origin returns 403 SCAN_ORIGIN_NOT_ALLOWED", async () => {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: {
       Origin: "https://unauthorized-domain.com",
@@ -58,9 +59,9 @@ Deno.test("SCAN-03: Request from unauthorized origin returns 403 SCAN_ORIGIN_NOT
   assertEquals(json.code, "SCAN_ORIGIN_NOT_ALLOWED");
 });
 
-Deno.test("SCAN-04: Non-multipart Content-Type returns 400 SCAN_BAD_CONTENT_TYPE", async () => {
+test("SCAN-04: Non-multipart Content-Type returns 400 SCAN_BAD_CONTENT_TYPE", async () => {
   let providerCalls = 0;
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: {
       Origin: "http://localhost:5173",
@@ -83,12 +84,12 @@ Deno.test("SCAN-04: Non-multipart Content-Type returns 400 SCAN_BAD_CONTENT_TYPE
   assertEquals(providerCalls, 0);
 });
 
-Deno.test("SCAN-05: Missing image field returns 400 SCAN_IMAGE_MISSING", async () => {
+test("SCAN-05: Missing image field returns 400 SCAN_IMAGE_MISSING", async () => {
   let providerCalls = 0;
   const formData = new FormData();
   formData.append("otherField", "value");
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -108,13 +109,13 @@ Deno.test("SCAN-05: Missing image field returns 400 SCAN_IMAGE_MISSING", async (
   assertEquals(providerCalls, 0);
 });
 
-Deno.test("SCAN-06: Empty image file returns 400 SCAN_IMAGE_EMPTY", async () => {
+test("SCAN-06: Empty image file returns 400 SCAN_IMAGE_EMPTY", async () => {
   let providerCalls = 0;
   const emptyFile = createSyntheticImageFile("empty.jpg", "image/jpeg", 0);
   const formData = new FormData();
   formData.append("image", emptyFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -134,7 +135,7 @@ Deno.test("SCAN-06: Empty image file returns 400 SCAN_IMAGE_EMPTY", async () => 
   assertEquals(providerCalls, 0);
 });
 
-Deno.test("SCAN-07: Oversized image (>10 MiB) returns 413 SCAN_IMAGE_TOO_LARGE", async () => {
+test("SCAN-07: Oversized image (>10 MiB) returns 413 SCAN_IMAGE_TOO_LARGE", async () => {
   let providerCalls = 0;
   const oversizedFile = createSyntheticImageFile(
     "large.jpg",
@@ -144,7 +145,7 @@ Deno.test("SCAN-07: Oversized image (>10 MiB) returns 413 SCAN_IMAGE_TOO_LARGE",
   const formData = new FormData();
   formData.append("image", oversizedFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -164,13 +165,13 @@ Deno.test("SCAN-07: Oversized image (>10 MiB) returns 413 SCAN_IMAGE_TOO_LARGE",
   assertEquals(providerCalls, 0);
 });
 
-Deno.test("SCAN-08: Unsupported MIME type returns 415 SCAN_IMAGE_TYPE_UNSUPPORTED", async () => {
+test("SCAN-08: Unsupported MIME type returns 415 SCAN_IMAGE_TYPE_UNSUPPORTED", async () => {
   let providerCalls = 0;
   const textFile = new File([new Uint8Array(50)], "sheet.pdf", { type: "application/pdf" });
   const formData = new FormData();
   formData.append("image", textFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -190,18 +191,18 @@ Deno.test("SCAN-08: Unsupported MIME type returns 415 SCAN_IMAGE_TYPE_UNSUPPORTE
   assertEquals(providerCalls, 0);
 });
 
-Deno.test("SCAN-09: Missing API key returns 500 SCAN_API_KEY_MISSING only after request validation", async () => {
+test("SCAN-09: Missing API key returns 500 SCAN_API_KEY_MISSING only after request validation", async () => {
   const validFile = createSyntheticImageFile("sheet.png", "image/png", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
   });
 
-  // No injected extractChords dependency -> falls back to Deno.env check without key
+  // The Worker has no Gemini secret binding.
   const res = await handleScanChordsRequest(req);
   assertEquals(res.status, 500);
   const json = await res.json();
@@ -209,12 +210,12 @@ Deno.test("SCAN-09: Missing API key returns 500 SCAN_API_KEY_MISSING only after 
   assertEquals(json.code, "SCAN_API_KEY_MISSING");
 });
 
-Deno.test("SCAN-10: Mocked provider success returns normalized chords preserving first occurrence", async () => {
+test("SCAN-10: Mocked provider success returns normalized chords preserving first occurrence", async () => {
   const validFile = createSyntheticImageFile("sheet.webp", "image/webp", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "https://arthow4n.github.io" },
     body: formData,
@@ -234,12 +235,12 @@ Deno.test("SCAN-10: Mocked provider success returns normalized chords preserving
   assertEquals(json.chords, ["C", "G/B", "Am7", "Em(maj7)/D#", "C#m7b5"]);
 });
 
-Deno.test("SCAN-11: Mocked provider rate error maps to 429 SCAN_PROVIDER_RATE_LIMITED", async () => {
+test("SCAN-11: Mocked provider rate error maps to 429 SCAN_PROVIDER_RATE_LIMITED", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -259,12 +260,12 @@ Deno.test("SCAN-11: Mocked provider rate error maps to 429 SCAN_PROVIDER_RATE_LI
   assertEquals(json.code, "SCAN_PROVIDER_RATE_LIMITED");
 });
 
-Deno.test("SCAN-12: Mocked provider generic failure maps to 502 SCAN_PROVIDER_REQUEST_FAILED", async () => {
+test("SCAN-12: Mocked provider generic failure maps to 502 SCAN_PROVIDER_REQUEST_FAILED", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -282,12 +283,12 @@ Deno.test("SCAN-12: Mocked provider generic failure maps to 502 SCAN_PROVIDER_RE
   assertEquals(json.code, "SCAN_PROVIDER_REQUEST_FAILED");
 });
 
-Deno.test("SCAN-13: Malformed structured provider result returns 502 SCAN_PROVIDER_RESPONSE_INVALID", async () => {
+test("SCAN-13: Malformed structured provider result returns 502 SCAN_PROVIDER_RESPONSE_INVALID", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -305,12 +306,12 @@ Deno.test("SCAN-13: Malformed structured provider result returns 502 SCAN_PROVID
   assertEquals(json.code, "SCAN_PROVIDER_RESPONSE_INVALID");
 });
 
-Deno.test("SCAN-14: Empty chord array from provider returns 422 SCAN_NO_CHORDS_FOUND", async () => {
+test("SCAN-14: Empty chord array from provider returns 422 SCAN_NO_CHORDS_FOUND", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -328,12 +329,12 @@ Deno.test("SCAN-14: Empty chord array from provider returns 422 SCAN_NO_CHORDS_F
   assertEquals(json.code, "SCAN_NO_CHORDS_FOUND");
 });
 
-Deno.test("SCAN-15: Provider returning only domain-invalid strings returns 422 SCAN_NO_CHORDS_FOUND", async () => {
+test("SCAN-15: Provider returning only domain-invalid strings returns 422 SCAN_NO_CHORDS_FOUND", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -351,12 +352,12 @@ Deno.test("SCAN-15: Provider returning only domain-invalid strings returns 422 S
   assertEquals(json.code, "SCAN_NO_CHORDS_FOUND");
 });
 
-Deno.test("SCAN-16: Provider returning mixed valid/invalid strings preserves only valid chords", async () => {
+test("SCAN-16: Provider returning mixed valid/invalid strings preserves only valid chords", async () => {
   const validFile = createSyntheticImageFile("sheet.jpg", "image/jpeg", 256);
   const formData = new FormData();
   formData.append("image", validFile);
 
-  const req = new Request("https://edge.deno.dev/api/scan-chords", {
+  const req = new Request("https://api.example.test/api/scan-chords", {
     method: "POST",
     headers: { Origin: "http://localhost:5173" },
     body: formData,
@@ -374,4 +375,43 @@ Deno.test("SCAN-16: Provider returning mixed valid/invalid strings preserves onl
   const json = await res.json();
   assertEquals(json.success, true);
   assertEquals(json.chords, ["C", "G/B", "Am7", "F#m7b5"]);
+});
+
+test("A request-scoped Worker key reaches Gemini and returns the existing scan response", async () => {
+  const originalFetch = globalThis.fetch;
+  const apiKey = "test-gemini-binding";
+  let providerCalls = 0;
+  globalThis.fetch = async (input, init) => {
+    providerCalls++;
+    const req = new Request(input, init);
+    assertEquals(new URL(req.url).origin, "https://generativelanguage.googleapis.com");
+    assertEquals(req.headers.get("x-goog-api-key"), apiKey);
+    const json = await req.json();
+    assertEquals(json.contents[0].parts[0].inlineData.mimeType, "image/png");
+    return Response.json({
+      candidates: [{
+        content: { parts: [{ text: "{\"chords\":[\"C\",\"G7\"]}" }], role: "model" },
+      }],
+    });
+  };
+
+  try {
+    const form = new FormData();
+    form.set("image", createSyntheticImageFile("test.png", "image/png"));
+    const response = await handleRequest(
+      new Request("https://api.example.test/api/scan-chords", {
+        method: "POST",
+        body: form,
+      }),
+      apiKey,
+    );
+
+    assertEquals(providerCalls, 1);
+    assertEquals(response.status, 200);
+    const json = await response.json();
+    assertEquals(json.success, true);
+    assertEquals(json.chords, ["C", "G7"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

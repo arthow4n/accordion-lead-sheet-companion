@@ -1,10 +1,12 @@
+import { test } from "vitest";
 /**
  * Frontend Chord Lookup & ImportModal Component Tests
  * Path: tests/ux/lookup.test.tsx
  */
 
 import React from "react";
-import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists, assertStringIncludes } from "../assertions.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ImportModal } from "../../src/components/ImportModal.tsx";
 import App from "../../src/components/App.tsx";
@@ -13,7 +15,7 @@ import { PRESET_SONGS } from "../../src/lib/storage/presets.ts";
 import { parseChordLookupInput } from "../../src/lib/lookup/index.ts";
 import { rational } from "../../src/lib/score/rational.ts";
 
-Deno.test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => {
+test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => {
   const html = renderToStaticMarkup(
     <ImportModal
       isOpen
@@ -30,7 +32,7 @@ Deno.test("UX-LOOKUP-01: Fourth 'Lookup' tab is rendered in ImportModal", () => 
   assertStringIncludes(html, "Score file");
 });
 
-Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guidance", () => {
+test("UX-SCORE-01: score reader exposes preview/learn/perform measure guidance", () => {
   const html = renderToStaticMarkup(
     <LeadSheetReader
       song={{
@@ -80,7 +82,7 @@ Deno.test("UX-SCORE-01: score reader exposes preview/learn/perform measure guida
   assertStringIncludes(html, "D4");
 });
 
-Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () => {
+test("UX-SCORE-02: blocking score issues keep the reader source-only", () => {
   const html = renderToStaticMarkup(
     <LeadSheetReader
       song={{
@@ -121,7 +123,7 @@ Deno.test("UX-SCORE-02: blocking score issues keep the reader source-only", () =
   assertEquals(html.includes("Key unknown"), false);
 });
 
-Deno.test("UX-SCORE-03: missing guided-photo sources offer a recoverable relink path", () => {
+test("UX-SCORE-03: missing guided-photo sources offer a recoverable relink path", () => {
   const html = renderToStaticMarkup(
     <LeadSheetReader
       song={{
@@ -166,7 +168,7 @@ Deno.test("UX-SCORE-03: missing guided-photo sources offer a recoverable relink 
   assertStringIncludes(html, "C");
 });
 
-Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {
+test("UX-LOOKUP-02: Manual comma and newline parsing works offline without network", () => {
   const input = "C, G/B, Am7, C/D\nG(add2), Em, Em(maj7)/D#";
   const result = parseChordLookupInput(input);
 
@@ -182,7 +184,7 @@ Deno.test("UX-LOOKUP-02: Manual comma and newline parsing works offline without 
   assertEquals(result.invalid, []);
 });
 
-Deno.test("UX-LOOKUP-03: Invalid manual tokens are isolated while valid chords are preserved", () => {
+test("UX-LOOKUP-03: Invalid manual tokens are isolated while valid chords are preserved", () => {
   const input = "C, NotAChord, G/B, Hello123, Am7";
   const result = parseChordLookupInput(input);
 
@@ -190,7 +192,7 @@ Deno.test("UX-LOOKUP-03: Invalid manual tokens are isolated while valid chords a
   assertEquals(result.invalid, ["NotAChord", "Hello123"]);
 });
 
-Deno.test("UX-LOOKUP-04: Closed ImportModal renders null", () => {
+test("UX-LOOKUP-04: Closed ImportModal renders null", () => {
   const html = renderToStaticMarkup(
     <ImportModal
       isOpen={false}
@@ -203,7 +205,7 @@ Deno.test("UX-LOOKUP-04: Closed ImportModal renders null", () => {
   assertEquals(html, "");
 });
 
-Deno.test("UX-LOOKUP-05: App renders with preset songs and initializes reader", () => {
+test("UX-LOOKUP-05: App renders with preset songs and initializes reader", () => {
   const appHtml = renderToStaticMarkup(
     <App initialSongs={PRESET_SONGS} />,
   );
@@ -212,7 +214,7 @@ Deno.test("UX-LOOKUP-05: App renders with preset songs and initializes reader", 
   assertStringIncludes(appHtml, "Bella Ciao");
 });
 
-Deno.test("UX-LOOKUP-06: Manual lookup does not create or call onSaveSong", () => {
+test("UX-LOOKUP-06: Manual lookup does not create or call onSaveSong", () => {
   let saveCalls = 0;
   const modal = (
     <ImportModal
@@ -229,15 +231,13 @@ Deno.test("UX-LOOKUP-06: Manual lookup does not create or call onSaveSong", () =
   assertEquals(saveCalls, 0);
 });
 
-Deno.test("UX-LOOKUP-07: Lookup result chips have >=44px touch target classes", () => {
+test("UX-LOOKUP-07: Lookup result chips have >=44px touch target classes", () => {
   // Intercept state dispatcher to render ImportModal on Lookup tab with populated chord chips
-  // deno-lint-ignore no-explicit-any
   const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
 
   function LookupStateMock({ children }: { children: React.ReactNode }) {
     const origUseState = internals.H.useState;
     let callIdx = 0;
-    // deno-lint-ignore no-explicit-any
     internals.H.useState = function (initial: any) {
       const idx = callIdx++;
       if (idx === 0) return ["lookup", () => {}]; // activeTab = "lookup"
@@ -260,16 +260,16 @@ Deno.test("UX-LOOKUP-07: Lookup result chips have >=44px touch target classes", 
 
   // Verify lookup result chips are genuinely rendered from the component
   assertStringIncludes(html, "Found chords (3)");
-  assertStringIncludes(html, 'aria-label="View grip for C"');
-  assertStringIncludes(html, 'aria-label="View grip for G/B"');
-  assertStringIncludes(html, 'aria-label="View grip for Am7"');
+  assertStringIncludes(html, "aria-label=\"View grip for C\"");
+  assertStringIncludes(html, "aria-label=\"View grip for G/B\"");
+  assertStringIncludes(html, "aria-label=\"View grip for Am7\"");
 
   // Verify touch target contract on rendered chord chip buttons
   assertStringIncludes(html, "min-h-[44px]");
   assertStringIncludes(html, "min-w-[44px]");
 });
 
-Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, and privacy notice", async () => {
+test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, and privacy notice", async () => {
   const { OmrDownloadModal } = await import("../../src/components/OmrDownloadModal.tsx");
   const html = renderToStaticMarkup(
     <OmrDownloadModal
@@ -285,9 +285,8 @@ Deno.test("UX-OMR-01: OmrDownloadModal renders first-use disclosure, byte size, 
   assertStringIncludes(html, "Download &amp; Start");
 });
 
-Deno.test("UX-OMR-02: photo results expose editable chord-only import beside the source", () => {
+test("UX-OMR-02: photo results expose editable chord-only import beside the source", () => {
   // Render the actual recognition-result state without performing network inference in unit tests.
-  // deno-lint-ignore no-explicit-any
   const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
   function PhotoResultState({ children, chords = "[Dm/B] [Cdim/F#]" }: {
     children: React.ReactNode;
@@ -295,7 +294,6 @@ Deno.test("UX-OMR-02: photo results expose editable chord-only import beside the
   }) {
     const originalUseState = internals.H.useState;
     let index = 0;
-    // deno-lint-ignore no-explicit-any
     internals.H.useState = (initial: any) => {
       const current = index++;
       if (current === 0) return ["score", () => {}];

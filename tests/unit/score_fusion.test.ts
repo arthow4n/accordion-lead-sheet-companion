@@ -1,4 +1,8 @@
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
 import type { MelodyEvent, ScoreDocument, ScoreMeasure } from "../../src/types/score.ts";
 import { rational, RATIONAL_ZERO } from "../../src/lib/score/rational.ts";
 import { fuseScoreDocument, type OcrScoreData } from "../../src/lib/score/scoreFusion.ts";
@@ -72,7 +76,7 @@ function createMockScoreDoc(overrides: Partial<ScoreDocument> = {}): ScoreDocume
   };
 }
 
-Deno.test("FUSION-01: Auto-accepts high-confidence chord agreement between OMR and OCR", () => {
+test("FUSION-01: Auto-accepts high-confidence chord agreement between OMR and OCR", () => {
   const doc = createMockScoreDoc();
   const ocrData: OcrScoreData = {
     measures: [
@@ -92,7 +96,7 @@ Deno.test("FUSION-01: Auto-accepts high-confidence chord agreement between OMR a
   assertEquals(m1Harmony.confidence, 0.95);
 });
 
-Deno.test("FUSION-02: Preserves chord disagreement as separate issue evidence without blocking guidance", () => {
+test("FUSION-02: Preserves chord disagreement as separate issue evidence without blocking guidance", () => {
   const doc = createMockScoreDoc();
   const ocrData: OcrScoreData = {
     measures: [
@@ -118,7 +122,7 @@ Deno.test("FUSION-02: Preserves chord disagreement as separate issue evidence wi
   assertEquals(m2Harmony.confidence, 0.75); // Capped due to disagreement
 });
 
-Deno.test("FUSION-03: Deterministically supplements 6/8 meter absent from JAZZMUS vocab", () => {
+test("FUSION-03: Deterministically supplements 6/8 meter absent from JAZZMUS vocab", () => {
   const doc = createMockScoreDoc();
   assertEquals(doc.time, { beats: 4, beatType: 4 });
 
@@ -132,7 +136,7 @@ Deno.test("FUSION-03: Deterministically supplements 6/8 meter absent from JAZZMU
   assertEquals(result.document.measures[1].time, { beats: 6, beatType: 8 });
 });
 
-Deno.test("FUSION-04: Deterministically supplements key signatures (0 to 6 sharps/flats)", () => {
+test("FUSION-04: Deterministically supplements key signatures (0 to 6 sharps/flats)", () => {
   const doc = createMockScoreDoc();
   assertEquals(doc.key?.fifths, 0);
 
@@ -147,7 +151,7 @@ Deno.test("FUSION-04: Deterministically supplements key signatures (0 to 6 sharp
   assertEquals(result.document.measures[1].key?.fifths, 3);
 });
 
-Deno.test("FUSION-05: Gating policy flags low melody confidence and hides speculative guidance", () => {
+test("FUSION-05: Gating policy flags low melody confidence and hides speculative guidance", () => {
   const doc = createMockScoreDoc();
   // Set measure 1 melody notes to very low confidence (e.g. 0.25)
   const lowNote: MelodyEvent = {
@@ -168,7 +172,7 @@ Deno.test("FUSION-05: Gating policy flags low melody confidence and hides specul
   assertEquals(result.document.measures[0].confidence, 0.22);
 });
 
-Deno.test("FUSION-06: Detects structural navigation contradictions (D.S. without Segno, Coda without target)", () => {
+test("FUSION-06: Detects structural navigation contradictions (D.S. without Segno, Coda without target)", () => {
   const doc = createMockScoreDoc();
   // Add Dal Segno mark without any matching Segno in score
   doc.measures[1].navigation = [{ kind: "ds", target: "segno" }];
@@ -181,7 +185,7 @@ Deno.test("FUSION-06: Detects structural navigation contradictions (D.S. without
   assertEquals(navIssue?.blocksGuidance, false);
 });
 
-Deno.test("FUSION-07: Fuses section labels and preserves unfamiliar localized directions", () => {
+test("FUSION-07: Fuses section labels and preserves unfamiliar localized directions", () => {
   const doc = createMockScoreDoc();
   const ocrData: OcrScoreData = {
     sections: [
@@ -209,7 +213,7 @@ Deno.test("FUSION-07: Fuses section labels and preserves unfamiliar localized di
   }
 });
 
-Deno.test("FUSION-08: Measures 4+ in multi-staff scores receive proper chords without measure-vs-staff index distortion", () => {
+test("FUSION-08: Measures 4+ in multi-staff scores receive proper chords without measure-vs-staff index distortion", () => {
   // Construct an 8-measure score (2 staves, 4 measures each)
   const doc = createMockScoreDoc();
   // Add measures 2 through 7
@@ -277,7 +281,7 @@ Deno.test("FUSION-08: Measures 4+ in multi-staff scores receive proper chords wi
   assertEquals(m1Harmony.raw, "Dm");
 });
 
-Deno.test("FUSION-09: Spatial bounding box coordinates match chords to measures when spatial layout is present", () => {
+test("FUSION-09: Spatial bounding box coordinates match chords to measures when spatial layout is present", () => {
   const doc = createMockScoreDoc();
   // Assign spatial bounding boxes to measures
   doc.measures[0].sourceBox = { x: 50, y: 100, width: 200, height: 60 };
@@ -302,7 +306,7 @@ Deno.test("FUSION-09: Spatial bounding box coordinates match chords to measures 
   assertEquals(m2Harmony.confidence, 0.95);
 });
 
-Deno.test("FUSION-10: Native JAZZMUS **mxhm multi-chord measures preserve beat offsets and chord symbols as primary evidence", () => {
+test("FUSION-10: Native JAZZMUS **mxhm multi-chord measures preserve beat offsets and chord symbols as primary evidence", () => {
   const doc = createMockScoreDoc();
   // Measure with 2 native **mxhm chords at offsets 0/1 and 2/1
   doc.measures[0].harmonies = [
@@ -334,7 +338,7 @@ Deno.test("FUSION-10: Native JAZZMUS **mxhm multi-chord measures preserve beat o
   assertEquals(fusedHarmonies[1].offset, rational(2, 1));
 });
 
-Deno.test("FUSION-11: Automatic mathematical 6/8 meter calculation supplements 6/8 time when compound duple note durations exist in measures", () => {
+test("FUSION-11: Automatic mathematical 6/8 meter calculation supplements 6/8 time when compound duple note durations exist in measures", () => {
   const doc = createMockScoreDoc();
   // Replace measure 1 melody with 6 eighth-notes (each duration 1/2 beat, sum = 3 quarter-note beats)
   doc.measures[0].melody = [
@@ -406,7 +410,7 @@ Deno.test("FUSION-11: Automatic mathematical 6/8 meter calculation supplements 6
   assertEquals(result.document.measures[1].time, { beats: 6, beatType: 8 });
 });
 
-Deno.test("FUSION-12: measure.sourceBox is preserved on measures and populated onto low confidence issues", () => {
+test("FUSION-12: measure.sourceBox is preserved on measures and populated onto low confidence issues", () => {
   const doc = createMockScoreDoc();
   // Assign genuine bounding boxes to measures
   doc.measures[0].sourceBox = {

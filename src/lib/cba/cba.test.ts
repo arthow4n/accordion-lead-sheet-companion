@@ -1,11 +1,12 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import type { CbaGrip } from "../../types/index.ts";
 import { generateCanonicalRootGrip, generateCbaGrip } from "./grips.ts";
 import { getCbaVisualRowOffset, getPitchClassAt } from "./grid.ts";
 import { computeCbaTransition, optimizeVoiceLeading } from "./voiceLeading.ts";
 import { getPitchClass, parseChord } from "../capo/transposition.ts";
 
-Deno.test("CBA geometry: five-row auxiliary lattice alternates physical diagonal direction", () => {
+test("CBA geometry: five-row auxiliary lattice alternates physical diagonal direction", () => {
   assertEquals(
     [1, 2, 3, 4, 5].map((row) => getCbaVisualRowOffset(row)),
     [0, -1, 0, 1, 0],
@@ -19,7 +20,7 @@ Deno.test("CBA geometry: five-row auxiliary lattice alternates physical diagonal
   }
 });
 
-Deno.test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
+test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("Bb", 0, 5);
   assertEquals(grip.notes, ["Bb", "D", "F"]);
   assertEquals(grip.fingeringPattern, "1-2-4");
@@ -31,7 +32,7 @@ Deno.test("CBA-01: Bb Major (Bb - D - F) with 1-2-4 fingering", () => {
   assertEquals(coords[2], { row: 3, column: 6, note: "F", finger: 4 });
 });
 
-Deno.test("CBA-02: G Minor (G - Bb - D) with 1-2-4 fingering", () => {
+test("CBA-02: G Minor (G - Bb - D) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("Gm", 0, 4);
   assertEquals(grip.notes, ["G", "Bb", "D"]);
   assertEquals(grip.fingeringPattern, "1-2-4");
@@ -43,7 +44,7 @@ Deno.test("CBA-02: G Minor (G - Bb - D) with 1-2-4 fingering", () => {
   assertEquals(coords[2], { row: 3, column: 5, note: "D", finger: 4 });
 });
 
-Deno.test("CBA-SPELLING-01: Note spelling changes labels but not CBA physical coordinates", () => {
+test("CBA-SPELLING-01: Note spelling changes labels but not CBA physical coordinates", () => {
   const flats = generateCbaGrip("Db7", 0, 5, 5, "flats");
   const sharps = generateCbaGrip("C#7", 0, 5, 5, "sharps");
 
@@ -55,7 +56,7 @@ Deno.test("CBA-SPELLING-01: Note spelling changes labels but not CBA physical co
   );
 });
 
-Deno.test("CBA-03: F Major (F - A - C) with 1-2-4 fingering", () => {
+test("CBA-03: F Major (F - A - C) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("F", 0, 5);
   assertEquals(grip.notes, ["F", "A", "C"]);
   assertEquals(grip.fingeringPattern, "1-2-4");
@@ -67,7 +68,7 @@ Deno.test("CBA-03: F Major (F - A - C) with 1-2-4 fingering", () => {
   assertEquals(coords[2], { row: 4, column: 5, note: "C", finger: 4 });
 });
 
-Deno.test("CBA-04: C Major (Root) (C - E - G) with 1-2-4 fingering", () => {
+test("CBA-04: C Major (Root) (C - E - G) with 1-2-4 fingering", () => {
   const grip = generateCbaGrip("C", 0, 6);
   assertEquals(grip.notes, ["C", "E", "G"]);
   assertEquals(grip.fingeringPattern, "1-2-4");
@@ -79,7 +80,7 @@ Deno.test("CBA-04: C Major (Root) (C - E - G) with 1-2-4 fingering", () => {
   assertEquals(coords[2], { row: 2, column: 7, note: "G", finger: 4 });
 });
 
-Deno.test("CBA-05: C Major (1st Inv) (E - G - C) with 1-2-5 fingering", () => {
+test("CBA-05: C Major (1st Inv) (E - G - C) with 1-2-5 fingering", () => {
   const grip = generateCbaGrip("C", 1, 6);
   assertEquals(grip.notes, ["E", "G", "C"]);
   assertEquals(grip.fingeringPattern, "1-2-5");
@@ -91,7 +92,7 @@ Deno.test("CBA-05: C Major (1st Inv) (E - G - C) with 1-2-5 fingering", () => {
   assertEquals(coords[2], { row: 1, column: 5, note: "C", finger: 5 });
 });
 
-Deno.test("CBA-06: C Major (2nd Inv) (G - C - E) with 1-3-5 fingering", () => {
+test("CBA-06: C Major (2nd Inv) (G - C - E) with 1-3-5 fingering", () => {
   const grip = generateCbaGrip("C", 2, 6);
   assertEquals(grip.notes, ["G", "C", "E"]);
   assertEquals(grip.fingeringPattern, "1-3-5");
@@ -103,62 +104,62 @@ Deno.test("CBA-06: C Major (2nd Inv) (G - C - E) with 1-3-5 fingering", () => {
   assertEquals(coords[2], { row: 2, column: 6, note: "E", finger: 5 });
 });
 
-Deno.test("CBA Voice Leading: minimizes centroid column delta between consecutive chords", () => {
+test("CBA Voice Leading: minimizes centroid column delta between consecutive chords", () => {
   const fGrip = generateCbaGrip("F", 0, 5);
   const cGrip = optimizeVoiceLeading("C", fGrip);
   const delta = Math.abs((cGrip.centroidColumn ?? 5) - (fGrip.centroidColumn ?? 5));
   assertEquals(delta <= 1.5, true);
 });
 
-Deno.test("CBA 4-note chord generation: Cmaj7 with 1-2-4-5 fingering", () => {
+test("CBA 4-note chord generation: Cmaj7 with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("Cmaj7", 0);
   assertEquals(grip.notes.length, 4);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
 });
 
-Deno.test("CBA-07: SevenSharpEleven (C7#11) with 1-2-4-5 fingering", () => {
+test("CBA-07: SevenSharpEleven (C7#11) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("C7#11", 0);
   assertEquals(grip.notes, ["C", "E", "F#", "Bb"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-08: SevenFlatNine (C7b9) with 1-2-4-5 fingering", () => {
+test("CBA-08: SevenFlatNine (C7b9) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("C7b9", 0);
   assertEquals(grip.notes, ["C", "E", "Bb", "Db"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-09: Dominant13 (C13) with 1-2-4-5 fingering", () => {
+test("CBA-09: Dominant13 (C13) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("C13", 0);
   assertEquals(grip.notes, ["C", "E", "Bb", "A"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-10: SixNine (C6/9) with 1-2-4-5 fingering", () => {
+test("CBA-10: SixNine (C6/9) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("C6/9", 0);
   assertEquals(grip.notes, ["C", "E", "A", "D"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-11: Minor9 (Cm9) with 1-2-4-5 fingering", () => {
+test("CBA-11: Minor9 (Cm9) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("Cm9", 0);
   assertEquals(grip.notes, ["Eb", "G", "Bb", "D"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-12: Altered (C7alt) with 1-2-4-5 fingering", () => {
+test("CBA-12: Altered (C7alt) with 1-2-4-5 fingering", () => {
   const grip = generateCbaGrip("C7alt", 0);
   assertEquals(grip.notes, ["C", "E", "F#", "Bb"]);
   assertEquals(grip.fingeringPattern, "1-2-4-5");
   assertEquals(grip.buttonCoords?.length, 4);
 });
 
-Deno.test("CBA-13: Voice leading progression Dm7 -> G7 -> Cmaj7 minimizes shift", () => {
+test("CBA-13: Voice leading progression Dm7 -> G7 -> Cmaj7 minimizes shift", () => {
   const dm7 = generateCbaGrip("Dm7", 0, 5);
   const g7 = optimizeVoiceLeading("G7", dm7);
   const cmaj7 = optimizeVoiceLeading("Cmaj7", g7);
@@ -168,7 +169,7 @@ Deno.test("CBA-13: Voice leading progression Dm7 -> G7 -> Cmaj7 minimizes shift"
   assertEquals(Math.abs((g7.centroidColumn ?? 5) - (cmaj7.centroidColumn ?? 5)) <= 2.5, true);
 });
 
-Deno.test("CBA-14: Multi-note same-row chord cluster compactness (C7b9, G7b9, Cdim7, Dbdim7)", () => {
+test("CBA-14: Multi-note same-row chord cluster compactness (C7b9, G7b9, Cdim7, Dbdim7)", () => {
   const sameRowChords = ["C7b9", "G7b9", "Cdim7", "Dbdim7", "Edim7", "A7b9"];
   for (const chord of sameRowChords) {
     const grip = generateCbaGrip(chord, 0, 5);
@@ -187,7 +188,7 @@ Deno.test("CBA-14: Multi-note same-row chord cluster compactness (C7b9, G7b9, Cd
   }
 });
 
-Deno.test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscle-memory retention)", () => {
+test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscle-memory retention)", () => {
   const testChords = [
     "C",
     "G",
@@ -235,7 +236,7 @@ Deno.test("CBA-15: Canonical Root Grip Invariance across all 12 keys (100% muscl
   }
 });
 
-Deno.test("CBA-19: Canonical root grips remain isomorphic in 3-row and 5-row modes", () => {
+test("CBA-19: Canonical root grips remain isomorphic in 3-row and 5-row modes", () => {
   const roots = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
   for (const root of roots) {
     for (const suffix of ["", "m"]) {
@@ -261,7 +262,7 @@ Deno.test("CBA-19: Canonical root grips remain isomorphic in 3-row and 5-row mod
   }
 });
 
-Deno.test("CBA-20: Existing chord qualities retain collision-free grips and voice-leading transitions", () => {
+test("CBA-20: Existing chord qualities retain collision-free grips and voice-leading transitions", () => {
   const fixtures = [
     "C",
     "Cm",
@@ -314,7 +315,7 @@ Deno.test("CBA-20: Existing chord qualities retain collision-free grips and voic
   }
 });
 
-Deno.test("CBA-16: Amber-Gold Root Beacon tagging on 7th and extended chords", () => {
+test("CBA-16: Amber-Gold Root Beacon tagging on 7th and extended chords", () => {
   const extendedChords = ["G7", "Am7", "Cmaj7", "Bm7b5", "F#7"];
   for (const chord of extendedChords) {
     const grip = generateCanonicalRootGrip(chord, 5);
@@ -325,7 +326,7 @@ Deno.test("CBA-16: Amber-Gold Root Beacon tagging on 7th and extended chords", (
   }
 });
 
-Deno.test("CBA-17: Transition Diff Dynamics (shared, entering, exiting, flowVector)", () => {
+test("CBA-17: Transition Diff Dynamics (shared, entering, exiting, flowVector)", () => {
   const cGrip = generateCanonicalRootGrip("C", 5);
   const amGrip = generateCanonicalRootGrip("Am", 5);
   const transition = computeCbaTransition(amGrip, cGrip);
@@ -342,7 +343,7 @@ Deno.test("CBA-17: Transition Diff Dynamics (shared, entering, exiting, flowVect
   assertEquals(typeof transition.flowVector, "string");
 });
 
-Deno.test("CBA-18: Voice-Led Inversions Flow across Autumn Leaves progression", () => {
+test("CBA-18: Voice-Led Inversions Flow across Autumn Leaves progression", () => {
   const progression = ["Am7", "D7", "Gmaj7", "Cmaj7", "F#m7b5", "B7", "Em"];
   let prevGrip: CbaGrip | undefined = undefined;
 

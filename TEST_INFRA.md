@@ -4,7 +4,7 @@
 **Standard**: 4-Tier Opaque-Box Test Architecture\
 **Target Subsystems**: Staff Geometry, OMR/Chords, Meter/Key Recognition, Mobile Accessibility, and
 Review Queue\
-**Runtime**: Pure Deno 2 (Hermetic, Offline, Zero-Network)
+**Runtime**: Node.js and Vitest (Hermetic, Offline)
 
 ---
 
@@ -198,15 +198,15 @@ To verify the test suite locally per `AGENTS.md`:
 
 ```bash
 # 1. Format verification (Zero formatting discrepancies)
-deno fmt --check
+npm run fmt:check
 
 # 2. Static analysis & linter (Zero errors or warnings)
-deno lint
+npm run lint
 
 # 3. Hermetic unit, component, UX & E2E test suite (100% passing tests)
-deno task test
+npm test
 
 # 4. Target-specific verification commands
-deno test --allow-read --allow-env=NODE_ENV tests/e2e/score_reader.test.ts
-deno test --allow-read --allow-env=NODE_ENV tests/ux/score_reader_ux.test.tsx
+npm test -- tests/e2e/score_reader.test.ts
+npm test -- tests/ux/score_reader_ux.test.tsx
 ```

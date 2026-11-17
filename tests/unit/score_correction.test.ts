@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import type { ScoreDocument, ScoreMeasure } from "../../src/types/score.ts";
 import { rational, RATIONAL_ZERO } from "../../src/lib/score/rational.ts";
 import {
@@ -69,7 +70,7 @@ function createMockScore(): ScoreDocument {
   };
 }
 
-Deno.test("CORRECT-01: Actionable issue filtering isolates measure issues from global notices", () => {
+test("CORRECT-01: Actionable issue filtering isolates measure issues from global notices", () => {
   const doc = createMockScore();
   const actionable = getActionableScoreIssues(doc);
   assertEquals(actionable.length, 1);
@@ -77,7 +78,7 @@ Deno.test("CORRECT-01: Actionable issue filtering isolates measure issues from g
   assertEquals(actionable[0].measureId, "m1");
 });
 
-Deno.test("CORRECT-02: Quick note operations update pitch, duration, rest, octave, and accidentals", () => {
+test("CORRECT-02: Quick note operations update pitch, duration, rest, octave, and accidentals", () => {
   const doc = createMockScore();
 
   // Pitch update
@@ -104,7 +105,7 @@ Deno.test("CORRECT-02: Quick note operations update pitch, duration, rest, octav
   assertEquals(withFlat.measures[0].melody[0].pitch?.alter, -1);
 });
 
-Deno.test("CORRECT-03: Quick chord update normalizes chord and clears disagreement issues", () => {
+test("CORRECT-03: Quick chord update normalizes chord and clears disagreement issues", () => {
   const doc = createMockScore();
   assertEquals(doc.issues.some((i) => i.code === "chord_disagreement"), true);
 
@@ -116,7 +117,7 @@ Deno.test("CORRECT-03: Quick chord update normalizes chord and clears disagreeme
   assertEquals(updated.issues.some((i) => i.code === "chord_disagreement"), false);
 });
 
-Deno.test("CORRECT-04: Hide hint dismisses recognition issues without editing notation", () => {
+test("CORRECT-04: Hide hint dismisses recognition issues without editing notation", () => {
   const doc = createMockScore();
   assertEquals(doc.issues.length, 2);
 
@@ -126,7 +127,7 @@ Deno.test("CORRECT-04: Hide hint dismisses recognition issues without editing no
   assertEquals(dismissed.measures[0].harmonies[0].raw, "C");
 });
 
-Deno.test("CORRECT-05: User corrections are preserved across rescan and schema migration", () => {
+test("CORRECT-05: User corrections are preserved across rescan and schema migration", () => {
   const userDoc = createMockScore();
   // User modified note and chord
   const modifiedUserDoc = updateNotePitch(userDoc, "m1", "m1-n1", {
@@ -148,7 +149,7 @@ Deno.test("CORRECT-05: User corrections are preserved across rescan and schema m
   assertEquals(merged.measures[0].harmonies[0].provenance, "photo-manual");
 });
 
-Deno.test("CORRECT-06: ScoreCorrectionSession provides multi-step Undo and Redo", () => {
+test("CORRECT-06: ScoreCorrectionSession provides multi-step Undo and Redo", () => {
   const doc = createMockScore();
   const session = new ScoreCorrectionSession(doc);
   assertEquals(session.canUndo, false);
@@ -181,7 +182,7 @@ Deno.test("CORRECT-06: ScoreCorrectionSession provides multi-step Undo and Redo"
   assertEquals(session.document.measures[0].harmonies[0].raw, "G");
 });
 
-Deno.test("CORRECT-07: Fixed validation issues (e.g. duration) are cleared from doc.issues (BLK-01)", async () => {
+test("CORRECT-07: Fixed validation issues (e.g. duration) are cleared from doc.issues (BLK-01)", async () => {
   const doc = createMockScore();
   doc.measures[0].writtenIndex = 1; // Measure 2 (not a pickup)
   // Set invalid duration: note has 2 quarter beats in a 4/4 measure

@@ -1,4 +1,11 @@
-import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
+// @vitest-environment happy-dom
+
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
+import { assertRejects } from "../assertions.ts";
 import type { OmrStripInput, OmrWorkerResponse } from "../../src/workers/omr.worker.ts";
 import { type OmrTranscribeProgress, OmrWorkerClient } from "../../src/lib/score/omrClient.ts";
 import type { ScoreDocument } from "../../src/types/score.ts";
@@ -55,7 +62,7 @@ function createSampleScoreDoc(): ScoreDocument {
   };
 }
 
-Deno.test("OMR-CLIENT-01: Correlates request/response, forwards progress, and resolves result", async () => {
+test("OMR-CLIENT-01: Correlates request/response, forwards progress, and resolves result", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -106,7 +113,7 @@ Deno.test("OMR-CLIENT-01: Correlates request/response, forwards progress, and re
   assertEquals(res.avgConfidence, 0.94);
 });
 
-Deno.test("OMR-CLIENT-02: Rejects promise when worker responds with error response", async () => {
+test("OMR-CLIENT-02: Rejects promise when worker responds with error response", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -131,7 +138,7 @@ Deno.test("OMR-CLIENT-02: Rejects promise when worker responds with error respon
   );
 });
 
-Deno.test("OMR-CLIENT-03: Pre-aborted AbortSignal immediately rejects with AbortError without posting message", async () => {
+test("OMR-CLIENT-03: Pre-aborted AbortSignal immediately rejects with AbortError without posting message", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -154,7 +161,7 @@ Deno.test("OMR-CLIENT-03: Pre-aborted AbortSignal immediately rejects with Abort
   assertEquals(mockWorker, null);
 });
 
-Deno.test("OMR-CLIENT-04: In-flight AbortSignal posts cancel message and rejects with AbortError", async () => {
+test("OMR-CLIENT-04: In-flight AbortSignal posts cancel message and rejects with AbortError", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -186,7 +193,7 @@ Deno.test("OMR-CLIENT-04: In-flight AbortSignal posts cancel message and rejects
   );
 });
 
-Deno.test("OMR-CLIENT-05: terminate() terminates worker and rejects all pending promises with AbortError", async () => {
+test("OMR-CLIENT-05: terminate() terminates worker and rejects all pending promises with AbortError", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -231,7 +238,7 @@ Deno.test("OMR-CLIENT-05: terminate() terminates worker and rejects all pending 
   await assertRejects(async () => await p3, DOMException, "Aborted");
 });
 
-Deno.test("OMR-CLIENT-06: Worker onerror event rejects pending requests with Error and nullifies worker", async () => {
+test("OMR-CLIENT-06: Worker onerror event rejects pending requests with Error and nullifies worker", async () => {
   let workerCount = 0;
   let currentWorker: MockOmrWorker | null = null;
 
@@ -274,7 +281,7 @@ Deno.test("OMR-CLIENT-06: Worker onerror event rejects pending requests with Err
   client.terminate();
 });
 
-Deno.test("OMR-CLIENT-07: Transferable ArrayBuffers are transferred when transferBuffer is enabled", async () => {
+test("OMR-CLIENT-07: Transferable ArrayBuffers are transferred when transferBuffer is enabled", async () => {
   let mockWorker: MockOmrWorker | null = null;
   const client = new OmrWorkerClient(() => {
     mockWorker = new MockOmrWorker();
@@ -297,7 +304,7 @@ Deno.test("OMR-CLIENT-07: Transferable ArrayBuffers are transferred when transfe
   await assertRejects(async () => await promise, DOMException, "Aborted");
 });
 
-Deno.test("OMR-CLIENT-08: Empty strips array throws immediately without contacting worker", async () => {
+test("OMR-CLIENT-08: Empty strips array throws immediately without contacting worker", async () => {
   let workerCreated = false;
   const client = new OmrWorkerClient(() => {
     workerCreated = true;

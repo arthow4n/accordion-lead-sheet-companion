@@ -6,12 +6,15 @@
  * across 6 comprehensive UI/ergonomic flows using agent-browser (Chromium / Chrome for Testing).
  *
  * Requirements:
- * - Deno 2 runtime with --allow-run --allow-read --allow-write --allow-env --allow-net
+ * - Node.js and npm
  * - Outputs JSON report to tests/ui-audit/reports/ui_audit_report.json
  * - Saves ephemeral screenshots to tests/ui-audit/screenshots/
  */
 
-import { join } from "jsr:@std/path@^1.0.0";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Interface Definitions
 interface FlowResult {
@@ -44,30 +47,19 @@ interface AuditReport {
 }
 
 // Ensure Environment & Tool Paths
-const DENO_BIN = "/home/hevar/.deno/bin";
-const NVM_BIN = "/home/hevar/.nvm/versions/node/v26.3.0/bin";
-const CURRENT_PATH = Deno.env.get("PATH") || "";
-const AUGMENTED_PATH = `${DENO_BIN}:${NVM_BIN}:${CURRENT_PATH}`;
-const LD_PATH =
-  "/home/hevar/.local/libs/usr/lib/x86_64-linux-gnu:/home/hevar/.local/libs/lib/x86_64-linux-gnu:" +
-  (Deno.env.get("LD_LIBRARY_PATH") || "");
 
-Deno.env.set("PATH", AUGMENTED_PATH);
-Deno.env.set("LD_LIBRARY_PATH", LD_PATH);
-Deno.env.set("AGENT_BROWSER_ENGINE", "chrome");
-
-const APP_URL = Deno.env.get("AUDIT_APP_URL") || "http://127.0.0.1:5173";
-const SCREENSHOT_DIR = join(Deno.cwd(), "tests/ui-audit/screenshots");
-const REPORT_DIR = join(Deno.cwd(), "tests/ui-audit/reports");
+const APP_URL = process.env.AUDIT_APP_URL || "http://127.0.0.1:5173";
+const SCREENSHOT_DIR = join(process.cwd(), "tests/ui-audit/screenshots");
+const REPORT_DIR = join(process.cwd(), "tests/ui-audit/reports");
 const REPORT_FILE = join(REPORT_DIR, "ui_audit_report.json");
 const SESSION_ID = `audit-session-${Date.now()}`;
 
 // Ensure output directories exist
-await Deno.mkdir(SCREENSHOT_DIR, { recursive: true });
-await Deno.mkdir(REPORT_DIR, { recursive: true });
+await mkdir(SCREENSHOT_DIR, { recursive: true });
+await mkdir(REPORT_DIR, { recursive: true });
 
 // Server Lifecycle Management
-let serverProcess: Deno.ChildProcess | null = null;
+let serverProcess: ChildProcess | null = null;
 
 async function ensureDevServer(): Promise<void> {
   try {
@@ -81,14 +73,10 @@ async function ensureDevServer(): Promise<void> {
   }
 
   console.log(`[DevServer] Spawning Vite development server on ${APP_URL}...`);
-  const cmd = new Deno.Command(Deno.execPath(), {
-    args: ["task", "dev", "--port", "5173", "--host", "127.0.0.1"],
-    stdout: "null",
-    stderr: "inherit",
-    env: { PATH: AUGMENTED_PATH },
+  const vite = fileURLToPath(new URL("../../node_modules/vite/bin/vite.js", import.meta.url));
+  serverProcess = spawn(process.execPath, [vite, "--port", "5173", "--host", "127.0.0.1"], {
+    stdio: ["ignore", "ignore", "inherit"],
   });
-
-  serverProcess = cmd.spawn();
 
   // Polling for readiness (up to 12s)
   for (let i = 0; i < 24; i++) {
@@ -111,21 +99,15 @@ async function ensureDevServer(): Promise<void> {
 async function runBrowserCmd(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; code: number }> {
-  const cmd = new Deno.Command("agent-browser", {
-    args: ["--session", SESSION_ID, ...args],
-    env: {
-      PATH: AUGMENTED_PATH,
-      LD_LIBRARY_PATH: LD_PATH,
-      AGENT_BROWSER_ENGINE: "chrome",
-    },
-    stdout: "piped",
-    stderr: "piped",
+  return await new Promise((resolve) => {
+    execFile("agent-browser", ["--session", SESSION_ID, ...args], (error, stdout, stderr) => {
+      resolve({
+        stdout: stdout.trim(),
+        stderr: stderr.trim() || error?.message || "",
+        code: typeof error?.code === "number" ? error.code : error ? 1 : 0,
+      });
+    });
   });
-
-  const output = await cmd.output();
-  const stdout = new TextDecoder().decode(output.stdout).trim();
-  const stderr = new TextDecoder().decode(output.stderr).trim();
-  return { stdout, stderr, code: output.code };
 }
 
 async function evalJs<T = unknown>(code: string): Promise<T> {
@@ -1417,7 +1399,7 @@ Tu mi [E7]devi seppel[Am]lir`;
     results,
   };
 
-  await Deno.writeTextFile(REPORT_FILE, JSON.stringify(report, null, 2));
+  await writeFile(REPORT_FILE, JSON.stringify(report, null, 2));
 
   // Print Summary Table
   console.log("================================================================================");
@@ -1451,16 +1433,16 @@ Tu mi [E7]devi seppel[Am]lir`;
 
   if (failedFlows > 0 || failedAssertions > 0) {
     console.error("❌ UI Audit failed with defects.");
-    Deno.exit(1);
+    process.exit(1);
   } else {
     console.log("🎉 All 6 UI & Ergonomic Audit flows passed successfully!");
-    Deno.exit(0);
+    process.exit(0);
   }
 }
 
 if (import.meta.main) {
   main().catch((err) => {
     console.error("Fatal audit runner failure:", err);
-    Deno.exit(1);
+    process.exit(1);
   });
 }

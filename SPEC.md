@@ -6,7 +6,7 @@
 Laptop/Desktop)\
 **Target Instrument:** **C-System Chromatic Button Accordion (CBA)** Right Hand + **Stradella Bass**
 Left Hand\
-**Deployment Architecture:** 100% Free Hosting via **GitHub Pages** (Frontend PWA) + **Deno Deploy**
+**Deployment Architecture:** 100% Free Hosting via **GitHub Pages** (Frontend PWA) + **Cloudflare Workers**
 (Serverless CORS-Free Tab Scraper API)\
 **Primary Goal:** Transform standard guitar/piano lead sheets, chord charts, and ChordPro files
 (with or without Capo) into clean, mobile-optimized accordion lead sheets with normalized Stradella
@@ -20,7 +20,7 @@ left-hand bass/chord buttons and CBA C-System right-hand chord grips.
 2. [Input Sources & Import Engine](#2-input-sources--import-engine)
    - 2.1 [Supported Tab & Lead Sheet Sources](#21-supported-tab--lead-sheet-sources)
    - 2.2
-     [Deno Deploy Serverless Scraper API (`api/import.ts`)](#22-deno-deploy-serverless-scraper-api-apiimportts)
+     [Cloudflare Workers Serverless Scraper API (`api/import.ts`)](#22-cloudflare-workers-serverless-scraper-api-apiimportts)
    - 2.3 [Input Formats & Tokenization Strategies](#23-input-formats--tokenization-strategies)
    - 2.4
      [Segmented Token Architecture (Preventing Font Drift)](#24-segmented-token-architecture-preventing-font-drift)
@@ -43,7 +43,7 @@ left-hand bass/chord buttons and CBA C-System right-hand chord grips.
 5. [Tech Stack & Free Deployment Architecture](#5-tech-stack--free-deployment-architecture)
    - 5.1 [Tech Stack Matrix](#51-tech-stack-matrix)
    - 5.2
-     [Deployment Topology (GitHub Pages + Deno Deploy)](#52-deployment-topology-github-pages--deno-deploy)
+     [Deployment Topology (GitHub Pages + Cloudflare Workers)](#52-deployment-topology-github-pages--cloudflare-workers)
    - 5.3 [Complete Directory Structure](#53-complete-directory-structure)
 6. [Data Models & TypeScript Interfaces](#6-data-models--typescript-interfaces)
 7. [Component Hierarchy & State Management](#7-component-hierarchy--state-management)
@@ -84,7 +84,7 @@ A **mobile-first, 100% free, offline Progressive Web App (PWA)** that:
 4. Renders a clutter-free, high-contrast lead sheet using a **Segmented Token Model** that
    eliminates character drift on mobile viewports, featuring **Hands-Free Auto-Scroll**,
    **Lifecycle-Aware Screen Wake-Lock**, and **Bluetooth Page-Turner Pedal** support.
-5. Deploys for free on **GitHub Pages** (frontend PWA) and **Deno Deploy** (serverless tab scraper
+5. Deploys for free on **GitHub Pages** (frontend PWA) and **Cloudflare Workers** (serverless tab scraper
    API).
 
 ---
@@ -95,16 +95,16 @@ A **mobile-first, 100% free, offline Progressive Web App (PWA)** that:
 
 | Source Site                         | URL Pattern                  | Data Format                                                            | Ingestion Strategy                                                                  |
 | :---------------------------------- | :--------------------------- | :--------------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
-| **Ultimate Guitar**                 | `ultimate-guitar.com/tab/*`  | HTML with embedded JSON store (`window.UGAPP.store` or `data-content`) | **Deno API Scraper:** Extracts `wiki_tab.content` and `applicature.capo`.           |
-| **Chordie**                         | `chordie.com/chord.php/*`    | Native ChordPro markup (`[C]Lyrics`)                                   | **Deno API Scraper / Direct Paste:** Extracts `<pre class="chordpro">` or raw text. |
-| **E-Chords**                        | `e-chords.com/chords/*`      | HTML `<pre>` with chord `<span>` tags                                  | **Deno API Scraper:** Converts chord `<span>` tags to 2-line chords over lyrics.    |
-| **Cifra Club**                      | `cifraclub.com.br/*`         | HTML with `<pre><b>` chord spans                                       | **Deno API Scraper:** Extracts text + capo header `Capo: X`.                        |
+| **Ultimate Guitar**                 | `ultimate-guitar.com/tab/*`  | HTML with embedded JSON store (`window.UGAPP.store` or `data-content`) | **Worker API Scraper:** Extracts `wiki_tab.content` and `applicature.capo`.           |
+| **Chordie**                         | `chordie.com/chord.php/*`    | Native ChordPro markup (`[C]Lyrics`)                                   | **Worker API Scraper / Direct Paste:** Extracts `<pre class="chordpro">` or raw text. |
+| **E-Chords**                        | `e-chords.com/chords/*`      | HTML `<pre>` with chord `<span>` tags                                  | **Worker API Scraper:** Converts chord `<span>` tags to 2-line chords over lyrics.    |
+| **Cifra Club**                      | `cifraclub.com.br/*`         | HTML with `<pre><b>` chord spans                                       | **Worker API Scraper:** Extracts text + capo header `Capo: X`.                        |
 | **Songsterr / PraiseCharts / PDFs** | Clipboard text / manual copy | 2-Line text or ChordPro                                                | **1-Tap Clipboard Ingestion:** `navigator.clipboard.readText()`.                    |
 
-### 2.2 Deno Deploy Serverless Scraper API (`api/import.ts`)
+### 2.2 Cloudflare Workers Serverless Scraper API (`api/import.ts`)
 
 Because browser security policies (CORS) block direct client-side fetching from external domains, a
-lightweight serverless TypeScript endpoint deployed on **Deno Deploy** acts as a free edge proxy.
+lightweight serverless TypeScript endpoint deployed on **Cloudflare Workers** acts as a free edge proxy.
 
 #### Endpoint Contract:
 
@@ -133,10 +133,10 @@ CORS is strictly restricted to authorized client origins:
   default port `5173`)
 - Requests from any other origin are denied or have CORS headers withheld.
 
-#### Deno Deploy Implementation (`api/import.ts`):
+#### Cloudflare Workers Implementation (`api/import.ts`):
 
 ```typescript
-// Deno Deploy edge handler with strict origin-restricted CORS and multi-engine scraping
+// Cloudflare Workers edge handler with strict origin-restricted CORS and multi-engine scraping
 function getCorsHeaders(req: Request): HeadersInit | null {
   const origin = req.headers.get("origin") || "";
 
@@ -321,7 +321,7 @@ persistence or full notation OCR.
   `api/scan-chords.ts`.
 - **Model Configuration:** Deployed with `@google/genai` (pinned version `2.19.0`) using
   `SCORE_SCAN_MODEL = "gemini-3.5-flash-lite"`.
-- **Server API Key:** Configured via `GOOGLE_GENAI_API_KEY` on Deno Deploy.
+- **Server API Key:** Configured via `GOOGLE_GENAI_API_KEY` on Cloudflare Workers.
 - **Request Format:** `multipart/form-data` with field `image=<File>`.
 - **Structured Schema:** `responseMimeType: "application/json"` with schema
   `{ type: "OBJECT", properties: { chords: { type: "ARRAY", items: { type: "STRING" } } }, required: ["chords"] }`.
@@ -611,182 +611,34 @@ $$\text{Candidate} = \arg\min_{k \in \{\text{fund}, \text{counter}\}} |C_k - C_{
 | **Icons**               | **Lucide React**             | Lightweight icons for transport and music controls.                        |
 | **Offline Storage**     | **`idb-keyval` (IndexedDB)** | Local persistence of songbook and preferences.                             |
 | **Hosting (Frontend)**  | **GitHub Pages**             | 100% free static hosting via GitHub Actions.                               |
-| **Hosting (API Proxy)** | **Deno Deploy**              | 100% free serverless edge worker for URL scraping (`api/import.ts`).       |
+| **Hosting (API Proxy)** | **Cloudflare Workers**              | 100% free serverless edge worker for URL scraping (`api/import.ts`).       |
 
-### 5.2 Deployment Topology (GitHub Pages + Deno Deploy)
+### 5.2 Deployment Topology (GitHub Pages + Cloudflare Workers)
 
-```
-+───────────────────────────────────────────────────────────────────────────────────+
-|                                    USER DEVICE                                    |
-|                       (Smartphone / iPad on Music Stand)                          |
-+───────────────────────────┬───────────────────────────────────▲───────────────────+
-                            │                                   │
-         1. Loads Web App   │                                   │ 4. Renders Accordion
-            & PWA Assets    │                                   │    Lead Sheet & Grips
-                            ▼                                   │
-             ┌─────────────────────────────┐                    │
-             │        GitHub Pages         │────────────────────┘
-             │   (Free Static Web Host)    │
-             │  • Vite + React + TS        │
-             │  • Capo & Stradella Engine  │
-             │  • Offline PWA Storage      │
-             └─────────────────────────────┘
-                            │
-               2. Optional: │ 3. Returns Clean
-                  Fetch URL │    Chord Sheet Text
-                            ▼
-             ┌─────────────────────────────┐
-             │         Deno Deploy         │
-             │   (Free Edge CORS Proxy)    │
-             │  • Fetches Ultimate Guitar  │
-             │  • Extracts Capo & Lyrics   │
-             └─────────────────────────────┘
-```
+GitHub Actions publishes the Vite PWA to the existing GitHub Pages URL. Cloudflare
+Workers Builds deploys the API from the same repository. The application uses the
+Worker for tab imports, server-side Gemini scanning, and byte-range downloads of
+pinned OMR model artifacts. The browser stores songs and downloaded models under
+their existing storage keys.
 
 ### 5.3 Complete Directory Structure
 
-```
-accordion-lead-sheet-companion/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # GitHub Actions auto-deploy to GitHub Pages
-├── api/
-│   └── import.ts               # Deno Deploy serverless script for URL tab scraping
-├── public/
-│   ├── favicon.svg
-│   └── manifest.json           # PWA Web Manifest
-├── src/
-│   ├── components/
-│   │   ├── LeadSheetReader.tsx
-│   │   ├── ChordBadge.tsx
-│   │   ├── MiniGripDrawer.tsx
-│   │   ├── CapoBar.tsx
-│   │   ├── AutoScrollFooter.tsx
-│   │   ├── ImportModal.tsx
-│   │   └── SongbookDrawer.tsx
-│   ├── App.tsx
-│   ├── index.html
-│   └── main.tsx
-├── deno.json                   # Single unified Deno config (deps, tasks, lint, fmt, compiler)
-├── vite.config.ts              # Vite configuration
-└── SPEC.md
-```
+- `src/` contains the React frontend, its Web Workers, and music-processing libraries.
+- `api/worker.ts` is the Cloudflare entry point, with route handlers in `api/`.
+- `tests/` contains the Vitest suites and opt-in UI audit runners.
+- `package.json`, `package-lock.json`, and `.node-version` define npm tooling and dependencies.
+- `wrangler.jsonc` defines the Cloudflare Worker and its preview settings.
 
-### 5.4 Single Unified `deno.json` Specification
+### 5.4 npm Development Commands
 
-In pure Deno 2, a single `deno.json` replaces `package.json`, `tsconfig.json`, `.eslintrc`, and
-`.prettierrc`:
+Run `npm ci`, `npm run dev`, and `npm run worker:dev` for local frontend and API development.
+Use `npm run verify` for the default static checks and hermetic tests.
 
-```json
-{
-  "name": "accordion-lead-sheet-companion",
-  "version": "1.0.0",
-  "tasks": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "serve:api": "deno serve --allow-net api/import.ts",
-    "test": "deno test --allow-read --allow-env=NODE_ENV",
-    "lint": "deno lint",
-    "fmt": "deno fmt",
-    "fmt:check": "deno fmt --check"
-  },
-  "imports": {
-    "react": "npm:react@^19.0.0",
-    "react-dom": "npm:react-dom@^19.0.0",
-    "react-dom/client": "npm:react-dom@^19.0.0/client",
-    "clsx": "npm:clsx@^2.1.1",
-    "tailwind-merge": "npm:tailwind-merge@^3.0.0",
-    "lucide-react": "npm:lucide-react@^1.0.0",
-    "idb-keyval": "npm:idb-keyval@^6.2.1",
-    "@types/react": "npm:@types/react@^19.0.0",
-    "@types/react-dom": "npm:@types/react-dom@^19.0.0",
-    "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.4",
-    "vite": "npm:vite@^6.0.0",
-    "vite-plugin-pwa": "npm:vite-plugin-pwa@^0.21.0",
-    "tailwindcss": "npm:tailwindcss@^4.0.0",
-    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.0"
-  },
-  "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "strict": true,
-    "noImplicitAny": true
-  },
-  "lint": {
-    "rules": {
-      "tags": ["recommended"]
-    }
-  },
-  "fmt": {
-    "useTabs": false,
-    "lineWidth": 100,
-    "indentWidth": 2,
-    "singleQuote": false
-  }
-}
-```
+### 5.5 Deployment Pipelines
 
-### 5.5 GitHub Actions Workflow (`.github/workflows/deploy.yml`)
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [master]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
-jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - name: Lint & Format Check
-        run: |
-          deno lint
-          deno fmt --check
-
-      - name: Run Tests
-        run: deno task test
-
-      - name: Build static site for GitHub Pages
-        run: deno task build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "./dist"
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
----
+The GitHub Pages workflow at `.github/workflows/deploy.yml` builds and publishes `dist/`.
+Workers Builds runs `npm run build` and then `npx wrangler deploy` on `master`, or
+`npx wrangler preview` on preview branches. See the repository README for setup.
 
 ## 6. Data Models & TypeScript Interfaces
 
@@ -930,7 +782,7 @@ App.tsx
 - [ ] **Phase 4: Persistence & Free Deployment**
   - IndexedDB storage for offline personal songbook.
   - GitHub Actions workflow (`deploy.yml`) for automated free deployment to **GitHub Pages**.
-  - Deno Deploy edge worker (`api/import.ts`) with CORS `OPTIONS` handling.
+  - Cloudflare Workers edge worker (`api/import.ts`) with CORS `OPTIONS` handling.
 
 ---
 
@@ -1070,7 +922,7 @@ describe("Segmented Tokenizer Test Suite", () => {
 
 ---
 
-### 9.5 Deno Deploy API Security & Scraper Validation Matrix
+### 9.5 Cloudflare Workers API Security & Scraper Validation Matrix
 
 | Test ID  | Method    | Request Origin                    | Target URL                    | Expected Status   | Expected Headers / Body                                          |
 | :------- | :-------- | :-------------------------------- | :---------------------------- | :---------------- | :--------------------------------------------------------------- |
@@ -1109,14 +961,14 @@ describe("Segmented Tokenizer Test Suite", () => {
 
 To prevent rate-limiting, network flakiness on CI/CD, or unintended automated traffic to third-party
 services, live external integration tests are **isolated into a dedicated on-demand test task
-(`deno task test:live`) and excluded from the default test command (`deno test`) and standard CI
+(`npm run test:live`) and excluded from the default test command (`npm test`) and standard CI
 workflows**.
 
 #### Execution Command:
 
 ```bash
 # Run real external website integration tests on-demand
-deno task test:live
+npm run test:live
 ```
 
 #### Real Website Test Matrix:

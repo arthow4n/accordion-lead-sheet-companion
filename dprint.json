@@ -1,0 +1,38 @@
+{
+  "lineWidth": 100,
+  "includes": [
+    "**/*.{ts,tsx,json,jsonc}"
+  ],
+  "excludes": [
+    "**/node_modules",
+    ".cloudflare",
+    ".wrangler",
+    "dist",
+    "dist-worker",
+    "**/package-lock.json",
+    "test-results",
+    "playwright-report",
+    ".agents",
+    ".score-reader-local",
+    "tests/fixtures/score/private",
+    "tests/fixtures/score/generated",
+    "tests/ui-audit/reports"
+  ],
+  "typescript": {
+    "module.sortImportDeclarations": "maintain",
+    "module.sortExportDeclarations": "maintain",
+    "binaryExpression.operatorPosition": "sameLine",
+    "commentLine.forceSpaceAfterSlashes": false,
+    "constructSignature.spaceAfterNewKeyword": true,
+    "constructorType.spaceAfterNewKeyword": true,
+    "arrowFunction.useParentheses": "force",
+    "functionExpression.spaceAfterFunctionKeyword": true,
+    "conditionalExpression.preferSingleLine": true,
+    "jsx.multiLineParens": "prefer",
+    "quoteStyle": "alwaysDouble"
+  },
+  "plugins": [
+    "./node_modules/@dprint/typescript/plugin.wasm",
+    "./node_modules/@dprint/json/plugin.wasm"
+  ]
+}

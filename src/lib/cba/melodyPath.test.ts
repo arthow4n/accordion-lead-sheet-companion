@@ -1,4 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals, ok as assert } from "node:assert/strict";
 import type { MelodyEvent, SpelledPitch } from "../../types/score.ts";
 import { calculateCbaMelodyTransition, solveCbaMelodyPath } from "./melodyPath.ts";
 import { DEFAULT_CBA_KEYBOARD_LAYOUT, getCbaPhysicalLocationsForMidi } from "./keyboardLayout.ts";
@@ -43,7 +44,7 @@ function rest(id: string): MelodyEvent {
   };
 }
 
-Deno.test("CBA melody solver: emits pitch-valid deterministic paths", () => {
+test("CBA melody solver: emits pitch-valid deterministic paths", () => {
   const events = [note("c", 60), note("cs", 61), note("d", 62), note("c-again", 60)];
   const first = solveCbaMelodyPath(events);
   const second = solveCbaMelodyPath(events);
@@ -57,7 +58,7 @@ Deno.test("CBA melody solver: emits pitch-valid deterministic paths", () => {
   }
 });
 
-Deno.test("CBA melody solver: covers every FR-1XB playable MIDI and all pitch classes", () => {
+test("CBA melody solver: covers every FR-1XB playable MIDI and all pitch classes", () => {
   const events = Array.from(
     {
       length: DEFAULT_CBA_KEYBOARD_LAYOUT.playableMidi.highest -
@@ -74,7 +75,7 @@ Deno.test("CBA melody solver: covers every FR-1XB playable MIDI and all pitch cl
   }
 });
 
-Deno.test("CBA melody solver: ties retain the exact physical button and finger", () => {
+test("CBA melody solver: ties retain the exact physical button and finger", () => {
   const result = solveCbaMelodyPath([
     note("tie-start", 60, "start"),
     note("tie-stop", 60, "stop"),
@@ -86,7 +87,7 @@ Deno.test("CBA melody solver: ties retain the exact physical button and finger",
   assertEquals(result.steps[1]?.finger, result.steps[0]?.finger);
 });
 
-Deno.test("CBA melody solver: rests and phrase boundaries reset to the reference anchor", () => {
+test("CBA melody solver: rests and phrase boundaries reset to the reference anchor", () => {
   const result = solveCbaMelodyPath([
     note("before", 60),
     rest("pause"),
@@ -99,7 +100,7 @@ Deno.test("CBA melody solver: rests and phrase boundaries reset to the reference
   assertEquals(result.steps[3]?.transition, undefined);
 });
 
-Deno.test("CBA melody solver: hard locks and malformed ties never fall back to nearest notes", () => {
+test("CBA melody solver: hard locks and malformed ties never fall back to nearest notes", () => {
   const locked = solveCbaMelodyPath([note("locked", 60)], {
     locks: [{ eventId: "locked", row: 1, column: 5, finger: 4 }],
   });
@@ -125,7 +126,7 @@ Deno.test("CBA melody solver: hard locks and malformed ties never fall back to n
   assertEquals(outOfRange.steps, []);
 });
 
-Deno.test("CBA melody solver: signed travel uses repeating auxiliary row offsets", () => {
+test("CBA melody solver: signed travel uses repeating auxiliary row offsets", () => {
   const row3 = getCbaPhysicalLocationsForMidi(DEFAULT_CBA_KEYBOARD_LAYOUT, 62).find((loc) =>
     loc.row === 3
   )!;

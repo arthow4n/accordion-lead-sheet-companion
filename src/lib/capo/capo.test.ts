@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import {
   getPitchClass,
   normalizeRareRoot,
@@ -13,7 +14,7 @@ import {
   transposeChord,
 } from "./enharmonics.ts";
 
-Deno.test("CAPO-01: G + Capo 3 -> Bb (Flat Key, must NOT output A#)", () => {
+test("CAPO-01: G + Capo 3 -> Bb (Flat Key, must NOT output A#)", () => {
   const result = transposeChord("G", 3);
   assertEquals(result.rootPitchClass, 10);
   assertEquals(result.root, "Bb");
@@ -21,7 +22,7 @@ Deno.test("CAPO-01: G + Capo 3 -> Bb (Flat Key, must NOT output A#)", () => {
   assertEquals(result.quality, "major");
 });
 
-Deno.test("CAPO-02: Em + Capo 3 -> Gm (Standard minor transposition)", () => {
+test("CAPO-02: Em + Capo 3 -> Gm (Standard minor transposition)", () => {
   const result = transposeChord("Em", 3);
   assertEquals(result.rootPitchClass, 7);
   assertEquals(result.root, "G");
@@ -29,7 +30,7 @@ Deno.test("CAPO-02: Em + Capo 3 -> Gm (Standard minor transposition)", () => {
   assertEquals(result.quality, "minor");
 });
 
-Deno.test("CAPO-03: D/F# + Capo 3 -> F/A (Transposes both root and slash bass)", () => {
+test("CAPO-03: D/F# + Capo 3 -> F/A (Transposes both root and slash bass)", () => {
   const result = transposeChord("D/F#", 3);
   assertEquals(result.rootPitchClass, 5); // F
   assertEquals(result.bassPitchClass, 9); // A
@@ -38,7 +39,7 @@ Deno.test("CAPO-03: D/F# + Capo 3 -> F/A (Transposes both root and slash bass)",
   assertEquals(result.raw, "F/A");
 });
 
-Deno.test("CAPO-SPELLING-01: Explicit flats/sharps respell chord roots and slash bass independently", () => {
+test("CAPO-SPELLING-01: Explicit flats/sharps respell chord roots and slash bass independently", () => {
   const parsed = parseChord("C#7/F#");
   const flats = respellParsedChord(parsed, "flats");
   const sharps = respellParsedChord(parseChord("Db7/Gb"), "sharps");
@@ -51,7 +52,7 @@ Deno.test("CAPO-SPELLING-01: Explicit flats/sharps respell chord roots and slash
   assertEquals(respellNoteLabel("Gb7", "sharps"), "F#7");
 });
 
-Deno.test("CAPO-SPELLING-02: Explicit spelling applies after capo transposition and keeps extensions intact", () => {
+test("CAPO-SPELLING-02: Explicit spelling applies after capo transposition and keeps extensions intact", () => {
   const sounding = transposeChord("G7b9", 3);
   const sharpDisplay = respellParsedChord(sounding, "sharps");
   assertEquals(sounding.rootPitchClass, 10);
@@ -60,7 +61,7 @@ Deno.test("CAPO-SPELLING-02: Explicit spelling applies after capo transposition 
   assertEquals(getSoundingKey("G", 3, "sharps"), "A#");
 });
 
-Deno.test("CAPO-04: Cadd9 + Capo 2 -> Dadd9 (Sharp key, extension preserved)", () => {
+test("CAPO-04: Cadd9 + Capo 2 -> Dadd9 (Sharp key, extension preserved)", () => {
   const result = transposeChord("Cadd9", 2);
   assertEquals(result.rootPitchClass, 2);
   assertEquals(result.root, "D");
@@ -68,7 +69,7 @@ Deno.test("CAPO-04: Cadd9 + Capo 2 -> Dadd9 (Sharp key, extension preserved)", (
   assertEquals(result.quality, "add9");
 });
 
-Deno.test("CAPO-05: Amaj7 + Capo 1 -> Bbmaj7 (Major 7th preserved)", () => {
+test("CAPO-05: Amaj7 + Capo 1 -> Bbmaj7 (Major 7th preserved)", () => {
   const result = transposeChord("Amaj7", 1);
   assertEquals(result.rootPitchClass, 10);
   assertEquals(result.root, "Bb");
@@ -76,7 +77,7 @@ Deno.test("CAPO-05: Amaj7 + Capo 1 -> Bbmaj7 (Major 7th preserved)", () => {
   assertEquals(result.quality, "major7");
 });
 
-Deno.test("CAPO-06: F#m7b5 + Capo 4 -> Bbm7b5 (Half-diminished preserved)", () => {
+test("CAPO-06: F#m7b5 + Capo 4 -> Bbm7b5 (Half-diminished preserved)", () => {
   const result = transposeChord("F#m7b5", 4);
   assertEquals(result.rootPitchClass, 10);
   assertEquals(result.root, "Bb");
@@ -84,7 +85,7 @@ Deno.test("CAPO-06: F#m7b5 + Capo 4 -> Bbm7b5 (Half-diminished preserved)", () =
   assertEquals(result.quality, "halfDiminished7");
 });
 
-Deno.test("CAPO-07: C + Capo 0 -> C (Identity transform)", () => {
+test("CAPO-07: C + Capo 0 -> C (Identity transform)", () => {
   const result = transposeChord("C", 0);
   assertEquals(result.rootPitchClass, 0);
   assertEquals(result.root, "C");
@@ -92,7 +93,7 @@ Deno.test("CAPO-07: C + Capo 0 -> C (Identity transform)", () => {
   assertEquals(result.quality, "major");
 });
 
-Deno.test("CAPO-08: C + Capo 11 -> B (11 frets = 1 semitone down)", () => {
+test("CAPO-08: C + Capo 11 -> B (11 frets = 1 semitone down)", () => {
   const result = transposeChord("C", 11);
   assertEquals(result.rootPitchClass, 11);
   assertEquals(result.root, "B");
@@ -100,7 +101,7 @@ Deno.test("CAPO-08: C + Capo 11 -> B (11 frets = 1 semitone down)", () => {
   assertEquals(result.quality, "major");
 });
 
-Deno.test("Edge Cases: Capo modulo normalization (capo 15 = capo 3, capo -1 = capo 11)", () => {
+test("Edge Cases: Capo modulo normalization (capo 15 = capo 3, capo -1 = capo 11)", () => {
   const res15 = transposeChord("G", 15);
   assertEquals(res15.raw, "Bb");
 
@@ -108,14 +109,14 @@ Deno.test("Edge Cases: Capo modulo normalization (capo 15 = capo 3, capo -1 = ca
   assertEquals(resNeg.raw, "B");
 });
 
-Deno.test("Key signature context: G + Capo 2 in Key of D -> A", () => {
+test("Key signature context: G + Capo 2 in Key of D -> A", () => {
   const soundingKey = getSoundingKey("D", 2);
   assertEquals(soundingKey, "E");
   const result = transposeChord("G", 2, "D");
   assertEquals(result.raw, "A");
 });
 
-Deno.test("Slash chord parsing and format preservation", () => {
+test("Slash chord parsing and format preservation", () => {
   const parsed = parseChord("Am/G");
   assertEquals(parsed.root, "A");
   assertEquals(parsed.quality, "minor");
@@ -127,7 +128,7 @@ Deno.test("Slash chord parsing and format preservation", () => {
   assertEquals(transposed.raw, "Bm/A");
 });
 
-Deno.test("CAPO-09: Canonical normalization of rare roots (Cb -> B, Fb -> E, B# -> C, E# -> F)", () => {
+test("CAPO-09: Canonical normalization of rare roots (Cb -> B, Fb -> E, B# -> C, E# -> F)", () => {
   assertEquals(normalizeRareRoot("Cb"), "B");
   assertEquals(normalizeRareRoot("Fb"), "E");
   assertEquals(normalizeRareRoot("B#"), "C");
@@ -171,7 +172,7 @@ Deno.test("CAPO-09: Canonical normalization of rare roots (Cb -> B, Fb -> E, B# 
   assertEquals(transCb.raw, "B");
 });
 
-Deno.test("CAPO-10: Unicode accidentals normalization (B♭, F♯, C/E♭, G7(♭5), C7(♯11))", () => {
+test("CAPO-10: Unicode accidentals normalization (B♭, F♯, C/E♭, G7(♭5), C7(♯11))", () => {
   assertEquals(normalizeUnicodeAccidentals("B♭maj7"), "Bbmaj7");
   assertEquals(normalizeUnicodeAccidentals("F♯m7"), "F#m7");
   assertEquals(normalizeUnicodeAccidentals("C/E♭"), "C/Eb");
@@ -200,7 +201,7 @@ Deno.test("CAPO-10: Unicode accidentals normalization (B♭, F♯, C/E♭, G7(�
   assertEquals(s11.quality, "sevenSharpEleven");
 });
 
-Deno.test("CAPO-11: Key signature strict harmonic spelling compliance", () => {
+test("CAPO-11: Key signature strict harmonic spelling compliance", () => {
   // Flat keys always use flats
   assertEquals(isFlatKey("F"), true);
   assertEquals(isFlatKey("Bb"), true);
@@ -239,7 +240,7 @@ Deno.test("CAPO-11: Key signature strict harmonic spelling compliance", () => {
   assertEquals(aCapo4.root, "Db");
 });
 
-Deno.test("CAPO-12: Extended jazz chords transpositions", () => {
+test("CAPO-12: Extended jazz chords transpositions", () => {
   // C7#11 + Capo 2 -> D7#11
   const c7sharp11Trans = transposeChord("C7#11", 2);
   assertEquals(c7sharp11Trans.root, "D");

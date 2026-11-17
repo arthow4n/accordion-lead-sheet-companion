@@ -1,0 +1,2 @@
+# Optional local Worker secret for server-side Gemini scan
+GOOGLE_GENAI_API_KEY=

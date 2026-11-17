@@ -139,14 +139,14 @@ All commands executed from repository root and verified passing:
 
 ```bash
 # 1. Format verification (148 files checked)
-deno fmt --check
+npm run fmt:check
 # Result: Checked 148 files (0 errors)
 
 # 2. Static analysis & linter (128 files checked)
-deno lint
+npm run lint
 # Result: Checked 128 files (0 errors or warnings)
 
 # 3. Hermetic unit, component, UX, & E2E test suite (100% passing tests)
-deno task test
+npm test
 # Result: ok | 440 passed | 0 failed (8s)
 ```

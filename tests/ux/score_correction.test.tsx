@@ -1,9 +1,10 @@
+import { test } from "vitest";
 /**
  * UX Tests for Score Review Queue and Non-Friction Play Flow.
  * Path: tests/ux/score_correction.test.tsx
  */
 
-import { assertStringIncludes } from "@std/assert";
+import { assertStringIncludes } from "../assertions.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ScoreReviewQueue } from "../../src/components/ScoreReviewQueue.tsx";
 import { LeadSheetReader } from "../../src/components/LeadSheetReader.tsx";
@@ -57,7 +58,7 @@ function createScoreWithActionableIssues(): ScoreDocument {
   };
 }
 
-Deno.test("UX-CORRECT-01: ScoreReviewQueue renders actionable issue count and review trigger", () => {
+test("UX-CORRECT-01: ScoreReviewQueue renders actionable issue count and review trigger", () => {
   const doc = createScoreWithActionableIssues();
   const html = renderToStaticMarkup(
     <ScoreReviewQueue
@@ -70,7 +71,7 @@ Deno.test("UX-CORRECT-01: ScoreReviewQueue renders actionable issue count and re
   assertStringIncludes(html, "Review Issues");
 });
 
-Deno.test("UX-CORRECT-02: LeadSheetReader integrates ScoreReviewQueue alongside measure guidance", () => {
+test("UX-CORRECT-02: LeadSheetReader integrates ScoreReviewQueue alongside measure guidance", () => {
   const doc = createScoreWithActionableIssues();
   const html = renderToStaticMarkup(
     <LeadSheetReader
@@ -93,7 +94,7 @@ Deno.test("UX-CORRECT-02: LeadSheetReader integrates ScoreReviewQueue alongside 
   assertStringIncludes(html, "Actionable Review Queue");
 });
 
-Deno.test("UX-CORRECT-03: ScoreReviewQueue interactive controls maintain >= 44x44px touch targets (HIGH-02)", () => {
+test("UX-CORRECT-03: ScoreReviewQueue interactive controls maintain >= 44x44px touch targets (HIGH-02)", () => {
   const doc = createScoreWithActionableIssues();
   const html = renderToStaticMarkup(
     <ScoreReviewQueue

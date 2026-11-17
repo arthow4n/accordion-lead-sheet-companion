@@ -8,28 +8,20 @@
  * 3. Mixed chord/lyric lines on narrow mobile viewports (360px, 390px, 430px) at text-2xl. Zero horizontal overflow.
  */
 
-import { join } from "jsr:@std/path@^1.0.0";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Environment Paths
-const DENO_BIN = "/home/hevar/.deno/bin";
-const NVM_BIN = "/home/hevar/.nvm/versions/node/v26.3.0/bin";
-const CURRENT_PATH = Deno.env.get("PATH") || "";
-const AUGMENTED_PATH = `${DENO_BIN}:${NVM_BIN}:${CURRENT_PATH}`;
-const LD_PATH =
-  "/home/hevar/.local/libs/usr/lib/x86_64-linux-gnu:/home/hevar/.local/libs/lib/x86_64-linux-gnu:" +
-  (Deno.env.get("LD_LIBRARY_PATH") || "");
-
-Deno.env.set("PATH", AUGMENTED_PATH);
-Deno.env.set("LD_LIBRARY_PATH", LD_PATH);
-Deno.env.set("AGENT_BROWSER_ENGINE", "chrome");
 
 const APP_URL = "http://127.0.0.1:5173";
-const SCREENSHOT_DIR = join(Deno.cwd(), "tests/ui-audit/screenshots");
+const SCREENSHOT_DIR = join(process.cwd(), "tests/ui-audit/screenshots");
 const SESSION_ID = `challenger-m3-${Date.now()}`;
 
-await Deno.mkdir(SCREENSHOT_DIR, { recursive: true });
+await mkdir(SCREENSHOT_DIR, { recursive: true });
 
-let serverProcess: Deno.ChildProcess | null = null;
+let serverProcess: ChildProcess | null = null;
 
 async function ensureDevServer(): Promise<void> {
   try {
@@ -43,14 +35,10 @@ async function ensureDevServer(): Promise<void> {
   }
 
   console.log(`[DevServer] Spawning Vite development server on ${APP_URL}...`);
-  const cmd = new Deno.Command(Deno.execPath(), {
-    args: ["task", "dev", "--port", "5173", "--host", "127.0.0.1"],
-    stdout: "null",
-    stderr: "inherit",
-    env: { PATH: AUGMENTED_PATH },
+  const vite = fileURLToPath(new URL("../../node_modules/vite/bin/vite.js", import.meta.url));
+  serverProcess = spawn(process.execPath, [vite, "--port", "5173", "--host", "127.0.0.1"], {
+    stdio: ["ignore", "ignore", "inherit"],
   });
-
-  serverProcess = cmd.spawn();
 
   for (let i = 0; i < 24; i++) {
     await new Promise((r) => setTimeout(r, 500));
@@ -71,21 +59,15 @@ async function ensureDevServer(): Promise<void> {
 async function runBrowserCmd(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; code: number }> {
-  const cmd = new Deno.Command("agent-browser", {
-    args: ["--session", SESSION_ID, ...args],
-    env: {
-      PATH: AUGMENTED_PATH,
-      LD_LIBRARY_PATH: LD_PATH,
-      AGENT_BROWSER_ENGINE: "chrome",
-    },
-    stdout: "piped",
-    stderr: "piped",
+  return await new Promise((resolve) => {
+    execFile("agent-browser", ["--session", SESSION_ID, ...args], (error, stdout, stderr) => {
+      resolve({
+        stdout: stdout.trim(),
+        stderr: stderr.trim() || error?.message || "",
+        code: typeof error?.code === "number" ? error.code : error ? 1 : 0,
+      });
+    });
   });
-
-  const output = await cmd.output();
-  const stdout = new TextDecoder().decode(output.stdout).trim();
-  const stderr = new TextDecoder().decode(output.stderr).trim();
-  return { stdout, stderr, code: output.code };
 }
 
 async function evalJs<T = unknown>(code: string): Promise<T> {
@@ -483,12 +465,12 @@ async function runMilestone3ChallengerSuite() {
     console.error(
       `\n❌ VERDICT: REQUEST_CHANGES (${failedTests} assertions failed)`,
     );
-    Deno.exit(1);
+    process.exit(1);
   } else {
     console.log(
       `\n🎉 VERDICT: APPROVE (100% of ${totalTests} adversarial assertions passed!)`,
     );
-    Deno.exit(0);
+    process.exit(0);
   }
 }
 

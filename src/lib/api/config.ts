@@ -3,9 +3,11 @@
  * Path: src/lib/api/config.ts
  */
 
+export const PRODUCTION_API_BASE_URL =
+  "https://accordion-lead-sheet-companion.arthow4n.workers.dev";
+
 export function getApiBaseUrl(): string {
-  const envBase = typeof import.meta !== "undefined" &&
-    (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL;
+  const envBase = import.meta.env?.VITE_API_BASE_URL;
 
   if (envBase && typeof envBase === "string" && envBase.trim().length > 0) {
     return envBase.trim().replace(/\/+$/, "");
@@ -19,5 +21,5 @@ export function getApiBaseUrl(): string {
     return "";
   }
 
-  return "https://accordion-lead-sheet-companion.arthow4n.deno.net";
+  return PRODUCTION_API_BASE_URL;
 }

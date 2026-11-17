@@ -1,4 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals, ok as assert } from "node:assert/strict";
 import type { CbaKeyboardLayout } from "../../types/index.ts";
 import type { SpelledPitch } from "../../types/score.ts";
 import {
@@ -25,7 +26,7 @@ function pitch(step: SpelledPitch["step"], octave: number, alter = 0): SpelledPi
   return { step, octave, alter };
 }
 
-Deno.test("CBA keyboard profile: FR-1XB bounds and anchor are versioned", () => {
+test("CBA keyboard profile: FR-1XB bounds and anchor are versioned", () => {
   assertEquals(profile.id, "roland-fr-1xb-c-griff-europe-v1");
   assertEquals(profile.displayName, "Roland FR-1XB · C-Griff Europe");
   assertEquals(profile.hand, "right");
@@ -58,7 +59,7 @@ Deno.test("CBA keyboard profile: FR-1XB bounds and anchor are versioned", () => 
   ]);
 });
 
-Deno.test("CBA keyboard profile: every physical coordinate round-trips to one MIDI pitch", () => {
+test("CBA keyboard profile: every physical coordinate round-trips to one MIDI pitch", () => {
   const seen = new Set<string>();
   for (const bounds of profile.rows) {
     for (let column = bounds.minColumn; column <= bounds.maxColumn; column++) {
@@ -79,7 +80,7 @@ Deno.test("CBA keyboard profile: every physical coordinate round-trips to one MI
   assertEquals(seen.size, 62);
 });
 
-Deno.test("CBA keyboard profile: all chromatic MIDI notes in the range have candidates", () => {
+test("CBA keyboard profile: all chromatic MIDI notes in the range have candidates", () => {
   for (let midi = profile.playableMidi.lowest; midi <= profile.playableMidi.highest; midi++) {
     const candidates = getCbaPhysicalLocationsForMidi(profile, midi);
     assert(candidates.length > 0, `missing candidate for MIDI ${midi}`);
@@ -90,7 +91,7 @@ Deno.test("CBA keyboard profile: all chromatic MIDI notes in the range have cand
   }
 });
 
-Deno.test("CBA keyboard profile: duplicated rows provide stable auxiliary candidates", () => {
+test("CBA keyboard profile: duplicated rows provide stable auxiliary candidates", () => {
   for (let column = 3; column <= 14; column++) {
     const core = column >= 4
       ? getCbaPhysicalLocationsForMidi(profile, midiAt(profile, 1, column))
@@ -111,7 +112,7 @@ Deno.test("CBA keyboard profile: duplicated rows provide stable auxiliary candid
   }
 });
 
-Deno.test("CBA keyboard profile: spelled pitches and explicit transposition resolve without relabeling", () => {
+test("CBA keyboard profile: spelled pitches and explicit transposition resolve without relabeling", () => {
   assertEquals(spelledPitchToMidi(pitch("C", 4)), 60);
   assertEquals(spelledPitchToMidi(pitch("F", 3, 1)), 54);
   assertEquals(spelledPitchToMidi(pitch("B", 3, -1)), 58);
@@ -131,7 +132,7 @@ Deno.test("CBA keyboard profile: spelled pitches and explicit transposition reso
   assertEquals(getCbaPhysicalLocationsForPitch(profile, pitch("C", 2)), []);
 });
 
-Deno.test("CBA keyboard profile: three-row core projection keeps the same pitch geometry", () => {
+test("CBA keyboard profile: three-row core projection keeps the same pitch geometry", () => {
   const threeRowLayout: CbaKeyboardLayout = {
     ...profile,
     id: "abstract-c-system-core-3row-v1",
@@ -164,7 +165,7 @@ Deno.test("CBA keyboard profile: three-row core projection keeps the same pitch 
   }
 });
 
-Deno.test("CBA keyboard profile: finite coordinates and metadata are validated", () => {
+test("CBA keyboard profile: finite coordinates and metadata are validated", () => {
   assertEquals(getCbaMidiAt(profile, 1, 3), undefined);
   assertEquals(getCbaMidiAt(profile, 5, 15), undefined);
   assertEquals(getCbaMidiAt(profile, 1, 5.5), undefined);
@@ -201,7 +202,7 @@ Deno.test("CBA keyboard profile: finite coordinates and metadata are validated",
   );
 });
 
-Deno.test("CBA keyboard profile: melodic contour fixtures enumerate deterministic candidate paths", () => {
+test("CBA keyboard profile: melodic contour fixtures enumerate deterministic candidate paths", () => {
   const allMidi = Array.from(
     { length: profile.playableMidi.highest - profile.playableMidi.lowest + 1 },
     (_, index) => profile.playableMidi.lowest + index,

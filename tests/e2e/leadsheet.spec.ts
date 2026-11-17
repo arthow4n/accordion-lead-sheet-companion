@@ -1,4 +1,10 @@
-import { assertEquals, assertExists, assertNotEquals } from "@std/assert";
+import { readFile } from "node:fs/promises";
+import { test } from "vitest";
+import {
+  deepStrictEqual as assertEquals,
+  notDeepStrictEqual as assertNotEquals,
+} from "node:assert/strict";
+import { assertExists } from "../assertions.ts";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { PRESET_SONGS } from "../../src/lib/storage/presets.ts";
@@ -31,7 +37,7 @@ import type { ChordDetail, LeadSheetLine, LeadSheetSong, ViewMode } from "../../
 // Viewport matrix: 360px (Small Android), 375px (iPhone SE/8), 390px (iPhone 14), 430px (iPhone 15 Pro Max)
 // ============================================================================
 
-Deno.test("E2E-01: Mobile Reader Segmented Layout across mobile viewports (360px, 375px, 390px, 430px)", () => {
+test("E2E-01: Mobile Reader Segmented Layout across mobile viewports (360px, 375px, 390px, 430px)", () => {
   const viewports = [
     { name: "Small Android (Galaxy S8/A-series)", width: 360, height: 740 },
     { name: "iPhone SE / 8 Standard", width: 375, height: 667 },
@@ -118,7 +124,7 @@ Deno.test("E2E-01: Mobile Reader Segmented Layout across mobile viewports (360px
 // Enharmonic checks: G -> A -> Bb with key-appropriate accidentals
 // ============================================================================
 
-Deno.test("E2E-02: Real-time Capo Transposition (Capo 0 -> 2 -> 3 with enharmonic spellings)", () => {
+test("E2E-02: Real-time Capo Transposition (Capo 0 -> 2 -> 3 with enharmonic spellings)", () => {
   const countryRoads = PRESET_SONGS.find((s) => s.id === "preset_country_roads")!;
   assertExists(countryRoads);
 
@@ -220,7 +226,7 @@ Deno.test("E2E-02: Real-time Capo Transposition (Capo 0 -> 2 -> 3 with enharmoni
 // Prevents viewport jump (e.stopPropagation)
 // ============================================================================
 
-Deno.test("E2E-03: MiniGripDrawer Bottom Sheet Interaction (Stradella Counter-Bass + CBA Grid + stopPropagation)", () => {
+test("E2E-03: MiniGripDrawer Bottom Sheet Interaction (Stradella Counter-Bass + CBA Grid + stopPropagation)", () => {
   let stopPropagationCalled = false;
   let selectedChord: ChordDetail | string | null = null;
 
@@ -319,7 +325,7 @@ Deno.test("E2E-03: MiniGripDrawer Bottom Sheet Interaction (Stradella Counter-Ba
 // Ingests lead sheet text with capo headers, verifies capo regex and token parsing
 // ============================================================================
 
-Deno.test("E2E-04: 1-Tap Clipboard Ingestion Modal (Capo regex, ChordLyricSegment parsing, Songbook integration)", async () => {
+test("E2E-04: 1-Tap Clipboard Ingestion Modal (Capo regex, ChordLyricSegment parsing, Songbook integration)", async () => {
   // 1. Sample tab with explicit Capo header and 2-line guitar tab format
   const sampleGuitarTab = `Capo: 2
 Title: Bella Ciao Custom
@@ -412,7 +418,7 @@ E ho trovato l'invasor`;
 // Initiates auto-scroll, simulates touch pointerdown, verifies pause & 3.5s resume
 // ============================================================================
 
-Deno.test("E2E-05: Delta-Time Auto-Scroll Engine & Touch-Pause Gesture (3.5s auto-resume timer)", async () => {
+test("E2E-05: Delta-Time Auto-Scroll Engine & Touch-Pause Gesture (3.5s auto-resume timer)", async () => {
   // 1. Delta-time scrolling math validation
   const baseSpeedPxPerSec = 35;
   const speedMultipliers = [0.5, 1.0, 1.5, 2.0, 3.0];
@@ -495,7 +501,7 @@ Deno.test("E2E-05: Delta-Time Auto-Scroll Engine & Touch-Pause Gesture (3.5s aut
 // IndexedDB storage via idb-keyval, CRUD operations, PWA precache verification
 // ============================================================================
 
-Deno.test("E2E-06: Offline Songbook Persistence & Airplane Mode (IndexedDB CRUD + PWA Precache Readiness)", async () => {
+test("E2E-06: Offline Songbook Persistence & Airplane Mode (IndexedDB CRUD + PWA Precache Readiness)", async () => {
   // 1. Initialize fresh songbook with presets
   await clearSongbook();
   const presets = await initPresets();
@@ -570,11 +576,11 @@ Deno.test("E2E-06: Offline Songbook Persistence & Airplane Mode (IndexedDB CRUD 
 
   // 7. Verify PWA Service Worker precache bundle exists in dist/ or config in vite.config.ts
   try {
-    const swContent = await Deno.readTextFile("./dist/sw.js");
+    const swContent = await readFile("./dist/sw.js", "utf8");
     assertExists(swContent, "dist/sw.js service worker must exist for offline PWA");
     assertEquals(swContent.includes("workbox") || swContent.includes("precache"), true);
   } catch (_err) {
-    const viteConfig = await Deno.readTextFile("./vite.config.ts");
+    const viteConfig = await readFile("./vite.config.ts", "utf8");
     assertEquals(
       viteConfig.includes("VitePWA"),
       true,

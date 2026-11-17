@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "no-unused-vars": [
+      "warn",
+      {
+        "caughtErrorsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "no-useless-escape": "off"
+  }
+}

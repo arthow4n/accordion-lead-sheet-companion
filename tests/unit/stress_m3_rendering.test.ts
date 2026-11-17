@@ -1,4 +1,6 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "../assertions.ts";
 import React, { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -27,7 +29,7 @@ interface MockReactElement {
 // 1. COLLAPSIBLE TAB STAVES & MULTI-LINE TAB BLOCKS
 // ============================================================================
 
-Deno.test("STRESS-TAB-01: Stairway to Heaven 6-line ASCII tab staves render in monospace pre block", () => {
+test("STRESS-TAB-01: Stairway to Heaven 6-line ASCII tab staves render in monospace pre block", () => {
   const stairwayTabBlock = [
     "e|-------5-7-----7-8-----8-2-----2-0---------0-------------------------|",
     "B|-----5-----5-------5-------3-------1---1-----1---1-0-1-1-------------|",
@@ -58,7 +60,7 @@ Deno.test("STRESS-TAB-01: Stairway to Heaven 6-line ASCII tab staves render in m
   }
 });
 
-Deno.test("STRESS-TAB-02: TabStaffLine collapsible state toggle [Hide] vs [Show]", () => {
+test("STRESS-TAB-02: TabStaffLine collapsible state toggle [Hide] vs [Show]", () => {
   const dustInTheWindTab = [
     "e|---0-------0---|---0-------0---|",
     "B|-----1-------1-|-----3-------3-|",
@@ -78,7 +80,7 @@ Deno.test("STRESS-TAB-02: TabStaffLine collapsible state toggle [Hide] vs [Show]
   const expandedHtml = renderToStaticMarkup(
     React.createElement(TabStaffLine, { line: tabLine, defaultExpanded: true }),
   );
-  assertEquals(expandedHtml.includes('aria-expanded="true"'), true);
+  assertEquals(expandedHtml.includes("aria-expanded=\"true\""), true);
   assertEquals(expandedHtml.includes("[Hide]"), true);
   assertEquals(expandedHtml.includes("<pre"), true);
   assertEquals(expandedHtml.includes("e|---0-------0---|"), true);
@@ -87,7 +89,7 @@ Deno.test("STRESS-TAB-02: TabStaffLine collapsible state toggle [Hide] vs [Show]
   const collapsedHtml = renderToStaticMarkup(
     React.createElement(TabStaffLine, { line: tabLine, defaultExpanded: false }),
   );
-  assertEquals(collapsedHtml.includes('aria-expanded="false"'), true);
+  assertEquals(collapsedHtml.includes("aria-expanded=\"false\""), true);
   assertEquals(collapsedHtml.includes("[Show]"), true);
   assertEquals(collapsedHtml.includes("<pre"), false);
   assertEquals(collapsedHtml.includes("e|---0-------0---|"), false);
@@ -112,7 +114,7 @@ Deno.test("STRESS-TAB-02: TabStaffLine collapsible state toggle [Hide] vs [Show]
   assertEquals(initialHtml.includes("<pre"), true);
 });
 
-Deno.test("STRESS-TAB-03: Tab staves with complex guitar techniques are preserved without corruption", () => {
+test("STRESS-TAB-03: Tab staves with complex guitar techniques are preserved without corruption", () => {
   const techniqueTab = [
     "e|--12p10h12--15b17r15~~--/14\\12--x-x-(12)--t17p12--v--^--|",
     "B|-------------------------------------------------------|",
@@ -140,7 +142,7 @@ Deno.test("STRESS-TAB-03: Tab staves with complex guitar techniques are preserve
   assertEquals(html.includes("t17p12"), true);
 });
 
-Deno.test("STRESS-TAB-04: TabStaffLine falls back cleanly to rawText when tabBlock is absent or empty", () => {
+test("STRESS-TAB-04: TabStaffLine falls back cleanly to rawText when tabBlock is absent or empty", () => {
   const rawTextTab = "e|---0---|---1---|\nB|---1---|---1---|\nG|---0---|---2---|";
   const fallbackLine: LeadSheetLine = {
     type: "tab_staff",
@@ -160,7 +162,7 @@ Deno.test("STRESS-TAB-04: TabStaffLine falls back cleanly to rawText when tabBlo
 // 2. DENSE MEASURE BAR LINES & RHYTHMIC GRID GUTTERS
 // ============================================================================
 
-Deno.test("STRESS-MEASURE-01: Dense measure bar lines (| Bb6 C7 | F7 Bb7 |) render with rhythmic gutters without empty syllable boxes", () => {
+test("STRESS-MEASURE-01: Dense measure bar lines (| Bb6 C7 | F7 Bb7 |) render with rhythmic gutters without empty syllable boxes", () => {
   const measureSegments = [
     { lyric: "|" },
     { chord: "Bb6", lyric: "" },
@@ -197,7 +199,7 @@ Deno.test("STRESS-MEASURE-01: Dense measure bar lines (| Bb6 C7 | F7 Bb7 |) rend
   assertEquals(html.includes("\u00A0"), false);
 });
 
-Deno.test("STRESS-MEASURE-02: Repeat markings (|: C G :| Am F ||) render intact delimiters", () => {
+test("STRESS-MEASURE-02: Repeat markings (|: C G :| Am F ||) render intact delimiters", () => {
   const repeatSegments = [
     { lyric: "|:" },
     { chord: "C", lyric: "" },
@@ -227,7 +229,7 @@ Deno.test("STRESS-MEASURE-02: Repeat markings (|: C G :| Am F ||) render intact 
   assertEquals(html.includes("lyric-syllable"), false);
 });
 
-Deno.test("STRESS-MEASURE-03: Dense measure bars with complex altered jazz chords (| Gb7(#11) Cb9 | G7b5 C13b9 |)", () => {
+test("STRESS-MEASURE-03: Dense measure bars with complex altered jazz chords (| Gb7(#11) Cb9 | G7b5 C13b9 |)", () => {
   const jazzSegments = [
     { lyric: "|" },
     { chord: enrichChord("Gb7(#11)", 0), lyric: "" },
@@ -258,7 +260,7 @@ Deno.test("STRESS-MEASURE-03: Dense measure bars with complex altered jazz chord
   assertEquals(html.includes("lyric-syllable"), false);
 });
 
-Deno.test("STRESS-MEASURE-04: Stepwise chromatic slash lines in measure bars render without vertical jumping", () => {
+test("STRESS-MEASURE-04: Stepwise chromatic slash lines in measure bars render without vertical jumping", () => {
   const chromaticSegments = [
     { lyric: "|" },
     { chord: "C", lyric: "" },
@@ -293,7 +295,7 @@ Deno.test("STRESS-MEASURE-04: Stepwise chromatic slash lines in measure bars ren
   assertEquals(html.includes("lyric-syllable"), false);
 });
 
-Deno.test("STRESS-MEASURE-05: isDenseMeasureLine distinguishes pure measure lines from vocal lyric lines", () => {
+test("STRESS-MEASURE-05: isDenseMeasureLine distinguishes pure measure lines from vocal lyric lines", () => {
   // Pure measure line -> TRUE
   assertEquals(
     isDenseMeasureLine([
@@ -339,7 +341,7 @@ Deno.test("STRESS-MEASURE-05: isDenseMeasureLine distinguishes pure measure line
 // 3. RESPONSIVE MOBILE VIEWPORTS & TIGHT SYLLABLE-CHORD COUPLING
 // ============================================================================
 
-Deno.test("STRESS-MOBILE-01: LineRenderer standard chord-lyric line maintains atomic column pairs", () => {
+test("STRESS-MOBILE-01: LineRenderer standard chord-lyric line maintains atomic column pairs", () => {
   const lyricSegments = [
     { chord: "C", lyric: "Hello " },
     { chord: "G", lyric: "world, " },
@@ -367,7 +369,7 @@ Deno.test("STRESS-MOBILE-01: LineRenderer standard chord-lyric line maintains at
   }
 });
 
-Deno.test("STRESS-MOBILE-02: Lyric syllables have word wrapping and overflow protection classes", () => {
+test("STRESS-MOBILE-02: Lyric syllables have word wrapping and overflow protection classes", () => {
   const songText =
     `[G]Supercalifragilisticexpialidocious [D]even though the sound of it is [Em]something quite atrocious`;
   const parsed = parseLeadSheet(songText, 0);
@@ -389,7 +391,7 @@ Deno.test("STRESS-MOBILE-02: Lyric syllables have word wrapping and overflow pro
   assertEquals(html.includes("Supercalifragilisticexpialidocious"), true);
 });
 
-Deno.test("STRESS-MOBILE-03: Typography font size classes propagate from LeadSheetReader to LineRenderer", () => {
+test("STRESS-MOBILE-03: Typography font size classes propagate from LeadSheetReader to LineRenderer", () => {
   const song: LeadSheetSong = {
     id: "font_test",
     title: "Font Size Propagation Test",
@@ -420,7 +422,7 @@ Deno.test("STRESS-MOBILE-03: Typography font size classes propagate from LeadShe
   }
 });
 
-Deno.test("STRESS-MOBILE-04: Capo transpositions reactively enrich chord badges across standard and measure lines", () => {
+test("STRESS-MOBILE-04: Capo transpositions reactively enrich chord badges across standard and measure lines", () => {
   const songText = `[Verse 1]
 [G]Take me [D]home, [Em]country [C]roads
 | G D | Em C |`;
@@ -453,7 +455,7 @@ Deno.test("STRESS-MOBILE-04: Capo transpositions reactively enrich chord badges 
   assertEquals(capo3Html.includes("Eb"), true);
 });
 
-Deno.test("STRESS-MOBILE-05: ChordBadge touch targets (>= 44x44px) and stopPropagation across Stradella, CBA, and Dual modes", () => {
+test("STRESS-MOBILE-05: ChordBadge touch targets (>= 44x44px) and stopPropagation across Stradella, CBA, and Dual modes", () => {
   for (const mode of ["stradella", "cba", "dual"] as const) {
     let stopped = false;
     let selected: string | ChordDetail | null = null;

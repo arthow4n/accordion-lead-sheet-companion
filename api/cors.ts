@@ -1,5 +1,5 @@
 /**
- * Shared CORS helper for Deno Deploy endpoints
+ * Shared CORS helper for Cloudflare Workers endpoints
  * Path: api/cors.ts
  */
 
@@ -10,7 +10,8 @@
 export function getCorsHeaders(
   req: Request,
   allowedMethods = "GET, OPTIONS",
-): HeadersInit | null {
+  allowedHeaders = "Content-Type",
+): Record<string, string> | null {
   const origin = req.headers.get("origin");
 
   // Non-browser / direct CLI requests (curl, server-to-server) without Origin header
@@ -18,7 +19,7 @@ export function getCorsHeaders(
     return {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": allowedMethods,
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": allowedHeaders,
     };
   }
 
@@ -33,7 +34,7 @@ export function getCorsHeaders(
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": allowedMethods,
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": allowedHeaders,
     "Vary": "Origin",
   };
 }

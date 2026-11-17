@@ -1,10 +1,12 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "../../../tests/assertions.ts";
 import type { ChordDetail, LeadSheetLine } from "../../types/index.ts";
 import { extractCapoFret, parseChordPro, parseLeadSheetText } from "./tokenizer.ts";
 import { expandTabs, isChordLine, isChordToken, isTabStaffLine } from "./twoline.ts";
 import { parseChord } from "../capo/transposition.ts";
 
-Deno.test("PARSE-01: preserves exact syllable anchoring for 2-line guitar tab", () => {
+test("PARSE-01: preserves exact syllable anchoring for 2-line guitar tab", () => {
   const input = [
     "G          Em          D/F#",
     "Country    roads,      take me home",
@@ -30,7 +32,7 @@ Deno.test("PARSE-01: preserves exact syllable anchoring for 2-line guitar tab", 
   assertEquals(segments[2].lyric, "take me home");
 });
 
-Deno.test("PARSE-02: parses ChordPro format into identical segments", () => {
+test("PARSE-02: parses ChordPro format into identical segments", () => {
   const input = "[G]Country [Em]roads, [D/F#]take me home";
   const result = parseChordPro(input, 0);
   const lines = result.lines as LeadSheetLine[];
@@ -52,7 +54,7 @@ Deno.test("PARSE-02: parses ChordPro format into identical segments", () => {
   assertEquals(segments[2].lyric, "take me home");
 });
 
-Deno.test("PARSE-03: groups contiguous guitar tab lines into single tab_staff block", () => {
+test("PARSE-03: groups contiguous guitar tab lines into single tab_staff block", () => {
   const input = "e|---0---2---3---|\nB|---1---3---0---|";
   const result = parseLeadSheetText(input, 0);
   const lines = result.lines as LeadSheetLine[];
@@ -64,7 +66,7 @@ Deno.test("PARSE-03: groups contiguous guitar tab lines into single tab_staff bl
   assertEquals(lines[0].tabBlock?.[1], "B|---1---3---0---|");
 });
 
-Deno.test("PARSE-04: correctly parses capo header variants across languages", () => {
+test("PARSE-04: correctly parses capo header variants across languages", () => {
   const testCases: Array<[string, number]> = [
     ["Capo 3", 3],
     ["Capo: 3rd fret", 3],
@@ -88,13 +90,13 @@ Deno.test("PARSE-04: correctly parses capo header variants across languages", ()
   }
 });
 
-Deno.test("Tab expansion preserves spatial columns", () => {
+test("Tab expansion preserves spatial columns", () => {
   const line = "\tG\tEm";
   const expanded = expandTabs(line, 4);
   assertEquals(expanded, "    G   Em");
 });
 
-Deno.test("Section header parsing in 2-line sheet", () => {
+test("Section header parsing in 2-line sheet", () => {
   const input = [
     "[Verse 1]",
     "G          Em",
@@ -110,7 +112,7 @@ Deno.test("Section header parsing in 2-line sheet", () => {
   assertEquals(lines[1].segments?.length, 2);
 });
 
-Deno.test("PARSE-05: parses consecutive ChordPro brackets without whitespace", () => {
+test("PARSE-05: parses consecutive ChordPro brackets without whitespace", () => {
   const input = "[G][Em][C][D]Take me home";
   const result = parseChordPro(input, 0);
   const lines = result.lines as LeadSheetLine[];
@@ -136,7 +138,7 @@ Deno.test("PARSE-05: parses consecutive ChordPro brackets without whitespace", (
   assertEquals(segments[3].lyric, "Take me home");
 });
 
-Deno.test("PARSE-06: recognizes international accordion repertoire section headers", () => {
+test("PARSE-06: recognizes international accordion repertoire section headers", () => {
   const intlHeaders = [
     "[Refrão]",
     "[Couplet 1]",
@@ -170,7 +172,7 @@ Deno.test("PARSE-06: recognizes international accordion repertoire section heade
 // Extended Tab Archetypes & Tokenizer Tests (R1 Requirements)
 // ============================================================================
 
-Deno.test("PARSE-07: recognizes parenthesized jazz chord extensions & alterations", () => {
+test("PARSE-07: recognizes parenthesized jazz chord extensions & alterations", () => {
   const jazzChords = [
     "Gb7(#11)",
     "G13b9",
@@ -225,7 +227,7 @@ Deno.test("PARSE-07: recognizes parenthesized jazz chord extensions & alteration
   assertEquals(cpSeg0.raw, "Gb7(#11)");
 });
 
-Deno.test("PARSE-08: multi-section measure bars delimiter handling (| Bb6 C7 | F7 Bb7 |)", () => {
+test("PARSE-08: multi-section measure bars delimiter handling (| Bb6 C7 | F7 Bb7 |)", () => {
   const line1 = "| Bb6 C7 | F7 Bb7 |";
   const line2 = "| C | G | Am | F |";
 
@@ -263,7 +265,7 @@ Deno.test("PARSE-08: multi-section measure bars delimiter handling (| Bb6 C7 | F
   }
 });
 
-Deno.test("PARSE-09: detects full 6-line ASCII tab staves with advanced technique markers", () => {
+test("PARSE-09: detects full 6-line ASCII tab staves with advanced technique markers", () => {
   const tabStaff = [
     "e|---5/7\\5---(12)---|",
     "B|---5-h-7---x------|",
@@ -295,7 +297,7 @@ Deno.test("PARSE-09: detects full 6-line ASCII tab staves with advanced techniqu
   assertEquals(lines[3].type, "chord_lyric");
 });
 
-Deno.test("PARSE-10: parses ChordPro {sot} / {eot} tab blocks", () => {
+test("PARSE-10: parses ChordPro {sot} / {eot} tab blocks", () => {
   const input = [
     "{title: Stairway to Heaven}",
     "{sot}",
@@ -315,7 +317,7 @@ Deno.test("PARSE-10: parses ChordPro {sot} / {eot} tab blocks", () => {
   assertEquals(lines[1].segments?.length, 2);
 });
 
-Deno.test("PARSE-11: filters tuning headers and chord dictionary definition blocks", () => {
+test("PARSE-11: filters tuning headers and chord dictionary definition blocks", () => {
   const input = [
     "Tuning: E A D G B E",
     "Key: G",
@@ -339,7 +341,7 @@ Deno.test("PARSE-11: filters tuning headers and chord dictionary definition bloc
   assertEquals(lines[1].segments?.length, 2);
 });
 
-Deno.test("PARSE-12: step-by-step chromatic slash bass line syllable alignment", () => {
+test("PARSE-12: step-by-step chromatic slash bass line syllable alignment", () => {
   const input = [
     "C       C/B     Am      Am/G    F       F/E     Dm      Dm/C",
     "We      skipped the     light   fan-    dan-    go",
@@ -364,7 +366,7 @@ Deno.test("PARSE-12: step-by-step chromatic slash bass line syllable alignment",
   assertEquals(feChord.stradella.primaryBass, "E_");
 });
 
-Deno.test("PARSE-13: parses youtube directives from ChordPro and standard lead sheets", () => {
+test("PARSE-13: parses youtube directives from ChordPro and standard lead sheets", () => {
   const chordProInput = [
     "{title: Bella Ciao}",
     "{artist: Italian Folk}",

@@ -1,4 +1,6 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "vitest";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "./assertions.ts";
 import type {
   AccordionSize,
   CbaGrip,
@@ -10,7 +12,7 @@ import type {
   ViewMode,
 } from "../src/types/index.ts";
 
-Deno.test("Environment & Type Contracts: verifies master types and imports", () => {
+test("Environment & Type Contracts: verifies master types and imports", () => {
   const viewMode: ViewMode = "stradella";
   assertEquals(viewMode, "stradella");
 

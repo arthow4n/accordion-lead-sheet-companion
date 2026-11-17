@@ -1,5 +1,5 @@
 /**
- * OMR Artifact Proxy for Deno Deploy
+ * OMR Artifact Proxy for Cloudflare Workers
  * Streams pinned model files from GitHub Release with CORS headers.
  * Path: api/omr-artifacts.ts
  */
@@ -18,7 +18,7 @@ const UPSTREAM_RELEASE_BASE =
   "https://github.com/arthow4n/accordion-lead-sheet-companion/releases/download/omr-v1";
 
 export async function handleOmrArtifactRequest(req: Request): Promise<Response> {
-  const corsHeaders = getCorsHeaders(req, "GET, HEAD, OPTIONS");
+  const corsHeaders = getCorsHeaders(req, "GET, HEAD, OPTIONS", "Content-Type, Range");
   if (!corsHeaders && req.headers.has("origin")) {
     return new Response(JSON.stringify({ error: "Origin not allowed by CORS policy" }), {
       status: 403,
@@ -37,7 +37,7 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
       headers: {
-        ...(corsHeaders as Record<string, string> || {}),
+        ...corsHeaders,
         "Content-Type": "application/json",
         "Allow": "GET, HEAD, OPTIONS",
       },
@@ -59,7 +59,7 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
       {
         status: 404,
         headers: {
-          ...(corsHeaders as Record<string, string> || {}),
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       },
@@ -68,27 +68,30 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
 
   const upstreamUrl = `${UPSTREAM_RELEASE_BASE}/${filename}`;
 
-  const fetchHeaders: HeadersInit = {};
+  const fetchHeaders = new Headers({ "Accept-Encoding": "identity" });
   const range = req.headers.get("range");
-  if (range) {
-    fetchHeaders["Range"] = range;
+  if (range) fetchHeaders.set("Range", range);
+
+  let upstreamRes: Response;
+  try {
+    upstreamRes = await fetch(upstreamUrl, {
+      method: req.method,
+      headers: fetchHeaders,
+      cache: "no-store",
+    });
+  } catch {
+    return Response.json({ error: "Upstream fetch failed" }, {
+      status: 502,
+      headers: corsHeaders ?? {},
+    });
   }
 
-  const upstreamRes = await fetch(upstreamUrl, {
-    headers: fetchHeaders,
-  });
-
-  if (!upstreamRes.ok && upstreamRes.status !== 206) {
-    return new Response(
-      JSON.stringify({ error: `Upstream fetch failed: HTTP ${upstreamRes.status}` }),
-      {
-        status: 502,
-        headers: {
-          ...(corsHeaders as Record<string, string> || {}),
-          "Content-Type": "application/json",
-        },
-      },
-    );
+  if (!upstreamRes.ok && upstreamRes.status !== 416) {
+    await upstreamRes.body?.cancel();
+    return Response.json({ error: `Upstream fetch failed: HTTP ${upstreamRes.status}` }, {
+      status: 502,
+      headers: corsHeaders ?? {},
+    });
   }
 
   const responseHeaders = new Headers(corsHeaders || {});
@@ -98,13 +101,14 @@ export async function handleOmrArtifactRequest(req: Request): Promise<Response> 
     ? "application/wasm"
     : "application/octet-stream";
   responseHeaders.set("Content-Type", mimeType);
-  const contentLength = upstreamRes.headers.get("content-length");
-  if (contentLength) responseHeaders.set("Content-Length", contentLength);
-  const contentRange = upstreamRes.headers.get("content-range");
-  if (contentRange) responseHeaders.set("Content-Range", contentRange);
-  const acceptRanges = upstreamRes.headers.get("accept-ranges");
-  if (acceptRanges) responseHeaders.set("Accept-Ranges", acceptRanges);
-  responseHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+  for (const name of ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"]) {
+    const value = upstreamRes.headers.get(name);
+    if (value) responseHeaders.set(name, value);
+  }
+  responseHeaders.set(
+    "Cache-Control",
+    upstreamRes.ok ? "public, max-age=31536000, immutable" : "no-store",
+  );
   responseHeaders.set(
     "Access-Control-Expose-Headers",
     "Content-Length, Content-Range, Accept-Ranges, ETag",

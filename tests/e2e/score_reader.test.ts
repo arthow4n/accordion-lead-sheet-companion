@@ -1,3 +1,4 @@
+import { test } from "vitest";
 /**
  * Comprehensive 4-Tier E2E Test Suite for Offline Score Reader.
  * Path: tests/e2e/score_reader.test.ts
@@ -8,7 +9,8 @@
  * Tier 4: Real-World Scenarios (end-to-end score photo import -> review queue -> immediate playback)
  */
 
-import { assertEquals, assertExists } from "@std/assert";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { assertExists } from "../assertions.ts";
 import {
   detectBarlinesAndSliceMeasures,
   estimateSkewAngle,
@@ -164,7 +166,7 @@ function createSyntheticScoreDoc(overrides: Partial<ScoreDocument> = {}): ScoreD
 // Feature 1: Staves (>=5 tests)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-STAVE-01: groupLinesIntoStaves detects 5-line staves and computes uniform line spacing", () => {
+test("T1-STAVE-01: groupLinesIntoStaves detects 5-line staves and computes uniform line spacing", () => {
   const lines = [50, 64, 78, 92, 106]; // spacing = 14
   const staves = groupLinesIntoStaves(lines, 800, 600);
 
@@ -175,7 +177,7 @@ Deno.test("T1-STAVE-01: groupLinesIntoStaves detects 5-line staves and computes 
   assertEquals(staves[0].box.width, 800);
 });
 
-Deno.test("T1-STAVE-02: groupLinesIntoStaves isolates multiple systems across vertical page gaps", () => {
+test("T1-STAVE-02: groupLinesIntoStaves isolates multiple systems across vertical page gaps", () => {
   // System 0: y = 40..88 (spacing 12)
   // System 1: y = 200..248 (spacing 12)
   // System 2: y = 360..408 (spacing 12)
@@ -207,7 +209,7 @@ Deno.test("T1-STAVE-02: groupLinesIntoStaves isolates multiple systems across ve
   assertEquals(staves[2].lineSpacing, 12);
 });
 
-Deno.test("T1-STAVE-03: groupLinesIntoStaves rejects stray noise lines and sub-5-line fragments", () => {
+test("T1-STAVE-03: groupLinesIntoStaves rejects stray noise lines and sub-5-line fragments", () => {
   // Stray lines at y = 10, 25, 38 (< 5 lines)
   // Valid staff at y = 120, 132, 144, 156, 168
   // Isolated noise line at y = 250
@@ -218,7 +220,7 @@ Deno.test("T1-STAVE-03: groupLinesIntoStaves rejects stray noise lines and sub-5
   assertEquals(staves[0].lineYCoordinates, [120, 132, 144, 156, 168]);
 });
 
-Deno.test("T1-STAVE-04: Staff bounding box incorporates headroom and footroom for chords and lyrics", () => {
+test("T1-STAVE-04: Staff bounding box incorporates headroom and footroom for chords and lyrics", () => {
   const lines = [100, 114, 128, 142, 156]; // spacing = 14, staffHeight = 56
   const staves = groupLinesIntoStaves(lines, 800, 600);
 
@@ -230,7 +232,7 @@ Deno.test("T1-STAVE-04: Staff bounding box incorporates headroom and footroom fo
   assertEquals(staff.box.y + staff.box.height > lines[4], true);
 });
 
-Deno.test("T1-STAVE-05: extractStaffCropTensor extracts normalized 128px-height tensor with valid dimensions", () => {
+test("T1-STAVE-05: extractStaffCropTensor extracts normalized 128px-height tensor with valid dimensions", () => {
   const img = createBlankImage(600, 400);
   for (let i = 0; i < 5; i++) {
     drawHorizontalLine(img, 100 + i * 12, 50, 550, 2);
@@ -255,7 +257,7 @@ Deno.test("T1-STAVE-05: extractStaffCropTensor extracts normalized 128px-height 
   assertEquals(max <= 1.0, true);
 });
 
-Deno.test("T1-STAVE-06: Tolerance to non-uniform line spacing variance (11-13px within staff)", () => {
+test("T1-STAVE-06: Tolerance to non-uniform line spacing variance (11-13px within staff)", () => {
   // Minor hand-drawn or printing distortion: spacing alternates 11, 13, 12, 12
   const lines = [100, 111, 124, 136, 148];
   const staves = groupLinesIntoStaves(lines, 700, 500);
@@ -268,7 +270,7 @@ Deno.test("T1-STAVE-06: Tolerance to non-uniform line spacing variance (11-13px 
 // Feature 2: Barlines (>=5 tests)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-BARLINE-01: Full-height barlines spanning staff lines 1-5 are detected by OpenCV", async () => {
+test("T1-BARLINE-01: Full-height barlines spanning staff lines 1-5 are detected by OpenCV", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -318,7 +320,7 @@ Deno.test("T1-BARLINE-01: Full-height barlines spanning staff lines 1-5 are dete
   }
 });
 
-Deno.test("T1-BARLINE-02: Short vertical strokes below morph kernel threshold are removed by MORPH_OPEN", async () => {
+test("T1-BARLINE-02: Short vertical strokes below morph kernel threshold are removed by MORPH_OPEN", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -366,7 +368,7 @@ Deno.test("T1-BARLINE-02: Short vertical strokes below morph kernel threshold ar
   }
 });
 
-Deno.test("T1-BARLINE-03: Barline deduplication within 8px window merges double-thick strokes", async () => {
+test("T1-BARLINE-03: Barline deduplication within 8px window merges double-thick strokes", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -415,7 +417,7 @@ Deno.test("T1-BARLINE-03: Barline deduplication within 8px window merges double-
   }
 });
 
-Deno.test("T1-BARLINE-04: Sequential measure slicing produces strictly ordered writtenIndex", async () => {
+test("T1-BARLINE-04: Sequential measure slicing produces strictly ordered writtenIndex", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -456,7 +458,7 @@ Deno.test("T1-BARLINE-04: Sequential measure slicing produces strictly ordered w
   }
 });
 
-Deno.test("T1-BARLINE-05: Minimum measure width threshold prevents runaway micro-slices", async () => {
+test("T1-BARLINE-05: Minimum measure width threshold prevents runaway micro-slices", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -494,7 +496,7 @@ Deno.test("T1-BARLINE-05: Minimum measure width threshold prevents runaway micro
   }
 });
 
-Deno.test("T1-BARLINE-06: Final barline near right margin bounds last measure cleanly", async () => {
+test("T1-BARLINE-06: Final barline near right margin bounds last measure cleanly", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -537,7 +539,7 @@ Deno.test("T1-BARLINE-06: Final barline near right margin bounds last measure cl
 // Feature 3: Chords (>=5 tests)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-CHORD-01: mxhmToChordSymbol converts standard Humdrum triads and dominant 7ths", () => {
+test("T1-CHORD-01: mxhmToChordSymbol converts standard Humdrum triads and dominant 7ths", () => {
   assertEquals(mxhmToChordSymbol("C:maj"), "C");
   assertEquals(mxhmToChordSymbol("G:7"), "G7");
   assertEquals(mxhmToChordSymbol("D:min"), "Dm");
@@ -545,21 +547,21 @@ Deno.test("T1-CHORD-01: mxhmToChordSymbol converts standard Humdrum triads and d
   assertEquals(mxhmToChordSymbol("A:min7"), "Am7");
 });
 
-Deno.test("T1-CHORD-02: mxhmToChordSymbol maps half-diminished and diminished 7ths", () => {
+test("T1-CHORD-02: mxhmToChordSymbol maps half-diminished and diminished 7ths", () => {
   assertEquals(mxhmToChordSymbol("B:hdim7"), "Bm7b5");
   assertEquals(mxhmToChordSymbol("F#:hdim7"), "F#m7b5");
   assertEquals(mxhmToChordSymbol("D#:dim7"), "D#dim7");
   assertEquals(mxhmToChordSymbol("G:dim"), "Gdim");
 });
 
-Deno.test("T1-CHORD-03: mxhmToChordSymbol preserves slash chord bass inversions", () => {
+test("T1-CHORD-03: mxhmToChordSymbol preserves slash chord bass inversions", () => {
   assertEquals(mxhmToChordSymbol("C:maj/G"), "C/G");
   assertEquals(mxhmToChordSymbol("A:min7/E"), "Am7/E");
   assertEquals(mxhmToChordSymbol("G:7/B"), "G7/B");
   assertEquals(mxhmToChordSymbol("F:maj/A"), "F/A");
 });
 
-Deno.test("T1-CHORD-04: mxhmToChordSymbol maps extended jazz alterations (maj7, sus4, aug, 9, 11, 13)", () => {
+test("T1-CHORD-04: mxhmToChordSymbol maps extended jazz alterations (maj7, sus4, aug, 9, 11, 13)", () => {
   assertEquals(mxhmToChordSymbol("Eb:maj7"), "Ebmaj7");
   assertEquals(mxhmToChordSymbol("Bb:sus4"), "Bbsus4");
   assertEquals(mxhmToChordSymbol("G:aug"), "Gaug");
@@ -568,7 +570,7 @@ Deno.test("T1-CHORD-04: mxhmToChordSymbol maps extended jazz alterations (maj7, 
   assertEquals(mxhmToChordSymbol("E:13"), "E13");
 });
 
-Deno.test("T1-CHORD-05: Every parsed chord resolves to valid, playable Stradella buttons", () => {
+test("T1-CHORD-05: Every parsed chord resolves to valid, playable Stradella buttons", () => {
   const testChords = ["C", "G7", "Dm", "Am7", "Bm7b5", "F/A", "C/G"];
   for (const chordStr of testChords) {
     const voicing = solveStradellaChord(chordStr);
@@ -578,7 +580,7 @@ Deno.test("T1-CHORD-05: Every parsed chord resolves to valid, playable Stradella
   }
 });
 
-Deno.test("T1-CHORD-06: Score fusion chord agreement upgrades confidence to 0.95", () => {
+test("T1-CHORD-06: Score fusion chord agreement upgrades confidence to 0.95", () => {
   const doc = createSyntheticScoreDoc();
   const ocrData: OcrScoreData = {
     measures: [
@@ -602,7 +604,7 @@ Deno.test("T1-CHORD-06: Score fusion chord agreement upgrades confidence to 0.95
 // Feature 4: Meter (>=5 tests)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-METER-01: parseMeterToken handles standard simple time signatures (4/4, 3/4, 2/4)", () => {
+test("T1-METER-01: parseMeterToken handles standard simple time signatures (4/4, 3/4, 2/4)", () => {
   const m44 = parseMeterToken("4/4");
   assertExists(m44);
   assertEquals(m44.beats, 4);
@@ -619,7 +621,7 @@ Deno.test("T1-METER-01: parseMeterToken handles standard simple time signatures 
   assertEquals(m24.beatType, 4);
 });
 
-Deno.test("T1-METER-02: parseMeterToken parses compound 6/8 meter with rational beat conversion", () => {
+test("T1-METER-02: parseMeterToken parses compound 6/8 meter with rational beat conversion", () => {
   const m68 = parseMeterToken("6/8");
   assertExists(m68);
   assertEquals(m68.beats, 6);
@@ -632,7 +634,7 @@ Deno.test("T1-METER-02: parseMeterToken parses compound 6/8 meter with rational 
   assertEquals(m68Colon.beatType, 8);
 });
 
-Deno.test("T1-METER-03: parseMeterToken parses common time 'C' and cut time 'C|' / 2/2", () => {
+test("T1-METER-03: parseMeterToken parses common time 'C' and cut time 'C|' / 2/2", () => {
   const cCommon = parseMeterToken("C");
   assertExists(cCommon);
   assertEquals(cCommon.beats, 4);
@@ -649,7 +651,7 @@ Deno.test("T1-METER-03: parseMeterToken parses common time 'C' and cut time 'C|'
   assertEquals(m22.beatType, 2);
 });
 
-Deno.test("T1-METER-04: parseKernMeter parses Humdrum meter spine declarations", () => {
+test("T1-METER-04: parseKernMeter parses Humdrum meter spine declarations", () => {
   const k44 = parseKernMeter("*M4/4");
   assertExists(k44);
   assertEquals(k44.beats, 4);
@@ -666,7 +668,7 @@ Deno.test("T1-METER-04: parseKernMeter parses Humdrum meter spine declarations",
   assertEquals(k68.beatType, 8);
 });
 
-Deno.test("T1-METER-05: fuseScoreDocument deterministically supplements 6/8 meter over default 4/4", () => {
+test("T1-METER-05: fuseScoreDocument deterministically supplements 6/8 meter over default 4/4", () => {
   const doc = createSyntheticScoreDoc({ time: { beats: 4, beatType: 4 } });
   const ocrData: OcrScoreData = {
     timeSignature: { beats: 6, beatType: 8 },
@@ -684,7 +686,7 @@ Deno.test("T1-METER-05: fuseScoreDocument deterministically supplements 6/8 mete
   }
 });
 
-Deno.test("T1-METER-06: parseMeterToken handles multi-line stacked digits ('6\\n8', '3  4')", () => {
+test("T1-METER-06: parseMeterToken handles multi-line stacked digits ('6\\n8', '3  4')", () => {
   const stacked68 = parseMeterToken("6\n8");
   assertExists(stacked68);
   assertEquals(stacked68.beats, 6);
@@ -705,7 +707,7 @@ Deno.test("T1-METER-06: parseMeterToken handles multi-line stacked digits ('6\\n
 // Feature 5: Key Signatures (>=5 tests)
 // ----------------------------------------------------------------------------
 
-Deno.test("T1-KEY-01: parseKeySignatureSymbols handles sharp key signatures 1 to 6 sharps", () => {
+test("T1-KEY-01: parseKeySignatureSymbols handles sharp key signatures 1 to 6 sharps", () => {
   const sharpProfiles = [
     { input: "*k[f#]", expectedFifths: 1 },
     { input: "*k[f#c#]", expectedFifths: 2 },
@@ -723,7 +725,7 @@ Deno.test("T1-KEY-01: parseKeySignatureSymbols handles sharp key signatures 1 to
   }
 });
 
-Deno.test("T1-KEY-02: parseKeySignatureSymbols handles flat key signatures 1 to 6 flats", () => {
+test("T1-KEY-02: parseKeySignatureSymbols handles flat key signatures 1 to 6 flats", () => {
   const flatProfiles = [
     { input: "*k[b-]", expectedFifths: -1 },
     { input: "*k[b-e-]", expectedFifths: -2 },
@@ -741,14 +743,14 @@ Deno.test("T1-KEY-02: parseKeySignatureSymbols handles flat key signatures 1 to 
   }
 });
 
-Deno.test("T1-KEY-03: parseKeySignatureSymbols parses natural key (C Major / A Minor, *k[])", () => {
+test("T1-KEY-03: parseKeySignatureSymbols parses natural key (C Major / A Minor, *k[])", () => {
   const key = parseKeySignatureSymbols("*k[]");
   assertExists(key);
   assertEquals(key.fifths, 0);
   assertEquals(key.mode, "major");
 });
 
-Deno.test("T1-KEY-04: parseKeySignatureSymbols parses text declarations ('Key: G', 'Bb Major', 'F# Minor')", () => {
+test("T1-KEY-04: parseKeySignatureSymbols parses text declarations ('Key: G', 'Bb Major', 'F# Minor')", () => {
   const gMaj = parseKeySignatureSymbols("Key: G");
   assertExists(gMaj);
   assertEquals(gMaj.fifths, 1);
@@ -767,7 +769,7 @@ Deno.test("T1-KEY-04: parseKeySignatureSymbols parses text declarations ('Key: G
   assertEquals(dMaj.fifths, 2);
 });
 
-Deno.test("T1-KEY-05: fuseScoreDocument supplements non-zero key signature across all measures", () => {
+test("T1-KEY-05: fuseScoreDocument supplements non-zero key signature across all measures", () => {
   const doc = createSyntheticScoreDoc({ key: { fifths: 0, mode: "major" } });
   const ocrData: OcrScoreData = {
     keySignature: { fifths: 2, mode: "major" }, // D Major
@@ -783,7 +785,7 @@ Deno.test("T1-KEY-05: fuseScoreDocument supplements non-zero key signature acros
   }
 });
 
-Deno.test("T1-KEY-06: Minor key signatures properly offset relative major fifths (-3)", () => {
+test("T1-KEY-06: Minor key signatures properly offset relative major fifths (-3)", () => {
   // A minor: A maj is 3, 3 - 3 = 0 fifths
   const aMin = parseKeySignatureSymbols("A Minor");
   assertExists(aMin);
@@ -807,7 +809,7 @@ Deno.test("T1-KEY-06: Minor key signatures properly offset relative major fifths
 // TIER 2: BOUNDARY & CORNER CASES
 // ============================================================================
 
-Deno.test("T2-EDGE-01: Degenerate sub-32x32 images return safe fallback layout without throwing", async () => {
+test("T2-EDGE-01: Degenerate sub-32x32 images return safe fallback layout without throwing", async () => {
   const cv = await loadOpenCv();
   const degenerateImg = createBlankImage(12, 12);
   const result = processScoreImageWithCv(cv, degenerateImg);
@@ -819,7 +821,7 @@ Deno.test("T2-EDGE-01: Degenerate sub-32x32 images return safe fallback layout w
   assertEquals(result.layout.measures.length, 1);
 });
 
-Deno.test("T2-EDGE-02: All-white and all-black frames return graceful fallback layout", async () => {
+test("T2-EDGE-02: All-white and all-black frames return graceful fallback layout", async () => {
   const cv = await loadOpenCv();
 
   // All-white canvas (blank paper with no ink)
@@ -836,7 +838,7 @@ Deno.test("T2-EDGE-02: All-white and all-black frames return graceful fallback l
   assertEquals(blackRes.staves.length, 0);
 });
 
-Deno.test("T2-EDGE-03: estimateSkewAngle estimates rotation within ±15° search window", async () => {
+test("T2-EDGE-03: estimateSkewAngle estimates rotation within ±15° search window", async () => {
   const cv = await loadOpenCv();
   const tracker = new MatTracker();
   try {
@@ -861,7 +863,7 @@ Deno.test("T2-EDGE-03: estimateSkewAngle estimates rotation within ±15° search
   }
 });
 
-Deno.test("T2-EDGE-04: Dense chord progressions (4 chords in 1 measure) preserve distinct offsets", () => {
+test("T2-EDGE-04: Dense chord progressions (4 chords in 1 measure) preserve distinct offsets", () => {
   const humdrumDense = `**kern	**mxhm
 *M4/4	*M4/4
 =1	=1
@@ -887,7 +889,7 @@ Deno.test("T2-EDGE-04: Dense chord progressions (4 chords in 1 measure) preserve
   }
 });
 
-Deno.test("T2-EDGE-05: Multi-system score (4 systems, 16 measures) preserves measure order and indexing", () => {
+test("T2-EDGE-05: Multi-system score (4 systems, 16 measures) preserves measure order and indexing", () => {
   // Construct 16 measures across 4 systems
   const measures: ScoreMeasure[] = [];
   for (let i = 0; i < 16; i++) {
@@ -938,7 +940,7 @@ Deno.test("T2-EDGE-05: Multi-system score (4 systems, 16 measures) preserves mea
   }
 });
 
-Deno.test("T2-EDGE-06: Altered jazz voicings and polychords preserve harmony integrity", () => {
+test("T2-EDGE-06: Altered jazz voicings and polychords preserve harmony integrity", () => {
   const alteredChords = ["C7(#9)", "Ab13", "Eb/Bb", "F#m7b5", "Db9", "G7b5"];
   for (const chord of alteredChords) {
     const parsed = parseChord(chord);
@@ -955,7 +957,7 @@ Deno.test("T2-EDGE-06: Altered jazz voicings and polychords preserve harmony int
 // TIER 3: CROSS-FEATURE INTERACTIONS
 // ============================================================================
 
-Deno.test("T3-XFEAT-01: Score fusion synchronizes melody notes and chord harmonies by beat offset", () => {
+test("T3-XFEAT-01: Score fusion synchronizes melody notes and chord harmonies by beat offset", () => {
   const doc = createSyntheticScoreDoc();
   const ocrData: OcrScoreData = {
     measures: [
@@ -985,7 +987,7 @@ Deno.test("T3-XFEAT-01: Score fusion synchronizes melody notes and chord harmoni
   assertEquals(rationalToNumber(m0.melody[1].offset), 0.5);
 });
 
-Deno.test("T3-XFEAT-02: 6/8 compound meter with stepwise chromatic bass slash chords", () => {
+test("T3-XFEAT-02: 6/8 compound meter with stepwise chromatic bass slash chords", () => {
   const humdrum68Slash = `**kern	**mxhm
 *M6/8	*M6/8
 *k[]	*k[]
@@ -1025,7 +1027,7 @@ Deno.test("T3-XFEAT-02: 6/8 compound meter with stepwise chromatic bass slash ch
   assertEquals(slashVoicing.primaryBass, "B_");
 });
 
-Deno.test("T3-XFEAT-03: Camera photo layout measures are correlated with ScoreDocument measures (sourceBox linkage)", () => {
+test("T3-XFEAT-03: Camera photo layout measures are correlated with ScoreDocument measures (sourceBox linkage)", () => {
   const doc = createSyntheticScoreDoc();
   const photoLayout: ScorePhotoLayout = {
     schemaVersion: 1,
@@ -1059,7 +1061,7 @@ Deno.test("T3-XFEAT-03: Camera photo layout measures are correlated with ScoreDo
   assertEquals(doc.measures[1].sourceBox?.x, 400);
 });
 
-Deno.test("T3-XFEAT-04: Speculative low-confidence melody notes (< 0.35) are isolated without affecting chords", () => {
+test("T3-XFEAT-04: Speculative low-confidence melody notes (< 0.35) are isolated without affecting chords", () => {
   const doc = createSyntheticScoreDoc();
   // Set all melody note confidences very low (speculative OCR artifact)
   doc.measures[0].melody[0].confidence = 0.20;
@@ -1076,7 +1078,7 @@ Deno.test("T3-XFEAT-04: Speculative low-confidence melody notes (< 0.35) are iso
   assertEquals(fused.document.measures[0].harmonies[0].raw, "C");
 });
 
-Deno.test("T3-XFEAT-05: Score correction session updates persist through undo/redo stack", () => {
+test("T3-XFEAT-05: Score correction session updates persist through undo/redo stack", () => {
   const doc = createSyntheticScoreDoc();
   const session = new ScoreCorrectionSession(doc);
 
@@ -1106,7 +1108,7 @@ Deno.test("T3-XFEAT-05: Score correction session updates persist through undo/re
 // TIER 4: REAL-WORLD SCENARIOS
 // ============================================================================
 
-Deno.test("T4-SCENARIO-01: Folk Song Photo Import ('Bella Ciao') -> OMR Transcription -> Immediate Playback", () => {
+test("T4-SCENARIO-01: Folk Song Photo Import ('Bella Ciao') -> OMR Transcription -> Immediate Playback", () => {
   // Scenario 1: Standard Italian Folk Song in Am, 4/4 meter
   const bellaCiaoHumdrum = `**kern	**mxhm
 *M4/4	*M4/4
@@ -1168,7 +1170,7 @@ Deno.test("T4-SCENARIO-01: Folk Song Photo Import ('Bella Ciao') -> OMR Transcri
   }
 });
 
-Deno.test("T4-SCENARIO-02: Jazz Standard ('Autumn Leaves') -> Disagreement Resolution -> Playback Ready", () => {
+test("T4-SCENARIO-02: Jazz Standard ('Autumn Leaves') -> Disagreement Resolution -> Playback Ready", () => {
   // Scenario 2: Jazz Standard with m7b5 and slash chord disagreement
   const autumnLeavesHumdrum = `**kern	**mxhm
 *M4/4	*M4/4
@@ -1216,7 +1218,7 @@ Deno.test("T4-SCENARIO-02: Jazz Standard ('Autumn Leaves') -> Disagreement Resol
   assertEquals(fsharpM7b5.chordButton?.label, "am");
 });
 
-Deno.test("T4-SCENARIO-03: 3/4 Waltz with multi-measure repeat barlines and first/second endings", () => {
+test("T4-SCENARIO-03: 3/4 Waltz with multi-measure repeat barlines and first/second endings", () => {
   const waltzHumdrum = `**kern	**mxhm
 *M3/4	*M3/4
 *k[]	*k[]
@@ -1246,7 +1248,7 @@ Deno.test("T4-SCENARIO-03: 3/4 Waltz with multi-measure repeat barlines and firs
   assertEquals(hasRepeatEnd, true);
 });
 
-Deno.test("T4-SCENARIO-04: Corrupted mobile camera capture -> graceful fallback -> manual measure recovery", () => {
+test("T4-SCENARIO-04: Corrupted mobile camera capture -> graceful fallback -> manual measure recovery", () => {
   // Scenario 4: User takes photo in low light; CV detection yields zero valid staves
   const fallbackLayout = createInitialPhotoLayout(1200, 1600);
   assertEquals(fallbackLayout.measures.length, 1);
